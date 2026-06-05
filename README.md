@@ -1,5 +1,7 @@
 # Trackr — UK Finance Summer Internship Tracker
 
+**▲ Live:** https://trackr-brown.vercel.app — demo login `demo@trackr.local` / `demo1234`
+
 A production-minded MVP that helps ambitious UK students find, rank, and track
 **finance summer internships**. Students sign up, complete a short onboarding,
 and land on a dense, premium dashboard where every opportunity is scored for how
