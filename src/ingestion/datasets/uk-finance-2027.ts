@@ -16,11 +16,11 @@ const employers: RawEmployer[] = [
   { name: "Goldman Sachs", sector: "Investment Bank", hq: "London", website: "https://www.goldmansachs.com/careers/students/", logoHint: "GS" },
   { name: "Morgan Stanley", sector: "Investment Bank", hq: "London", website: "https://www.morganstanley.com/careers", logoHint: "MS" },
   { name: "J.P. Morgan", sector: "Investment Bank", hq: "London", website: "https://careers.jpmorgan.com/global/en/students", logoHint: "JP" },
-  { name: "Bank of America", sector: "Investment Bank", hq: "London", website: "https://campus.bankofamerica.com/", logoHint: "BA" },
-  { name: "Citi", sector: "Investment Bank", hq: "London", website: "https://www.citigroup.com/global/early-careers", logoHint: "Ci" },
+  { name: "Bank of America", sector: "Investment Bank", hq: "London", website: "https://careers.bankofamerica.com/en-us/students", logoHint: "BA" },
+  { name: "Citi", sector: "Investment Bank", hq: "London", website: "https://jobs.citi.com/early-careers", logoHint: "Ci" },
   { name: "Barclays", sector: "Investment Bank", hq: "London", website: "https://search.jobs.barclays/early-careers", logoHint: "Ba" },
   { name: "UBS", sector: "Investment Bank", hq: "London", website: "https://www.ubs.com/global/en/careers/students.html", logoHint: "UB" },
-  { name: "Deutsche Bank", sector: "Investment Bank", hq: "London", website: "https://careers.db.com/students/", logoHint: "DB" },
+  { name: "Deutsche Bank", sector: "Investment Bank", hq: "London", website: "https://careers.db.com/students-graduates/internship-programme/", logoHint: "DB" },
   { name: "HSBC", sector: "Universal Bank", hq: "London", website: "https://www.hsbc.com/careers/students-and-graduates", logoHint: "HS" },
   { name: "Nomura", sector: "Investment Bank", hq: "London", website: "https://www.nomura.com/careers/", logoHint: "No" },
   { name: "Jefferies", sector: "Investment Bank", hq: "London", website: "https://www.jefferies.com/careers/", logoHint: "Je" },
@@ -34,9 +34,9 @@ const employers: RawEmployer[] = [
   { name: "Citadel Securities", sector: "Market Maker", hq: "London", website: "https://www.citadelsecurities.com/careers/students/", logoHint: "CS" },
   { name: "Jane Street", sector: "Proprietary Trading", hq: "London", website: "https://www.janestreet.com/join-jane-street/", logoHint: "JS" },
   { name: "Point72", sector: "Hedge Fund", hq: "London", website: "https://careers.point72.com/", logoHint: "P72" },
-  { name: "Man Group", sector: "Hedge Fund", hq: "London", website: "https://www.man.com/early-careers", logoHint: "Mn" },
+  { name: "Man Group", sector: "Hedge Fund", hq: "London", website: "https://www.man.com/students-and-graduates", logoHint: "Mn" },
   { name: "Blackstone", sector: "Private Equity", hq: "London", website: "https://www.blackstone.com/careers/students/", logoHint: "Bx" },
-  { name: "Macquarie", sector: "Investment Bank", hq: "London", website: "https://www.macquarie.com/uk/en/about/careers.html", logoHint: "Mq" },
+  { name: "Macquarie", sector: "Investment Bank", hq: "London", website: "https://www.macquarie.com/uk/en/careers/graduates-and-interns.html", logoHint: "Mq" },
 ];
 
 const SPONSOR_YES = "Visa sponsorship is typically available for summer interns.";
@@ -133,7 +133,7 @@ const opportunities: RawOpportunity[] = [
     divisionDesk: "GCIB", location: "London", status: "OPENING_SOON",
     opensAt: "2026-09-01", deadlineAt: null, firstSeen: "2026-05-25", lastSeen: "2026-06-03",
     summary: "Support advisory and financing teams across industry coverage and capital markets products.",
-    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://campus.bankofamerica.com/programs.html",
+    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://careers.bankofamerica.com/en-us/students/job-search",
     sourceType: "CAREERS_PAGE", tags: ["m&a", "capital markets", "valuation"],
   },
   {
@@ -141,7 +141,7 @@ const opportunities: RawOpportunity[] = [
     divisionDesk: "Global Markets", location: "London", status: "OPENING_SOON",
     opensAt: "2026-09-01", deadlineAt: null, firstSeen: "2026-05-25", lastSeen: "2026-06-03",
     summary: "Rotational programme across trading and sales desks with structured markets training.",
-    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://campus.bankofamerica.com/programs.html",
+    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://careers.bankofamerica.com/en-us/students/job-search",
     sourceType: "CAREERS_PAGE", tags: ["trading", "sales", "derivatives"],
   },
 
@@ -151,7 +151,7 @@ const opportunities: RawOpportunity[] = [
     divisionDesk: "Banking", location: "London", status: "OPENING_SOON",
     opensAt: "2026-09-08", deadlineAt: null, firstSeen: "2026-05-27", lastSeen: "2026-06-02",
     summary: "Join coverage and advisory teams supporting M&A and financing transactions for corporate and institutional clients.",
-    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://www.citigroup.com/global/early-careers/students",
+    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://jobs.citi.com/search-jobs",
     sourceType: "CAREERS_PAGE", tags: ["m&a", "advisory", "valuation"],
   },
   {
@@ -159,7 +159,7 @@ const opportunities: RawOpportunity[] = [
     divisionDesk: "Markets", location: "London", status: "OPENING_SOON",
     opensAt: "2026-09-08", deadlineAt: null, firstSeen: "2026-05-27", lastSeen: "2026-06-02",
     summary: "Experience trading, sales and structuring across rates, credit, FX and equities.",
-    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://www.citigroup.com/global/early-careers/students",
+    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://jobs.citi.com/search-jobs",
     sourceType: "CAREERS_PAGE", tags: ["fx", "rates", "credit", "trading"],
   },
 
@@ -213,7 +213,7 @@ const opportunities: RawOpportunity[] = [
     divisionDesk: "Origination & Advisory", location: "London", status: "OPENING_SOON",
     opensAt: "2026-09-12", deadlineAt: null, firstSeen: "2026-05-25", lastSeen: "2026-06-02",
     summary: "Contribute to M&A and financing teams, supporting execution and client coverage.",
-    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://careers.db.com/students/",
+    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://careers.db.com/students-graduates/internship-programme/",
     sourceType: "CAREERS_PAGE", tags: ["m&a", "financing", "valuation"],
   },
   {
@@ -221,7 +221,7 @@ const opportunities: RawOpportunity[] = [
     divisionDesk: "FIC", location: "London", status: "OPENING_SOON",
     opensAt: "2026-09-12", deadlineAt: null, firstSeen: "2026-05-25", lastSeen: "2026-06-02",
     summary: "Desk rotations across rates, credit and FX trading and sales.",
-    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://careers.db.com/students/",
+    sponsorshipInfo: SPONSOR_YES, applicationUrl: "https://careers.db.com/students-graduates/internship-programme/",
     sourceType: "CAREERS_PAGE", tags: ["rates", "fx", "credit", "trading"],
   },
 
@@ -417,7 +417,7 @@ const opportunities: RawOpportunity[] = [
     opensAt: "2026-09-01", deadlineAt: null, firstSeen: "2026-05-29", lastSeen: "2026-06-03",
     summary: "Research and engineering placement within a systematic investment manager, working on signals and modelling.",
     eligibilityNotes: "Quantitative or computational degree background.",
-    sponsorshipInfo: SPONSOR_CASE, applicationUrl: "https://www.man.com/early-careers",
+    sponsorshipInfo: SPONSOR_CASE, applicationUrl: "https://www.man.com/students-and-graduates",
     sourceType: "CAREERS_PAGE", tags: ["python", "systematic", "statistics", "modelling"],
   },
   {
@@ -425,7 +425,7 @@ const opportunities: RawOpportunity[] = [
     divisionDesk: "Discretionary", location: "London", status: "UNKNOWN",
     opensAt: null, deadlineAt: null, firstSeen: "2026-05-29", lastSeen: "2026-06-03",
     summary: "Support discretionary portfolio managers with fundamental research across asset classes.",
-    sponsorshipInfo: SPONSOR_CASE, applicationUrl: "https://www.man.com/early-careers",
+    sponsorshipInfo: SPONSOR_CASE, applicationUrl: "https://www.man.com/students-and-graduates",
     sourceType: "CAREERS_PAGE", tags: ["buy-side", "research", "macro"],
   },
 
@@ -454,7 +454,7 @@ const opportunities: RawOpportunity[] = [
     divisionDesk: "Macquarie Capital", location: "London", status: "OPENING_SOON",
     opensAt: "2026-09-22", deadlineAt: null, firstSeen: "2026-05-30", lastSeen: "2026-06-02",
     summary: "Advisory and principal investing placement supporting M&A and infrastructure financing teams.",
-    sponsorshipInfo: SPONSOR_CASE, applicationUrl: "https://www.macquarie.com/uk/en/about/careers.html",
+    sponsorshipInfo: SPONSOR_CASE, applicationUrl: "https://www.macquarie.com/uk/en/careers/graduates-and-interns.html",
     sourceType: "CAREERS_PAGE", tags: ["m&a", "infrastructure", "valuation"],
   },
   {
@@ -462,7 +462,7 @@ const opportunities: RawOpportunity[] = [
     divisionDesk: "Commodities & Global Markets", location: "London", status: "CLOSED",
     opensAt: "2026-03-15", deadlineAt: "2026-05-25", firstSeen: "2026-05-20", lastSeen: "2026-05-31",
     summary: "Markets placement spanning commodities, financial markets and risk solutions; this cycle's applications have closed.",
-    sponsorshipInfo: SPONSOR_CASE, applicationUrl: "https://www.macquarie.com/uk/en/about/careers.html",
+    sponsorshipInfo: SPONSOR_CASE, applicationUrl: "https://www.macquarie.com/uk/en/careers/graduates-and-interns.html",
     sourceType: "CAREERS_PAGE", tags: ["commodities", "trading", "risk"],
   },
 ];
