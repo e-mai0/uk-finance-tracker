@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/server/auth";
+import { prisma } from "@/server/db";
 import { getOpportunityDetail } from "@/server/queries/opportunities";
 import { Monogram } from "@/components/ui/monogram";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +10,20 @@ import { StatusBadge } from "@/components/tracker/status-badge";
 import { FitPill } from "@/components/tracker/fit-pill";
 import { SaveButton } from "@/components/tracker/save-button";
 import { NotesEditor } from "@/components/tracker/notes-editor";
+import { CoverLetterCard } from "@/components/copilot/cover-letter-card";
 import { ROLE_FAMILY_LABEL } from "@/lib/constants";
 import { fitTierLabel } from "@/lib/scoring";
 import { formatDate, daysUntil } from "@/lib/utils";
+
+const APP_STATUS_LABEL: Record<string, string> = {
+  DRAFT: "Application started",
+  AUTOFILLED: "Autofilled",
+  SUBMITTED: "Submitted",
+  INTERVIEWING: "Interviewing",
+  OFFER: "Offer",
+  REJECTED: "Rejected",
+  WITHDRAWN: "Withdrawn",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +40,11 @@ export default async function OpportunityDetailPage({
   const { opportunity: o, score, reasons, saved, savedNotes } = detail;
   const dl = daysUntil(o.deadlineAt);
   const applyUrl = o.applicationUrl ?? o.employer.website ?? o.sourceUrl;
+
+  const application = await prisma.application.findFirst({
+    where: { userId: session!.user.id, opportunityId: o.id },
+    select: { status: true },
+  });
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -57,6 +74,11 @@ export default async function OpportunityDetailPage({
               <Badge tone="neutral">{ROLE_FAMILY_LABEL[o.roleFamily]}</Badge>
               <Badge tone="neutral">{o.programmeType}</Badge>
               {o.isUkBased && <Badge tone="neutral">UK-based</Badge>}
+              {application && (
+                <Badge tone="accent" dot>
+                  {APP_STATUS_LABEL[application.status] ?? application.status}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -116,6 +138,8 @@ export default async function OpportunityDetailPage({
               )}
             </CardBody>
           </Card>
+
+          <CoverLetterCard opportunityId={o.id} />
 
           <Card>
             <CardHeader>

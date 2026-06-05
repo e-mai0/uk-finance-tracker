@@ -30,6 +30,13 @@ export async function completeOnboarding(raw: unknown): Promise<OnboardingResult
       ? d.gradeInfo
       : undefined;
 
+  // The onboarding wizard captures a CV filename hint only (no bytes). The real
+  // upload + parsing happens in Settings → Apply Profile, so we stash the hint
+  // on ApplyProfile when present and prompt the user to finish uploading there.
+  const cvHint = d.cvFileName
+    ? { cvFileName: d.cvFileName, cvFileSize: d.cvFileSize ?? null }
+    : null;
+
   await prisma.$transaction([
     prisma.profile.upsert({
       where: { userId },
@@ -42,8 +49,6 @@ export async function completeOnboarding(raw: unknown): Promise<OnboardingResult
         workAuth: d.workAuth,
         skills: d.skills,
         gradeInfo: gradeInfo ?? undefined,
-        cvFileName: d.cvFileName || null,
-        cvFileSize: d.cvFileSize ?? null,
       },
       create: {
         userId,
@@ -55,10 +60,17 @@ export async function completeOnboarding(raw: unknown): Promise<OnboardingResult
         workAuth: d.workAuth,
         skills: d.skills,
         gradeInfo: gradeInfo ?? undefined,
-        cvFileName: d.cvFileName || null,
-        cvFileSize: d.cvFileSize ?? null,
       },
     }),
+    ...(cvHint
+      ? [
+          prisma.applyProfile.upsert({
+            where: { userId },
+            update: cvHint,
+            create: { userId, ...cvHint },
+          }),
+        ]
+      : []),
     prisma.preferences.upsert({
       where: { userId },
       update: {

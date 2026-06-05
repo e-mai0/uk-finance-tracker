@@ -27,9 +27,15 @@ affiliated with or endorsed by any employer listed.
 - **Fit scoring** — every user↔opportunity pair gets a transparent 0–100 score
   with human-readable reasons. Deterministic, no ML.
 - **Saved roles** — bookmark opportunities and keep private notes per role.
-- **Opportunity detail** — full normalized metadata, a scoring breakdown, and
-  apply/source links.
+- **Opportunity detail** — full normalized metadata, a scoring breakdown,
+  apply/source links, and an AI **cover-letter draft** grounded in your CV.
+- **Apply copilot** — a companion browser extension that autofills real
+  application forms (Greenhouse / Lever / Ashby) from your profile and drafts
+  answers to free-text questions **on the page**. You always review and submit.
+- **Applications tracker** — every role you autofill or submit is recorded with
+  a status you can update (submitted → interviewing → offer).
 - **Settings** — edit your profile and preferences; scores recompute on save.
+  Manage your apply profile, CV upload, answer bank, and extension connection.
 
 ### Scope
 
@@ -37,11 +43,12 @@ In scope: UK finance summer internships across investment banking, sales &
 trading / markets, asset management, private equity / credit, hedge funds,
 quant, corporate banking and research.
 
-Intentionally **out of scope** for this MVP: browser copilot / automation,
-auto-apply, live scraping / ATS integrations (interface stubs only), spring
+The **apply copilot** (browser extension) assists with real application forms —
+human-in-the-loop only. Intentionally **out of scope**: fully autonomous
+auto-submit (the extension never clicks submit, solves captchas, or scrapes
+employer data), live scraping / ATS ingestion (interface stubs only), spring
 weeks, graduate roles, placements, consulting, general tech roles, employer-side
-tooling, real CV upload/parsing (metadata placeholder only), and ML-based
-matching.
+tooling, and ML-based matching.
 
 ---
 
@@ -200,6 +207,60 @@ role hasn't been cached yet.
 
 ---
 
+## Apply copilot (browser extension)
+
+The copilot helps you fill out and answer real application forms. Because those
+forms live on **external** ATS sites (Greenhouse, Lever, Ashby, Workday), the
+copilot ships as a **Manifest V3 browser extension** (`extension/`) backed by a
+small API on this app.
+
+**Human-in-the-loop by design.** The extension fills fields and drafts answers;
+**you review and click submit**. It never auto-submits, never solves captchas,
+and never scrapes employer data — it only does what you could do by hand. AI
+answers are grounded in your own profile + CV and tuned per employer, so they are
+specific rather than the boilerplate that ATS bot-detection flags. This is the
+deliberate, defensible model (the same shape as Simplify) — full autonomous
+auto-apply is intentionally **not** built, as it carries real blacklisting/ToS
+risk that is worst in finance.
+
+### How it fits together
+
+- **Web app** owns identity, data, CV storage and all LLM calls, and exposes a
+  bearer-authed API for the extension under `src/app/api/ext/*`:
+  - `GET /api/ext/profile` — normalized autofill field map
+  - `GET /api/ext/cv` — short-lived signed CV download URL
+  - `POST /api/ext/answer` — answer-bank hit or AI generation (grounded in your CV)
+  - `POST /api/ext/application` — upserts an `Application` so the dashboard tracks it
+- **Auth bridge** — the extension can't use the session cookie cross-origin, so
+  you mint a **personal API token** in Settings (stored only as a SHA-256 hash in
+  `ApiToken`; revocable). Generating it auto-connects an installed extension, or
+  you paste it into the popup.
+- **Extension** (`extension/`) — a service worker holds the token and calls the
+  API; content scripts detect the form, autofill it, and render an on-page panel
+  with an AI **Draft** per free-text question. See `extension/README.md` to build
+  and load it.
+
+### CV upload + answer bank
+
+- **Real CV upload + parsing** — upload a PDF/DOCX in Settings → it's stored in a
+  **private** Supabase Storage bucket (`cvs`) and the text is extracted
+  (`unpdf` / `mammoth`) to ground generated content. CV files never go to the
+  browser/extension except via short-lived signed URLs.
+- **Answer bank** — reusable Q&A that grows as you apply. A near-identical
+  question reuses your saved answer verbatim; otherwise the copilot generates one
+  you can edit and save.
+
+### Required env (optional features)
+
+The app runs without these — the copilot degrades gracefully and tells you when a
+piece isn't configured:
+
+```env
+ANTHROPIC_API_KEY="sk-ant-..."                 # AI generation (server-only)
+SUPABASE_URL="https://<ref>.supabase.co"       # CV storage
+SUPABASE_SERVICE_ROLE_KEY="..."                # CV storage (server-only; bypasses RLS)
+```
+
 ## Data & ingestion
 
 The seed data is a curated, **original** dataset
@@ -271,6 +332,9 @@ Covers:
 3. Add environment variables in **Vercel → Project → Settings → Environment
    Variables**: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, and `AUTH_URL`
    (set `AUTH_URL` to your production URL, e.g. `https://your-app.vercel.app`).
+   To enable the apply copilot, also add `ANTHROPIC_API_KEY`, `SUPABASE_URL`, and
+   `SUPABASE_SERVICE_ROLE_KEY` (the app runs without them; the copilot just stays
+   disabled until they're set).
 4. Deploy. After the first deploy, run migrations against the production DB
    (locally with prod env, or via a one-off command):
    ```bash

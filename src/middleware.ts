@@ -9,7 +9,8 @@ export const { auth: middleware } = NextAuth(authConfig);
 export default middleware;
 
 export const config = {
-  // Run on everything except static assets, image optimizer, favicon and the
-  // auth API routes.
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  // Run on everything except API routes (the extension API does its own bearer
+  // auth; NextAuth's own routes must be skipped), static assets, the image
+  // optimizer and favicon.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

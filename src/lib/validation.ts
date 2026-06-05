@@ -122,3 +122,74 @@ export type OnboardingInput = z.infer<typeof onboardingSchema>;
 
 export const settingsSchema = onboardingSchema;
 export type SettingsInput = z.infer<typeof settingsSchema>;
+
+// ---------------------------------------------------------------------------
+// Apply copilot — application profile + answer bank
+// ---------------------------------------------------------------------------
+
+const optStr = (max: number) =>
+  z.string().trim().max(max).optional().or(z.literal(""));
+
+export const applyProfileSchema = z.object({
+  phone: optStr(40),
+  addressCity: optStr(120),
+  country: optStr(80),
+  linkedinUrl: optStr(200),
+  githubUrl: optStr(200),
+  websiteUrl: optStr(200),
+  pronouns: optStr(40),
+  noticePeriod: optStr(120),
+  earliestStart: optStr(120),
+  workAuthStatement: optStr(600),
+  sponsorshipStatement: optStr(600),
+  selfIdGender: optStr(80),
+  selfIdEthnicity: optStr(120),
+});
+
+export type ApplyProfileInput = z.infer<typeof applyProfileSchema>;
+
+export const answerBankItemSchema = z.object({
+  questionText: z.string().trim().min(3, "Add the question").max(600),
+  answer: z.string().trim().min(1, "Add an answer").max(6000),
+  tags: z.array(z.string().trim().min(1)).max(12).default([]),
+  employer: optStr(120),
+});
+
+export type AnswerBankItemInput = z.infer<typeof answerBankItemSchema>;
+
+// Payload the extension POSTs to /api/ext/answer.
+export const extAnswerSchema = z.object({
+  questionText: z.string().trim().min(3).max(2000),
+  questionType: z.enum(["short", "long", "textarea", "text"]).default("long"),
+  charLimit: z.number().int().positive().max(20000).optional(),
+  employer: optStr(160),
+  role: optStr(200),
+  externalUrl: optStr(500),
+  // When provided, this exact text is saved/echoed instead of generating —
+  // used by the panel's "Save to bank" on an edited answer.
+  answer: z.string().trim().max(8000).optional(),
+  save: z.boolean().default(false),
+});
+
+export type ExtAnswerInput = z.infer<typeof extAnswerSchema>;
+
+// Payload the extension POSTs to /api/ext/application.
+export const extApplicationSchema = z.object({
+  externalUrl: z.string().trim().url().max(500),
+  ats: z.enum(["GREENHOUSE", "LEVER", "ASHBY", "WORKDAY", "OTHER"]).default("OTHER"),
+  employerName: optStr(160),
+  roleTitle: optStr(200),
+  status: z
+    .enum([
+      "DRAFT",
+      "AUTOFILLED",
+      "SUBMITTED",
+      "INTERVIEWING",
+      "OFFER",
+      "REJECTED",
+      "WITHDRAWN",
+    ])
+    .default("AUTOFILLED"),
+});
+
+export type ExtApplicationInput = z.infer<typeof extApplicationSchema>;

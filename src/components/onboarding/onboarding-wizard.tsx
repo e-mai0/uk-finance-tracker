@@ -489,7 +489,8 @@ export function OnboardingWizard({
             <div className="mt-6">
               <Label htmlFor="cv">CV (optional)</Label>
               <p className="mb-2 mt-1 text-xs text-muted">
-                We record the file name only for now — no upload or parsing yet.
+                We note the file name now; upload the actual CV later in Settings
+                so the apply copilot can tailor to it.
               </p>
               <input
                 id="cv"

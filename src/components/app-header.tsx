@@ -9,6 +9,7 @@ import { Brand } from "@/components/brand";
 const NAV = [
   { href: "/dashboard", label: "Tracker" },
   { href: "/saved", label: "Saved" },
+  { href: "/applications", label: "Applications" },
   { href: "/settings", label: "Settings" },
 ];
 

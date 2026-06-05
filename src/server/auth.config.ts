@@ -7,7 +7,13 @@ import type { NextAuthConfig } from "next-auth";
  * provider (which needs Prisma + bcrypt) is added only in `auth.ts`.
  */
 
-const APP_PREFIXES = ["/dashboard", "/saved", "/settings", "/opportunities"];
+const APP_PREFIXES = [
+  "/dashboard",
+  "/saved",
+  "/settings",
+  "/opportunities",
+  "/applications",
+];
 
 export const authConfig = {
   pages: {

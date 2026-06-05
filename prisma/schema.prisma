@@ -49,6 +49,39 @@ enum SourceType {
   MANUAL
 }
 
+// Applicant tracking system the external application form is hosted on.
+enum ATSKind {
+  GREENHOUSE
+  LEVER
+  ASHBY
+  WORKDAY
+  OTHER
+}
+
+// Lifecycle of a real application the user is making to an external role.
+enum ApplicationStatus {
+  DRAFT
+  AUTOFILLED
+  SUBMITTED
+  INTERVIEWING
+  OFFER
+  REJECTED
+  WITHDRAWN
+}
+
+// Where an Application record originated.
+enum ApplicationSource {
+  EXTENSION
+  MANUAL
+}
+
+// Kind of AI-generated artefact (kept for history / reuse).
+enum DraftKind {
+  COVER_LETTER
+  ANSWER
+  CV_TAILOR
+}
+
 // ---------------------------------------------------------------------------
 // Users & profiles
 // ---------------------------------------------------------------------------
@@ -61,28 +94,31 @@ model User {
   createdAt    DateTime  @default(now())
   onboardedAt  DateTime?
 
-  profile     Profile?
-  preferences Preferences?
-  saved       SavedOpportunity[]
-  matches     MatchScore[]
+  profile      Profile?
+  preferences  Preferences?
+  applyProfile ApplyProfile?
+  saved        SavedOpportunity[]
+  matches      MatchScore[]
+  apiTokens    ApiToken[]
+  answerBank   AnswerBankItem[]
+  applications Application[]
+  drafts       GeneratedDraft[]
 }
 
 model Profile {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  university      String
-  degreeSubject   String
-  degreeType      String
-  graduationYear  Int
-  currentYear     Int
-  workAuth        WorkAuth
-  gradeInfo       Json? // optional A-level / GCSE / GPA style fields
-  skills          String[] @default([])
-  cvFileName      String?
-  cvFileSize      Int?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university     String
+  degreeSubject  String
+  degreeType     String
+  graduationYear Int
+  currentYear    Int
+  workAuth       WorkAuth
+  gradeInfo      Json? // optional A-level / GCSE / GPA style fields
+  skills         String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Preferences {
@@ -136,10 +172,11 @@ model Opportunity {
   sponsorshipInfo    String?
   confidence         Float             @default(1.0)
 
-  tags    OpportunityTag[]
-  sources OpportunitySource[]
-  saved   SavedOpportunity[]
-  matches MatchScore[]
+  tags         OpportunityTag[]
+  sources      OpportunitySource[]
+  saved        SavedOpportunity[]
+  matches      MatchScore[]
+  applications Application[]
 
   @@unique([employerId, title, location])
   @@index([roleFamily])
@@ -214,4 +251,124 @@ model IngestionRun {
   created    Int       @default(0)
   updated    Int       @default(0)
   notes      String?
+}
+
+// ---------------------------------------------------------------------------
+// Apply copilot — application profile, answer bank, tokens, tracking
+// ---------------------------------------------------------------------------
+
+// Reusable data the apply copilot fills into / drafts against external
+// application forms. Separate from Profile (which drives match scoring) so the
+// two concerns evolve independently.
+model ApplyProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phone       String?
+  addressCity String?
+  country     String? @default("United Kingdom")
+  linkedinUrl String?
+  githubUrl   String?
+  websiteUrl  String?
+  pronouns    String?
+
+  noticePeriod         String?
+  earliestStart        String?
+  // Short reusable free-text statements the copilot can drop into common
+  // application questions verbatim or as grounding for generation.
+  workAuthStatement    String?
+  sponsorshipStatement String?
+
+  // Optional self-identification, only persisted if the user opts in.
+  selfIdGender    String?
+  selfIdEthnicity String?
+
+  // CV (migrated off Profile): now a real upload + parsed text.
+  cvStoragePath String? // path within the private `cvs` bucket
+  cvFileName    String?
+  cvFileSize    Int?
+  cvText        String? // extracted plain text used to ground generation
+  cvUpdatedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Reusable Q&A that grows as the user applies. `questionNormalized` is the
+// lower-cased / stripped form used for fuzzy matching against new questions.
+model AnswerBankItem {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionNormalized String
+  questionText       String
+  answer             String
+  tags               String[] @default([])
+  employer           String?
+  usageCount         Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, questionNormalized])
+}
+
+// A real application the user is making to an external role. `opportunityId`
+// is optional because users apply to roles that aren't in our dataset.
+model Application {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunityId String?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  externalUrl  String
+  employerName String?
+  roleTitle    String?
+  ats          ATSKind           @default(OTHER)
+  status       ApplicationStatus @default(DRAFT)
+  source       ApplicationSource @default(EXTENSION)
+  submittedAt  DateTime?
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  drafts GeneratedDraft[]
+
+  @@unique([userId, externalUrl])
+  @@index([userId])
+  @@index([userId, status])
+}
+
+// History of AI-generated artefacts (cover letters, answers, CV tailoring).
+model GeneratedDraft {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  opportunityId String?
+  kind          DraftKind
+  context       Json? // prompt context (question, employer, role, char limit)
+  content       String
+  model         String?
+  createdAt     DateTime     @default(now())
+
+  @@index([userId])
+}
+
+// Personal API tokens used by the browser extension. Only the SHA-256 hash is
+// stored; the plaintext is shown once at creation and handed to the extension.
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  name       String    @default("Browser extension")
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([userId])
 }
