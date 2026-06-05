@@ -22,9 +22,9 @@ export function SummaryCards({ stats }: { stats: SummaryStats }) {
       {CARDS.map((c) => (
         <div
           key={c.key}
-          className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3.5"
+          className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3.5 shadow-[var(--shadow-card)]"
         >
-          <div className="text-2xl font-semibold tracking-tight text-ink tabular">
+          <div className="text-[1.75rem] font-medium tracking-tight text-ink tabular">
             {stats[c.key]}
           </div>
           <div className="mt-0.5 text-sm font-medium text-ink">{c.label}</div>

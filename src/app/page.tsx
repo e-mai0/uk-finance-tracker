@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { Button } from "@/components/ui/button";
+import { Brand } from "@/components/brand";
 import { prisma } from "@/server/db";
 import { ROLE_FAMILIES } from "@/lib/constants";
 
@@ -19,12 +20,7 @@ export default async function LandingPage() {
   return (
     <div className="flex min-h-full flex-col">
       <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-ink text-xs font-bold text-white">
-            T
-          </span>
-          <span className="text-sm font-semibold tracking-tight">Trackr</span>
-        </div>
+        <Brand href={null} />
         <div className="flex items-center gap-2">
           <Link href="/login">
             <Button variant="ghost" size="sm">
@@ -39,20 +35,24 @@ export default async function LandingPage() {
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-6">
         <section className="flex max-w-3xl flex-col items-center pt-20 text-center sm:pt-28">
-          <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            UK finance · Summer 2027 cycle
+          <span className="animate-rise mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted shadow-[var(--shadow-card)]">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
+            </span>
+            UK finance · Summer 2027 cycle · live
           </span>
-          <h1 className="text-balance text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-            The disciplined tracker for UK finance summer internships
+          <h1 className="animate-rise text-balance text-[2.6rem] leading-[1.05] text-ink sm:text-6xl">
+            The disciplined tracker for UK finance{" "}
+            <em className="font-display italic text-accent">summer internships</em>
           </h1>
-          <p className="mt-5 max-w-2xl text-pretty text-base leading-relaxed text-muted sm:text-lg">
+          <p className="animate-rise mt-6 max-w-2xl text-pretty text-base leading-relaxed text-muted sm:text-lg">
             Browse every opening across investment banking, markets, asset
-            management, private equity and quant — ranked by how well each role
-            fits your background. Built for ambitious students who want signal,
-            not noise.
+            management, private equity and quant — ranked by how well each role{" "}
+            <em className="font-display italic text-ink">fits</em> your
+            background. Built for ambitious students who want signal, not noise.
           </p>
-          <div className="mt-8 flex items-center gap-3">
+          <div className="animate-rise mt-9 flex items-center gap-3">
             <Link href="/signup">
               <Button size="lg">Create your tracker</Button>
             </Link>
@@ -101,8 +101,8 @@ export default async function LandingPage() {
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-5 text-center">
-      <div className="text-2xl font-semibold tracking-tight text-ink tabular">
+    <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-5 text-center shadow-[var(--shadow-card)]">
+      <div className="text-[1.75rem] font-medium tracking-tight text-ink tabular">
         {value}
       </div>
       <div className="mt-1 text-xs text-muted">{label}</div>
@@ -112,8 +112,8 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 function Feature({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-[var(--radius-card)] border border-border bg-surface p-5">
-      <h3 className="text-sm font-semibold text-ink">{title}</h3>
+    <div className="rounded-[var(--radius-card)] border border-border bg-surface p-5 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-pop)]">
+      <h3 className="font-display text-base font-medium text-ink">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
     </div>
   );

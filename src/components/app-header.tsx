@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
+import { Brand } from "@/components/brand";
 
 const NAV = [
   { href: "/dashboard", label: "Tracker" },
@@ -17,12 +18,7 @@ export function AppHeader({ name, savedCount }: { name: string; savedCount: numb
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/85 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-ink text-xs font-bold text-white">
-            T
-          </span>
-          <span className="text-sm font-semibold tracking-tight">Trackr</span>
-        </Link>
+        <Brand href="/dashboard" />
 
         <nav className="flex items-center gap-1">
           {NAV.map((item) => {

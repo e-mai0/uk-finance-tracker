@@ -201,7 +201,7 @@ function FilterDropdown({
           <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </summary>
-      <div className="absolute left-0 top-[calc(100%+6px)] z-40 min-w-52 rounded-lg border border-border bg-surface p-1.5 shadow-lg">
+      <div className="absolute left-0 top-[calc(100%+6px)] z-40 min-w-52 rounded-lg border border-border bg-surface p-1.5 shadow-[var(--shadow-pop)]">
         {options.map((o) => {
           const active = selected.includes(o.value);
           return (

@@ -1,35 +1,44 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Design tokens — premium, restrained, high-signal. Near-monochrome neutral
-   palette with a single deep-indigo accent. Light theme only for the MVP.
+   "The Broadsheet Terminal" — an editorial, high-signal operating dashboard.
+   Warm ivory paper neutrals, near-black warm ink, a deep claret accent, and
+   monospace numerics. Display type is a characterful serif (Fraunces); UI is a
+   clean grotesque (Geist); data is mono (Geist Mono). Light theme.
 --------------------------------------------------------------------------- */
 @theme {
-  --color-canvas: #f7f7f8;
-  --color-surface: #ffffff;
-  --color-surface-2: #fbfbfc;
-  --color-ink: #0e1116;
-  --color-muted: #5b616e;
-  --color-subtle: #8b909c;
-  --color-border: #e7e8ec;
-  --color-border-strong: #d6d8de;
+  /* Warm paper neutrals */
+  --color-canvas: #f4f1ea;
+  --color-surface: #fffdf8;
+  --color-surface-2: #f0ece1;
+  --color-ink: #1b1714;
+  --color-muted: #6a6258;
+  --color-subtle: #9b9385;
+  --color-border: #e6e0d2;
+  --color-border-strong: #d6cfbd;
 
-  --color-accent: #4338ca;
-  --color-accent-hover: #3730a3;
-  --color-accent-fg: #ffffff;
-  --color-accent-soft: #eef0fb;
+  /* Claret / oxblood accent */
+  --color-accent: #7c2433;
+  --color-accent-hover: #641b27;
+  --color-accent-fg: #fdf6f0;
+  --color-accent-soft: #f4e6e3;
 
-  --color-success: #15803d;
-  --color-success-soft: #e7f5ec;
-  --color-warning: #b45309;
-  --color-warning-soft: #fdf3e7;
-  --color-danger: #b91c1c;
-  --color-danger-soft: #fdecec;
-  --color-info: #1d4ed8;
-  --color-info-soft: #e9eefb;
+  /* Status — tuned to sit on warm paper, distinct from the claret accent */
+  --color-success: #2f6a45;
+  --color-success-soft: #e6efe5;
+  --color-warning: #946614;
+  --color-warning-soft: #f5ecd6;
+  --color-danger: #b1431f;
+  --color-danger-soft: #f6e6dc;
+  --color-info: #2f5586;
+  --color-info-soft: #e7ecf4;
 
-  --radius-card: 0.75rem;
+  --radius-card: 0.7rem;
 
+  --shadow-card: 0 1px 2px rgba(27, 23, 20, 0.05), 0 1px 1px rgba(27, 23, 20, 0.03);
+  --shadow-pop: 0 12px 32px -12px rgba(27, 23, 20, 0.22), 0 2px 6px -2px rgba(27, 23, 20, 0.1);
+
+  --font-display: var(--font-display), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
@@ -39,10 +48,29 @@ html {
 }
 
 body {
-  background: var(--color-canvas);
+  background:
+    radial-gradient(125% 85% at 50% -12%, #fbf8f1 0%, rgba(251, 248, 241, 0) 55%),
+    var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Editorial serif for primary headings, applied globally so components inherit
+   it without per-file edits. Card titles are <h3> and stay grotesque. */
+h1,
+h2 {
+  font-family: var(--font-display);
+  letter-spacing: -0.018em;
+  font-weight: 500;
+}
+
+/* All numerics render in mono with tabular figures — the "terminal" signal. */
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 /* Thin, unobtrusive scrollbars for the dense tracker. */
@@ -51,13 +79,35 @@ body {
   scrollbar-color: var(--color-border-strong) transparent;
 }
 
-/* Numeric tabular alignment for dates / scores in the table. */
-.tabular {
-  font-variant-numeric: tabular-nums;
+/* Hairline divider with an editorial feel. */
+.rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-border-strong) 12%,
+    var(--color-border-strong) 88%,
+    transparent
+  );
 }
 
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
   }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise {
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

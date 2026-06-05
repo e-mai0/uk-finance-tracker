@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
+import { Brand } from "@/components/brand";
 
 export const metadata = { title: "Get started — Trackr" };
 
@@ -21,12 +21,7 @@ export default async function OnboardingPage() {
   return (
     <div className="min-h-full">
       <header className="mx-auto flex h-16 w-full max-w-6xl items-center px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-ink text-xs font-bold text-white">
-            T
-          </span>
-          <span className="text-sm font-semibold tracking-tight">Trackr</span>
-        </Link>
+        <Brand href="/" />
       </header>
       <div className="px-4 py-6 sm:py-10">
         <SessionProvider session={session}>

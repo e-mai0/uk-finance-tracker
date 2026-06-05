@@ -13,7 +13,7 @@ export function OpportunityTable({ items }: { items: TrackerItem[] }) {
   if (items.length === 0) return <EmptyState />;
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-border bg-surface">
+    <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface shadow-[var(--shadow-card)]">
       {/* Desktop header */}
       <div
         className={cn(
