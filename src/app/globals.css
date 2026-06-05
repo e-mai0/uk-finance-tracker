@@ -1,26 +1,63 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ---------------------------------------------------------------------------
+   Design tokens — premium, restrained, high-signal. Near-monochrome neutral
+   palette with a single deep-indigo accent. Light theme only for the MVP.
+--------------------------------------------------------------------------- */
+@theme {
+  --color-canvas: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #fbfbfc;
+  --color-ink: #0e1116;
+  --color-muted: #5b616e;
+  --color-subtle: #8b909c;
+  --color-border: #e7e8ec;
+  --color-border-strong: #d6d8de;
+
+  --color-accent: #4338ca;
+  --color-accent-hover: #3730a3;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #eef0fb;
+
+  --color-success: #15803d;
+  --color-success-soft: #e7f5ec;
+  --color-warning: #b45309;
+  --color-warning-soft: #fdf3e7;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fdecec;
+  --color-info: #1d4ed8;
+  --color-info-soft: #e9eefb;
+
+  --radius-card: 0.75rem;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-canvas);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin, unobtrusive scrollbars for the dense tracker. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+/* Numeric tabular alignment for dates / scores in the table. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }

@@ -1,65 +1,120 @@
-import Image from "next/image";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/server/auth";
+import { Button } from "@/components/ui/button";
+import { prisma } from "@/server/db";
+import { ROLE_FAMILIES } from "@/lib/constants";
 
-export default function Home() {
+export default async function LandingPage() {
+  const session = await auth();
+  if (session?.user) {
+    redirect(session.user.onboarded ? "/dashboard" : "/onboarding");
+  }
+
+  const [employers, opportunities] = await Promise.all([
+    prisma.employer.count().catch(() => 0),
+    prisma.opportunity.count().catch(() => 0),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="flex min-h-full flex-col">
+      <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-ink text-xs font-bold text-white">
+            T
+          </span>
+          <span className="text-sm font-semibold tracking-tight">Trackr</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href="/login">
+            <Button variant="ghost" size="sm">
+              Sign in
+            </Button>
+          </Link>
+          <Link href="/signup">
+            <Button size="sm">Get started</Button>
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-6">
+        <section className="flex max-w-3xl flex-col items-center pt-20 text-center sm:pt-28">
+          <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-success" />
+            UK finance · Summer 2027 cycle
+          </span>
+          <h1 className="text-balance text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+            The disciplined tracker for UK finance summer internships
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-5 max-w-2xl text-pretty text-base leading-relaxed text-muted sm:text-lg">
+            Browse every opening across investment banking, markets, asset
+            management, private equity and quant — ranked by how well each role
+            fits your background. Built for ambitious students who want signal,
+            not noise.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          <div className="mt-8 flex items-center gap-3">
+            <Link href="/signup">
+              <Button size="lg">Create your tracker</Button>
+            </Link>
+            <Link href="/login">
+              <Button size="lg" variant="outline">
+                I already have an account
+              </Button>
+            </Link>
+          </div>
+          <p className="mt-4 text-xs text-subtle">
+            Free to start · No card required
+          </p>
+        </section>
+
+        <section className="mt-16 grid w-full max-w-3xl grid-cols-3 gap-4">
+          <Stat value={`${opportunities || "40+"}`} label="Live opportunities" />
+          <Stat value={`${employers || "20+"}`} label="Employers tracked" />
+          <Stat value={`${ROLE_FAMILIES.length}`} label="Role families" />
+        </section>
+
+        <section className="mt-16 grid w-full max-w-4xl gap-4 pb-20 sm:grid-cols-3">
+          <Feature
+            title="A dashboard, not a list"
+            body="Dense, sortable and searchable. Filter by status, location, division and deadline in one sticky bar."
+          />
+          <Feature
+            title="Personalized fit scores"
+            body="Every role is scored 0–100 against your degree, timing, location and target firms — with a plain-English why."
+          />
+          <Feature
+            title="Built to apply, not browse"
+            body="Save roles, track deadlines, and focus your effort where you have the strongest shot."
+          />
+        </section>
       </main>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6 text-xs text-subtle">
+          <span>Trackr — UK finance internships</span>
+          <span>Original product · not affiliated with any employer listed</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-5 text-center">
+      <div className="text-2xl font-semibold tracking-tight text-ink tabular">
+        {value}
+      </div>
+      <div className="mt-1 text-xs text-muted">{label}</div>
+    </div>
+  );
+}
+
+function Feature({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-[var(--radius-card)] border border-border bg-surface p-5">
+      <h3 className="text-sm font-semibold text-ink">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
     </div>
   );
 }

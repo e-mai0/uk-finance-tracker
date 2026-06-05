@@ -1,0 +1,217 @@
+// UK Finance Summer Internship Tracker — data model
+// Provider: PostgreSQL (Supabase). Uses pooled DATABASE_URL for the app
+// and DIRECT_URL for migrations (see README / .env.example).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum RoleFamily {
+  IB // Investment banking
+  MARKETS // Sales & trading / markets
+  ASSET_MGMT // Asset / investment management
+  PRIVATE_EQUITY // PE / private credit
+  HEDGE_FUND // Buy-side / hedge fund
+  QUANT // Quant / systematic trading
+  CORP_BANKING // Corporate banking / capital markets
+  RESEARCH // Equity / macro research
+}
+
+enum OpportunityStatus {
+  OPEN
+  OPENING_SOON
+  CLOSED
+  UNKNOWN
+}
+
+enum WorkAuth {
+  UK_CITIZEN
+  UK_SETTLED // ILR / settled / pre-settled
+  UK_VISA_REQUIRED // needs sponsorship
+  OTHER
+}
+
+enum SourceType {
+  CAREERS_PAGE
+  GREENHOUSE
+  LEVER
+  WORKDAY
+  MANUAL
+}
+
+// ---------------------------------------------------------------------------
+// Users & profiles
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime  @default(now())
+  onboardedAt  DateTime?
+
+  profile     Profile?
+  preferences Preferences?
+  saved       SavedOpportunity[]
+  matches     MatchScore[]
+}
+
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university      String
+  degreeSubject   String
+  degreeType      String
+  graduationYear  Int
+  currentYear     Int
+  workAuth        WorkAuth
+  gradeInfo       Json? // optional A-level / GCSE / GPA style fields
+  skills          String[] @default([])
+  cvFileName      String?
+  cvFileSize      Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Preferences {
+  id                 String       @id @default(cuid())
+  userId             String       @unique
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetRoleFamilies RoleFamily[] @default([])
+  preferredLocations String[]     @default([])
+  openToAnywhereUk   Boolean      @default(false)
+  targetEmployers    String[]     @default([])
+  updatedAt          DateTime     @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Opportunities & employers
+// ---------------------------------------------------------------------------
+
+model Employer {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  slug          String        @unique
+  sector        String?
+  hq            String?
+  website       String?
+  logoHint      String? // short label for an avatar/monogram in the UI
+  opportunities Opportunity[]
+}
+
+model Opportunity {
+  id                 String            @id @default(cuid())
+  employerId         String
+  employer           Employer          @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  title              String
+  programmeType      String // normalized, e.g. "Summer Internship"
+  roleFamily         RoleFamily
+  divisionDesk       String?
+  location           String
+  country            String            @default("UK")
+  isUkBased          Boolean           @default(true)
+  isSummerInternship Boolean           @default(true)
+  applicationUrl     String?
+  sourceUrl          String?
+  sourceType         SourceType        @default(MANUAL)
+  status             OpportunityStatus @default(UNKNOWN)
+  opensAt            DateTime?
+  deadlineAt         DateTime?
+  firstSeenAt        DateTime          @default(now())
+  lastSeenAt         DateTime          @default(now())
+  descriptionSummary String // original normalized summary (no copied content)
+  eligibilityNotes   String?
+  sponsorshipInfo    String?
+  confidence         Float             @default(1.0)
+
+  tags    OpportunityTag[]
+  sources OpportunitySource[]
+  saved   SavedOpportunity[]
+  matches MatchScore[]
+
+  @@unique([employerId, title, location])
+  @@index([roleFamily])
+  @@index([status])
+  @@index([location])
+  @@index([deadlineAt])
+  @@index([lastSeenAt])
+}
+
+model OpportunityTag {
+  id            String      @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  label         String
+
+  @@index([opportunityId])
+  @@index([label])
+}
+
+model OpportunitySource {
+  id            String      @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  sourceType    SourceType
+  url           String
+  label         String?
+
+  @@index([opportunityId])
+}
+
+// ---------------------------------------------------------------------------
+// User <-> opportunity relations
+// ---------------------------------------------------------------------------
+
+model SavedOpportunity {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  notes         String?
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, opportunityId])
+  @@index([userId])
+}
+
+model MatchScore {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  score         Int
+  reasons       Json // string[]
+  computedAt    DateTime    @default(now())
+
+  @@unique([userId, opportunityId])
+  @@index([userId])
+  @@index([userId, score])
+}
+
+// ---------------------------------------------------------------------------
+// Ingestion metadata
+// ---------------------------------------------------------------------------
+
+model IngestionRun {
+  id         String    @id @default(cuid())
+  source     String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  created    Int       @default(0)
+  updated    Int       @default(0)
+  notes      String?
+}
