@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.agents
+.env
+.env.*
+!.env.example
+dev-smoke.log
+*.log
+schema-ddl.sql
