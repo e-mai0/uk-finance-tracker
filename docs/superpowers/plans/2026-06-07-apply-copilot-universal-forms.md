@@ -864,6 +864,7 @@ export type ExtFactInput = z.infer<typeof extFactSchema>;
 - [ ] **Step 6: Implement `src/app/api/ext/fact/route.ts`**
 
 ```ts
+import { Prisma } from "@prisma/client";
 import { requireToken } from "../../../../server/ext-auth";
 import { prisma } from "../../../../server/db";
 import { routeAskedAnswer } from "../../../../lib/form-plan";
@@ -898,10 +899,12 @@ export async function POST(req: Request) {
   const route = routeAskedAnswer(profileKey || undefined, questionText, answer);
 
   if (route.target === "profile") {
+    // route.column is a string, so cast to Prisma's exact input types — a bare
+    // computed-key object does not satisfy ApplyProfile{Create,Update}Input.
     await prisma.applyProfile.upsert({
       where: { userId },
-      create: { userId, [route.column]: route.value },
-      update: { [route.column]: route.value },
+      create: { userId, [route.column]: route.value } as Prisma.ApplyProfileUncheckedCreateInput,
+      update: { [route.column]: route.value } as Prisma.ApplyProfileUncheckedUpdateInput,
     });
     return json({ saved: "profile", column: route.column });
   }
@@ -1151,20 +1154,21 @@ Add a `applyPlan` function that consumes a `FillPlanItem[]` + the id→element m
 **Files:**
 - Modify: `extension/src/content/autofill.ts`
 
-- [ ] **Step 1: Add `applyPlan` to `extension/src/content/autofill.ts`**
+- [ ] **Step 1: Add `applyPlan` + a public `setFieldValue` to `extension/src/content/autofill.ts`**
 
 Append:
 
 ```ts
 import type { FillableEl } from "./field-map";
-import type { FillPlanItem } from "../shared/types";
+import type { FieldSchema, FillPlanItem } from "../shared/types";
 
 export interface PlanQuestion {
   fieldId: string;
-  el: HTMLTextAreaElement | HTMLInputElement;
+  el: FillableEl;          // input, textarea, OR select/radio
   label: string;
   profileKey?: string;
   charLimit?: number;
+  options?: string[];      // present for select/radio asks — drives the ask UI
 }
 
 export interface AppliedPlan {
@@ -1177,7 +1181,7 @@ export interface AppliedPlan {
 export function applyPlan(
   plan: FillPlanItem[],
   elements: Map<string, FillableEl>,
-  labels: Map<string, string>,
+  schemaById: Map<string, FieldSchema>,
 ): AppliedPlan {
   let filled = 0;
   const asks: PlanQuestion[] = [];
@@ -1186,30 +1190,32 @@ export function applyPlan(
   for (const item of plan) {
     const el = elements.get(item.fieldId);
     if (!el) continue;
-    const label = labels.get(item.fieldId) ?? "";
+    const schema = schemaById.get(item.fieldId);
+    const label = schema?.label ?? "";
 
     if (item.action === "fill" && item.value != null) {
-      if (fillElement(el, item.value)) filled++;
+      if (setFieldValue(el, item.value)) filled++;
       continue;
     }
     if (item.action === "draft" && el instanceof HTMLTextAreaElement) {
       drafts.push({ fieldId: item.fieldId, el, label, charLimit: item.charLimit });
       continue;
     }
-    if (item.action === "ask" && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) {
+    if (item.action === "ask") {
       asks.push({
         fieldId: item.fieldId,
         el,
         label: item.question || label,
         profileKey: item.profileKey,
+        options: schema?.options,
       });
     }
   }
   return { filled, asks, drafts };
 }
 
-/** Fill any fillable element type from a string value. */
-function fillElement(el: FillableEl, value: string): boolean {
+/** Set a value on ANY fillable element type (text/textarea/select/radio). Public so the panel's ask cards can use it. */
+export function setFieldValue(el: FillableEl, value: string): boolean {
   if (el instanceof HTMLSelectElement) return fillSelect(el, value);
   if (el instanceof HTMLInputElement && el.type === "radio") {
     const group = el.name
@@ -1229,7 +1235,11 @@ function fillElement(el: FillableEl, value: string): boolean {
 }
 ```
 
-Note: `fillSelect` and `fillRadioGroup` are currently module-private. No `export` is needed since `fillElement` lives in the same file.
+Note: `fillSelect`, `fillRadioGroup`, and `setNativeValue` are module-private in this file — `setFieldValue` reuses them directly, no extra exports needed.
+
+- [ ] **Step 1b: Remove dead code from `autofill.ts`**
+
+The old `fillForm` export and the `matchKey, isFreeTextQuestion` imports at the top of `autofill.ts` are no longer used after Task 12 rewrites `index.ts`. Delete the `fillForm` function and trim the top import to `import { getLabelText } from "./field-map";` (`getLabelText` is still used by `fillRadioGroup`; `collectFields`/`matchKey`/`isFreeTextQuestion` were only used by `fillForm`, and `fillSelect`/`fillRadioGroup`/`setNativeValue`/`insertIntoField` are defined locally and stay). Verify nothing else imports `fillForm` (only the old `index.ts` did).
 
 - [ ] **Step 2: Typecheck the extension**
 
@@ -1361,12 +1371,12 @@ Rewrite the panel body to render: a collapsed "Filled N fields" summary, a `❓ 
 **Files:**
 - Modify: `extension/src/content/panel.ts`
 
-- [ ] **Step 1: Update `PanelHandlers` and add the triage renderer**
+- [ ] **Step 1: Update `PanelHandlers`, delete the old methods, and add the triage renderer**
 
-Replace the `PanelHandlers` interface and the `showFilled` method. New handler shape:
+Replace the `PanelHandlers` interface, and **delete the now-obsolete `showFilled` and `questionCard` methods** (they reference the removed `onAutofill`/`onSave` handlers and `onGenerate(index)`/`onInsert(index)` index-based signatures — leaving them in place will fail the typecheck). New handler shape:
 
 ```ts
-export interface AskItem { fieldId: string; label: string; profileKey?: string; }
+export interface AskItem { fieldId: string; label: string; profileKey?: string; options?: string[]; }
 export interface DraftItem { fieldId: string; label: string; charLimit?: number; }
 
 export interface PanelHandlers {
@@ -1416,8 +1426,31 @@ private askCard(a: AskItem): HTMLElement {
   const card = el("div", "q");
   const label = el("p", "q-label");
   label.textContent = a.label;
-  const input = el("textarea") as HTMLTextAreaElement;
-  input.style.minHeight = "38px";
+
+  // select/radio asks render a dropdown of the field's options; everything
+  // else gets a free-text box. `readValue` abstracts the two.
+  let readValue: () => string;
+  let control: HTMLElement;
+  if (a.options && a.options.length) {
+    const sel = el("select") as HTMLSelectElement;
+    sel.style.cssText = "width:100%;box-sizing:border-box;font:inherit;font-size:12px;padding:6px;border:1px solid #d6cfbd;border-radius:6px;background:#fff;";
+    const placeholder = document.createElement("option");
+    placeholder.value = ""; placeholder.textContent = "— select —";
+    sel.append(placeholder);
+    for (const opt of a.options) {
+      const o = document.createElement("option");
+      o.value = opt; o.textContent = opt;
+      sel.append(o);
+    }
+    control = sel;
+    readValue = () => sel.value.trim();
+  } else {
+    const input = el("textarea") as HTMLTextAreaElement;
+    input.style.minHeight = "38px";
+    control = input;
+    readValue = () => input.value.trim();
+  }
+
   const actions = el("div", "q-actions");
   const fill = el<HTMLButtonElement>("button", "btn row");
   fill.textContent = "Fill & save";
@@ -1425,16 +1458,17 @@ private askCard(a: AskItem): HTMLElement {
   msg.style.display = "none";
 
   fill.addEventListener("click", async () => {
-    if (!input.value.trim()) return;
+    const value = readValue();
+    if (!value) return;
     fill.disabled = true;
-    const ok = await this.handlers.onAnswerAsk(a.fieldId, input.value.trim());
+    const ok = await this.handlers.onAnswerAsk(a.fieldId, value);
     fill.textContent = ok ? "Saved ✓" : "Failed";
     if (!ok) { msg.textContent = "Couldn’t save — is the extension connected?"; msg.style.display = "block"; }
     setTimeout(() => { fill.disabled = false; fill.textContent = "Fill & save"; }, 1500);
   });
 
   actions.append(fill);
-  card.append(label, input, actions, msg);
+  card.append(label, control, actions, msg);
   return card;
 }
 
@@ -1502,7 +1536,7 @@ Rewrite the content-script entry point to: detect, show the cue, and on engage b
 ```ts
 import { pickAdapter } from "./adapters";
 import { serializeForm, type SerializedForm } from "./serialize";
-import { applyPlan, insertIntoField, type PlanQuestion } from "./autofill";
+import { applyPlan, insertIntoField, setFieldValue, type PlanQuestion } from "./autofill";
 import { Panel } from "./panel";
 import { send } from "./messaging";
 import { looksLikeApplication, mountCue } from "./detect";
@@ -1519,7 +1553,7 @@ const panel = new Panel({
   onAnswerAsk: async (fieldId, value) => {
     const q = askIndex.get(fieldId);
     if (!q) return false;
-    insertIntoField(q.el, value);
+    setFieldValue(q.el, value); // handles text, textarea, select, and radio
     const res = await send({
       type: "saveFact",
       payload: { profileKey: q.profileKey, questionText: q.label, answer: value },
@@ -1565,7 +1599,7 @@ async function engage() {
   if (!status.ok || !status.data?.connected) { panel.showConnectPrompt(); return; }
 
   serialized = serializeForm(container);
-  const labels = new Map(serialized.fields.map((f) => [f.id, f.label]));
+  const schemaById = new Map(serialized.fields.map((f) => [f.id, f]));
   const { employer, role } = adapter.employerRole();
 
   const res = await send<{ plan: FillPlanItem[] }>({
@@ -1574,13 +1608,13 @@ async function engage() {
   });
   if (!res.ok || !res.data?.plan) { panel.showError(res.error || "Couldn’t plan this form."); return; }
 
-  const applied = applyPlan(res.data.plan, serialized.elements, labels);
+  const applied = applyPlan(res.data.plan, serialized.elements, schemaById);
   askIndex = new Map(applied.asks.map((q) => [q.fieldId, q]));
   draftIndex = new Map(applied.drafts.map((q) => [q.fieldId, q]));
 
   panel.showTriage(
     applied.filled,
-    applied.asks.map((q) => ({ fieldId: q.fieldId, label: q.label, profileKey: q.profileKey })),
+    applied.asks.map((q) => ({ fieldId: q.fieldId, label: q.label, profileKey: q.profileKey, options: q.options })),
     applied.drafts.map((q) => ({ fieldId: q.fieldId, label: q.label, charLimit: q.charLimit })),
   );
 
@@ -1601,7 +1635,16 @@ function init() {
 }
 
 void init();
-const observer = new MutationObserver(() => { if (!mounted) init(); });
+
+// Re-check on DOM changes for SPA-rendered forms, debounced so the heuristic
+// (which scans innerText) runs at most ~once / 300ms on busy pages, and stops
+// observing as soon as we've mounted the cue.
+let debounce: ReturnType<typeof setTimeout> | null = null;
+const observer = new MutationObserver(() => {
+  if (mounted) { observer.disconnect(); return; }
+  if (debounce) return;
+  debounce = setTimeout(() => { debounce = null; init(); }, 300);
+});
 observer.observe(document.documentElement, { childList: true, subtree: true });
 setTimeout(() => observer.disconnect(), 20000);
 ```
