@@ -62,3 +62,51 @@ describe("buildDeterministicPlan", () => {
     expect(plan.map((p) => p.fieldId)).toEqual(["a", "b"]);
   });
 });
+
+import { buildMappingPrompt, mergeMappings } from "../lib/form-plan";
+
+describe("buildMappingPrompt", () => {
+  it("lists unresolved fields and the available value keys", () => {
+    const prompt = buildMappingPrompt(
+      [f({ id: "f0", label: "Where are you based?", type: "text" })],
+      { city: "London", country: "United Kingdom" },
+    );
+    expect(prompt).toContain("f0");
+    expect(prompt).toContain("Where are you based?");
+    expect(prompt).toContain("city");
+    expect(prompt).toContain("country");
+  });
+});
+
+describe("mergeMappings", () => {
+  const base = buildDeterministicPlan(
+    [f({ id: "f0", label: "Where are you based?", type: "text" })],
+    { city: "London" },
+  );
+
+  it("upgrades an unresolved ask to a fill when the LLM maps it", () => {
+    const merged = mergeMappings(base, { city: "London" }, [
+      { fieldId: "f0", profileKey: "city", confidence: 0.8 },
+    ]);
+    expect(merged[0]).toMatchObject({ action: "fill", value: "London", profileKey: "city" });
+  });
+
+  it("ignores a mapping to a key with no value", () => {
+    const merged = mergeMappings(base, { city: "London" }, [
+      { fieldId: "f0", profileKey: "phone", confidence: 0.8 },
+    ]);
+    expect(merged[0].action).toBe("ask");
+  });
+
+  it("ignores low-confidence mappings", () => {
+    const merged = mergeMappings(base, { city: "London" }, [
+      { fieldId: "f0", profileKey: "city", confidence: 0.3 },
+    ]);
+    expect(merged[0].action).toBe("ask");
+  });
+
+  it("leaves fields the LLM did not mention untouched", () => {
+    const merged = mergeMappings(base, { city: "London" }, []);
+    expect(merged[0].action).toBe("ask");
+  });
+});

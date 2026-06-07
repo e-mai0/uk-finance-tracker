@@ -1,5 +1,13 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import type { FieldSchema, FillPlanItem } from "../../lib/validation";
+import {
+  buildDeterministicPlan,
+  unresolvedFieldIds,
+  buildMappingPrompt,
+  mergeMappings,
+  parseMappings,
+} from "../../lib/form-plan";
 
 /**
  * Server-only LLM helpers for the apply copilot. The API key never leaves the
@@ -164,4 +172,30 @@ export async function tailorCvBullets(args: TailorCvArgs): Promise<string> {
   ].join("");
 
   return complete(SONNET, 1000, system, user);
+}
+
+/**
+ * Produce a fill plan for a form: deterministic pre-pass, then a single Haiku
+ * call to semantically map any unrecognized fields to known values. Falls back
+ * to the deterministic plan if AI is unconfigured or the call fails.
+ */
+export async function planForm(
+  fields: FieldSchema[],
+  values: Record<string, string>,
+): Promise<FillPlanItem[]> {
+  const base = buildDeterministicPlan(fields, values);
+  const unresolvedIds = new Set(unresolvedFieldIds(base));
+  if (unresolvedIds.size === 0 || !aiConfigured() || Object.keys(values).length === 0) {
+    return base;
+  }
+
+  const unresolved = fields.filter((f) => unresolvedIds.has(f.id));
+  const system =
+    "You map job-application form fields to an applicant's known profile values. Be conservative: only map when confident. Respond with JSON only.";
+  try {
+    const raw = await complete(HAIKU, 800, system, buildMappingPrompt(unresolved, values));
+    return mergeMappings(base, values, parseMappings(raw));
+  } catch {
+    return base; // network/model failure → still return the safe deterministic plan
+  }
 }
