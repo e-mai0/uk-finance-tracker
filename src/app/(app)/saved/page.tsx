@@ -13,7 +13,7 @@ export default async function SavedPage() {
   const items = applySort(await getSavedItems(session!.user.id), "best_match");
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-ink">
           Saved roles
@@ -27,16 +27,12 @@ export default async function SavedPage() {
 
       {items.length === 0 ? (
         <div className="rounded-[var(--radius-card)] border border-dashed border-border-strong bg-surface px-6 py-16 text-center">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-surface-2 text-subtle">
-            <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M5 3.5h10a1 1 0 011 1V17l-6-3.2L4 17V4.5a1 1 0 011-1z" strokeLinejoin="round" />
-            </svg>
-          </div>
+          <div aria-hidden className="text-2xl leading-none text-faint">☆</div>
           <h3 className="mt-3 text-sm font-semibold text-ink">
             Nothing saved yet
           </h3>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
-            Browse the tracker and tap the bookmark on any role to build your
+            Browse the tracker and tap the ☆ on any role to build your
             shortlist.
           </p>
           <Link href="/dashboard" className="mt-4 inline-block">
@@ -44,7 +40,9 @@ export default async function SavedPage() {
           </Link>
         </div>
       ) : (
-        <OpportunityTable items={items} />
+        <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+          <OpportunityTable items={items} />
+        </div>
       )}
     </div>
   );

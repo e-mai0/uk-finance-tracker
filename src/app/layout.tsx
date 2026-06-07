@@ -1,23 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Fraunces } from "next/font/google";
+import { Libre_Franklin, JetBrains_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
+// UI grotesque — Franklin Gothic lineage, an institutional / financial-press
+// voice. (Variable kept as --font-geist-sans so the globals.css mapping stands.)
+const sans = Libre_Franklin({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
+// Finance-grade monospace for every numeric, code and the data grid. JetBrains
+// Mono — tall x-height + open apertures stay legible at dense terminal sizes.
+const mono = JetBrains_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-// Editorial display serif — optical sizing on, a touch of "soft" warmth.
-const fraunces = Fraunces({
+// Editorial display serif — marketing headlines only (incl. italic emphasis).
+const display = Newsreader({
   variable: "--font-display",
   subsets: ["latin"],
   style: ["normal", "italic"],
-  axes: ["opsz", "SOFT"],
   display: "swap",
 });
 
@@ -35,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${sans.variable} ${mono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

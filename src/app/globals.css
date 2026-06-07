@@ -1,64 +1,125 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   "The Broadsheet Terminal" — an editorial, high-signal operating dashboard.
-   Warm ivory paper neutrals, near-black warm ink, a deep claret accent, and
-   monospace numerics. Display type is a characterful serif (Fraunces); UI is a
-   clean grotesque (Geist); data is mono (Geist Mono). Light theme.
+   "PAPER TERMINAL" — a Bloomberg-grade terminal printed on financial newsprint.
+   One unified light surface: warm paper-white, near-black ink, hairline
+   gridlines, a single committed ink-blue identifier accent, and green-up /
+   red-down market semantics. Every number is mono + tabular. Each open role is
+   a tradeable ticker. No drawn icons — only typographic terminal glyphs.
+
+   Franklin-Gothic UI (Libre Franklin) · finance-grade mono (IBM Plex Mono) ·
+   editorial serif (Newsreader, marketing headlines only). Light theme.
 --------------------------------------------------------------------------- */
 @theme {
-  /* Warm paper neutrals */
-  --color-canvas: #f4f1ea;
-  --color-surface: #fffdf8;
-  --color-surface-2: #f0ece1;
-  --color-ink: #1b1714;
-  --color-muted: #6a6258;
-  --color-subtle: #9b9385;
-  --color-border: #e6e0d2;
-  --color-border-strong: #d6cfbd;
+  /* Surfaces — warm financial-newsprint white, layered by elevation */
+  --color-canvas: #faf8f4; /* page base, faint warm wash */
+  --color-surface: #ffffff; /* panels / the terminal body */
+  --color-surface-2: #f3f1ec; /* header rows, ribbon cells, subtle fills */
+  --color-surface-3: #eae7df; /* deeper fill / pressed */
 
-  /* Claret / oxblood accent */
-  --color-accent: #7c2433;
-  --color-accent-hover: #641b27;
-  --color-accent-fg: #fdf6f0;
-  --color-accent-soft: #f4e6e3;
+  /* Ink scale */
+  --color-ink: #14171b; /* near-black primary text */
+  --color-muted: #444a52; /* secondary text */
+  --color-subtle: #797f88; /* meta / labels */
+  --color-faint: #a4a9b0; /* faintest */
 
-  /* Status — tuned to sit on warm paper, distinct from the claret accent */
-  --color-success: #2f6a45;
-  --color-success-soft: #e6efe5;
-  --color-warning: #946614;
-  --color-warning-soft: #f5ecd6;
-  --color-danger: #b1431f;
-  --color-danger-soft: #f6e6dc;
-  --color-info: #2f5586;
-  --color-info-soft: #e7ecf4;
+  /* Hairlines — the terminal's gridlines */
+  --color-border: #e6e3da;
+  --color-border-strong: #d3cfc4;
 
-  --radius-card: 0.7rem;
+  /* Accent — committed AMBER identifier (codes, links, active, command, live).
+     Burnt so it stays legible as text/fill on the white desk; the bright amber
+     (--color-amber) is its counterpart on the dark chrome. */
+  --color-accent: #b45309;
+  --color-accent-2: #c2660f;
+  --color-accent-hover: #8f3f06;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #f8ecda;
+  --color-accent-tint: #fcf5e9;
 
-  --shadow-card: 0 1px 2px rgba(27, 23, 20, 0.05), 0 1px 1px rgba(27, 23, 20, 0.03);
-  --shadow-pop: 0 12px 32px -12px rgba(27, 23, 20, 0.22), 0 2px 6px -2px rgba(27, 23, 20, 0.1);
+  /* Dark command chrome — the striking near-black rail over the white desk */
+  --color-chrome: #111519;
+  --color-chrome-2: #161b21;
+  --color-chrome-line: #29303a;
+  --color-chrome-ink: #e9ebee;
+  --color-chrome-ink-2: #aab1bb;
+  --color-chrome-dim: #79818c;
 
+  /* Amber — the live / active signal that glows on the dark chrome */
+  --color-amber: #e8a33d;
+  --color-amber-2: #f2b85f;
+
+  /* Market semantics — green up / amber caution / red down */
+  --color-success: #1f7a4d;
+  --color-success-soft: #e2f1e8;
+  --color-warning: #9a6410;
+  --color-warning-soft: #f6ecd8;
+  --color-danger: #b23a2e;
+  --color-danger-soft: #f7e7e4;
+  --color-info: #b45309;
+  --color-info-soft: #f8ecda;
+
+  /* Fit tiers */
+  --color-tier-strong: #1f7a4d;
+  --color-tier-good: #b45309;
+  --color-tier-mod: #9a6410;
+  --color-tier-low: #868b93;
+
+  /* Radii — rectangular, terminal-sharp. Controls are pure rectangles; only
+     large panels keep a 2px crispness so corners don't fray. */
+  --radius-card: 0.125rem; /* panels / cards — barely-there crispness */
+  --radius-control: 0rem; /* inputs, buttons, filters — true rectangles */
+  --radius-pill: 0rem; /* squared tags */
+  --radius-bar: 0rem; /* squared meters */
+
+  /* Flatten Tailwind's built-in radius scale app-wide so every rounded-sm/md/lg
+     /xl utility becomes a true rectangle — the terminal has no soft corners.
+     (rounded-full is unaffected, so genuine status dots stay circular.) */
+  --radius: 0rem;
+  --radius-sm: 0rem;
+  --radius-md: 0rem;
+  --radius-lg: 0rem;
+  --radius-xl: 0rem;
+  --radius-2xl: 0rem;
+  --radius-3xl: 0rem;
+
+  --shadow-card: 0 1px 2px rgba(20, 24, 30, 0.05), 0 1px 1px rgba(20, 24, 30, 0.04);
+  --shadow-pop: 0 16px 40px -16px rgba(20, 30, 55, 0.22),
+    0 4px 12px -6px rgba(20, 24, 30, 0.12);
+  --shadow-frame: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 24px 60px -32px rgba(20, 34, 64, 0.28), 0 6px 16px -10px rgba(20, 24, 30, 0.1);
+
+  /* Fonts fed by next/font in app/layout.tsx:
+     --font-geist-sans → Libre Franklin · --font-geist-mono → IBM Plex Mono
+     --font-display → Newsreader (marketing headlines only). */
   --font-display: var(--font-display), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 html {
   background: var(--color-canvas);
+  color-scheme: light;
 }
 
 body {
-  background:
-    radial-gradient(125% 85% at 50% -12%, #fbf8f1 0%, rgba(251, 248, 241, 0) 55%),
-    var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  background-color: var(--color-canvas);
+  /* faint paper grain + a soft top light */
+  background-image: radial-gradient(
+      125% 80% at 50% -8%,
+      #ffffff 0%,
+      rgba(255, 255, 255, 0) 46%
+    ),
+    radial-gradient(rgba(20, 24, 30, 0.022) 1px, transparent 1px);
+  background-size: 100% 100%, 3px 3px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Editorial serif for primary headings, applied globally so components inherit
-   it without per-file edits. Card titles are <h3> and stay grotesque. */
+/* Editorial serif for the largest marketing headings only. Card titles are
+   <h3> and stay grotesque. */
 h1,
 h2 {
   font-family: var(--font-display);
@@ -66,20 +127,52 @@ h2 {
   font-weight: 500;
 }
 
-/* All numerics render in mono with tabular figures — the "terminal" signal. */
+/* All numerics render in mono with tabular figures — the "terminal" signal.
+   JetBrains Mono is wide and legible; no negative tracking (it crushes glyphs). */
 .tabular {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  font-feature-settings: "tnum" 1;
 }
 
-/* Thin, unobtrusive scrollbars for the dense tracker. */
+/* Uppercase mono micro-label — column heads, eyebrows, ribbon labels. */
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Dark command-chrome rail — a faint top highlight + inner shadow give the
+   black bar physical depth (the "screen" of the terminal). */
+.chrome {
+  background-color: var(--color-chrome);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0,
+    rgba(255, 255, 255, 0) 40%
+  );
+  color: var(--color-chrome-ink);
+}
+
+/* Soft amber glow for the LIVE indicator on the dark rail. */
+.live-dot {
+  box-shadow: 0 0 0 2px rgba(31, 122, 77, 0.18), 0 0 7px 0 rgba(40, 200, 120, 0.5);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
+}
+
+/* Thin, unobtrusive scrollbars for the dense desk. */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-strong) transparent;
 }
 
-/* Hairline divider with an editorial feel. */
+/* Hairline divider. */
 .rule {
   height: 1px;
   background: linear-gradient(
@@ -91,12 +184,10 @@ h2 {
   );
 }
 
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}
-
+/* ---------------------------------------------------------------------------
+   Terminal motion — one staggered reveal, a marquee ticker, a command caret.
+   All gated by prefers-reduced-motion.
+--------------------------------------------------------------------------- */
 @keyframes rise {
   from {
     opacity: 0;
@@ -110,4 +201,46 @@ h2 {
 
 .animate-rise {
   animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Scrolling ticker tape. The track holds TWO copies of the content; translating
+   it -50% lands copy 2 exactly where copy 1 began → a seamless loop. */
+@keyframes ticker {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.ticker-track {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ticker var(--ticker-duration, 48s) linear infinite;
+}
+
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+/* Blinking command caret. */
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.caret {
+  animation: caret 1.05s steps(1, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .ticker-track,
+  .caret {
+    animation: none;
+  }
+  .ticker-track {
+    transform: none;
+  }
 }

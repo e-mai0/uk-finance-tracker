@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  TRACKR — Variant C: "COBALT DESK"
+  ----------------------------------------------------------------------------
+  Concept: A modern, electric take on a Bloomberg terminal. Keeps the
+  data-density and scannability of a trading desk, but reads like a 2026
+  fintech product. Dual-mode (dark default / light), real theme toggle.
+
+  Palette:
+    - Primary accent  : Electric COBALT / ULTRAMARINE  (#2440ff)
+    - Secondary signal: ACID LIME                      (#cdfb45)
+    - Positive        : GREEN                          (#3ad17e)
+    - Negative/deadline: RED                           (#ff5468)
+    - Dark surfaces    : charcoal / near-black
+    - Light surfaces   : cool white
+
+  Fonts:
+    - UI / data grid : "Hanken Grotesk"  (clean neutral grotesque)
+    - Numerics/ticker: "JetBrains Mono"  (tabular mono, everywhere)
+    - Landing display: "Unbounded"       (characterful — LANDING ONLY)
+  ============================================================================
+-->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trackr — The UK Finance Internship Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ========================== THEME TOKENS ============================== */
+:root[data-theme="dark"]{
+  --bg:#08090d;
+  --bg-grad-1:#0b0d14;
+  --bg-grad-2:#070709;
+  --surface:#0f1118;
+  --surface-2:#13161f;
+  --surface-3:#171b26;
+  --elevated:#1a1e2b;
+  --line:#23283610;
+  --hair:#262c3b;
+  --hair-strong:#323a4d;
+  --text:#eef1f7;
+  --text-2:#aab2c5;
+  --text-3:#6b7488;
+  --text-faint:#4a5167;
+
+  --cobalt:#3a55ff;
+  --cobalt-bright:#5a72ff;
+  --cobalt-deep:#2440ff;
+  --cobalt-soft:rgba(58,85,255,0.14);
+  --cobalt-glow:rgba(58,85,255,0.45);
+  --lime:#cdfb45;
+  --lime-ink:#0a0d04;
+  --green:#3ad17e;
+  --green-soft:rgba(58,209,126,0.14);
+  --red:#ff5468;
+  --red-soft:rgba(255,84,104,0.14);
+  --amber:#ffb84d;
+  --amber-soft:rgba(255,184,77,0.14);
+
+  --chip-bg:#161a25;
+  --chip-line:#2a3142;
+  --table-stripe:rgba(255,255,255,0.013);
+  --row-hover:rgba(58,85,255,0.07);
+
+  --shadow-card:0 24px 60px -20px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-float:0 40px 90px -30px rgba(7,9,20,0.85), 0 0 0 1px rgba(255,255,255,0.03);
+  --glow-cobalt:0 0 0 1px rgba(58,85,255,0.4), 0 0 30px -6px var(--cobalt-glow);
+
+  --grain-op:0.035;
+  --r-sm:7px; --r-md:12px; --r-lg:18px; --r-xl:26px;
+}
+:root[data-theme="light"]{
+  --bg:#f4f6fb;
+  --bg-grad-1:#eef1f8;
+  --bg-grad-2:#f7f9fd;
+  --surface:#ffffff;
+  --surface-2:#fbfcfe;
+  --surface-3:#f3f5fa;
+  --elevated:#ffffff;
+  --line:#0000000a;
+  --hair:#e3e7f0;
+  --hair-strong:#d2d8e6;
+  --text:#0c1018;
+  --text-2:#41495c;
+  --text-3:#71798e;
+  --text-faint:#9aa1b4;
+
+  --cobalt:#2440ff;
+  --cobalt-bright:#1d36e0;
+  --cobalt-deep:#2440ff;
+  --cobalt-soft:rgba(36,64,255,0.08);
+  --cobalt-glow:rgba(36,64,255,0.28);
+  --lime:#bced2f;
+  --lime-ink:#10160a;
+  --green:#11a35a;
+  --green-soft:rgba(17,163,90,0.10);
+  --red:#e0263e;
+  --red-soft:rgba(224,38,62,0.09);
+  --amber:#c47a09;
+  --amber-soft:rgba(196,122,9,0.10);
+
+  --chip-bg:#f3f5fb;
+  --chip-line:#dfe4f0;
+  --table-stripe:rgba(13,16,24,0.014);
+  --row-hover:rgba(36,64,255,0.045);
+
+  --shadow-card:0 20px 50px -24px rgba(40,55,110,0.28), 0 1px 3px rgba(40,55,110,0.08);
+  --shadow-float:0 40px 80px -32px rgba(40,55,110,0.32), 0 0 0 1px rgba(13,16,24,0.04);
+  --glow-cobalt:0 0 0 1px rgba(36,64,255,0.28), 0 8px 24px -8px var(--cobalt-glow);
+
+  --grain-op:0.04;
+  --r-sm:7px; --r-md:12px; --r-lg:18px; --r-xl:26px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"Hanken Grotesk",sans-serif;
+  background:
+    radial-gradient(1200px 700px at 80% -10%, var(--cobalt-soft), transparent 60%),
+    radial-gradient(900px 600px at -5% 5%, rgba(205,251,69,0.05), transparent 55%),
+    linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+  color:var(--text);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  transition:background .5s ease, color .4s ease;
+}
+/* grain overlay */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
+  opacity:var(--grain-op);mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+::selection{background:var(--cobalt);color:#fff}
+
+.mono{font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1280px;margin:0 auto;padding:0 28px}
+
+:focus-visible{outline:2px solid var(--cobalt-bright);outline-offset:3px;border-radius:4px}
+
+/* ========================== NAV ====================================== */
+.nav{
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(18px) saturate(140%);
+  background:color-mix(in srgb, var(--bg) 72%, transparent);
+  border-bottom:1px solid var(--hair);
+}
+.nav-inner{display:flex;align-items:center;gap:28px;height:64px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:-.02em;font-size:19px}
+.glyph{
+  width:30px;height:30px;border-radius:9px;flex:none;position:relative;
+  background:linear-gradient(135deg,var(--cobalt),var(--cobalt-deep));
+  box-shadow:var(--glow-cobalt);display:grid;place-items:center;
+}
+.glyph::before{content:"";position:absolute;width:11px;height:11px;border:2.5px solid var(--lime);border-radius:3px;transform:rotate(45deg)}
+.glyph::after{content:"";position:absolute;width:3px;height:3px;background:#fff;border-radius:50%}
+.brand b{color:var(--text)}
+.brand .dot{color:var(--lime)}
+.nav-links{display:flex;gap:4px;margin-left:8px}
+.nav-links a{
+  font-size:13.5px;color:var(--text-2);font-weight:500;padding:7px 12px;border-radius:8px;
+  transition:.18s;
+}
+.nav-links a:hover{color:var(--text);background:var(--surface-3)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.signin{font-size:13.5px;color:var(--text-2);font-weight:600;padding:8px 12px;border-radius:8px;transition:.18s}
+.signin:hover{color:var(--text)}
+.btn{
+  font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;border:none;
+  padding:9px 17px;border-radius:10px;transition:.2s;letter-spacing:-.01em;
+}
+.btn-primary{
+  background:linear-gradient(180deg,var(--cobalt-bright),var(--cobalt));color:#fff;
+  box-shadow:0 1px 0 rgba(255,255,255,.18) inset, 0 8px 20px -8px var(--cobalt-glow);
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 12px 26px -8px var(--cobalt-glow)}
+.btn-ghost{background:var(--surface-3);color:var(--text);border:1px solid var(--hair)}
+.btn-ghost:hover{border-color:var(--hair-strong);background:var(--elevated)}
+
+.toggle{
+  width:38px;height:38px;border-radius:10px;border:1px solid var(--hair);
+  background:var(--surface-3);color:var(--text-2);cursor:pointer;display:grid;place-items:center;
+  transition:.2s;position:relative;overflow:hidden;
+}
+.toggle:hover{color:var(--text);border-color:var(--hair-strong);background:var(--elevated)}
+.toggle svg{width:18px;height:18px;transition:transform .45s cubic-bezier(.5,1.4,.5,1),opacity .3s}
+.toggle .ico-sun{display:none}
+:root[data-theme="light"] .toggle .ico-moon{display:none}
+:root[data-theme="light"] .toggle .ico-sun{display:block}
+
+/* ========================== HERO ===================================== */
+.hero{padding:72px 0 40px;position:relative}
+.hero-grid{display:grid;grid-template-columns:1.35fr .9fr;gap:48px;align-items:center}
+.pill{
+  display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;
+  padding:6px 13px 6px 10px;border-radius:100px;border:1px solid var(--hair);
+  background:var(--surface-2);color:var(--text-2);letter-spacing:.01em;
+}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(58,209,126,.5)}70%{box-shadow:0 0 0 7px rgba(58,209,126,0)}100%{box-shadow:0 0 0 0 rgba(58,209,126,0)}}
+.hero h1{
+  font-family:"Unbounded",sans-serif;font-weight:700;letter-spacing:-.035em;line-height:.98;
+  font-size:clamp(40px,5.6vw,76px);margin:22px 0 0;color:var(--text);
+}
+.hero h1 .em{
+  color:var(--cobalt-bright);position:relative;white-space:nowrap;
+}
+.hero h1 .em::after{content:"";position:absolute;left:0;right:0;bottom:.06em;height:.09em;background:var(--lime);border-radius:2px;opacity:.9}
+.lede{font-size:18px;color:var(--text-2);max-width:30em;margin:22px 0 30px;line-height:1.55}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn-lg{padding:13px 22px;font-size:15px;border-radius:12px}
+.hero-note{font-size:12.5px;color:var(--text-3);margin-top:18px;display:flex;align-items:center;gap:8px}
+.hero-note .mono{color:var(--text-2)}
+
+/* floating fit card */
+.fitcard{
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));
+  border:1px solid var(--hair);border-radius:var(--r-xl);padding:22px;
+  box-shadow:var(--shadow-float);position:relative;overflow:hidden;
+  animation:floaty 7s ease-in-out infinite;
+}
+.fitcard::before{content:"";position:absolute;inset:0;background:radial-gradient(420px 200px at 110% -20%,var(--cobalt-soft),transparent 70%);pointer-events:none}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.fc-top{display:flex;justify-content:space-between;align-items:flex-start;position:relative}
+.fc-firm{display:flex;align-items:center;gap:11px}
+.fc-logo{width:40px;height:40px;border-radius:11px;background:var(--surface-3);border:1px solid var(--hair);display:grid;place-items:center;font-weight:800;font-size:15px;color:var(--cobalt-bright);flex:none}
+.fc-firm .nm{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.fc-firm .rl{font-size:12.5px;color:var(--text-3)}
+.tier{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:7px;background:var(--green-soft);color:var(--green);border:1px solid color-mix(in srgb,var(--green) 30%,transparent)}
+.fc-score{display:flex;align-items:baseline;gap:8px;margin:20px 0 4px;position:relative}
+.fc-score .big{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:62px;line-height:1;letter-spacing:-.04em;color:var(--text);font-variant-numeric:tabular-nums}
+.fc-score .of{font-family:"JetBrains Mono",monospace;font-size:18px;color:var(--text-3)}
+.fc-score .arrow{margin-left:auto;font-size:12px;color:var(--green);font-weight:700}
+.fc-meter{height:7px;border-radius:5px;background:var(--surface-3);overflow:hidden;position:relative}
+.fc-meter i{position:absolute;inset:0 12% 0 0;background:linear-gradient(90deg,var(--cobalt),var(--cobalt-bright) 70%,var(--lime));border-radius:5px}
+.fc-break{margin-top:18px;display:flex;flex-direction:column;gap:9px;position:relative}
+.fc-break .row{display:flex;align-items:center;justify-content:space-between;font-size:12.5px}
+.fc-break .row span:first-child{color:var(--text-2)}
+.fc-break .plus{font-family:"JetBrains Mono",monospace;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums}
+.fc-why{margin-top:16px;padding-top:14px;border-top:1px solid var(--hair);font-size:12.5px;color:var(--text-2);line-height:1.5;position:relative}
+.fc-why b{color:var(--text);font-weight:600}
+
+/* ========================== TICKER =================================== */
+.ticker{
+  border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+  background:var(--surface);overflow:hidden;position:relative;margin-top:36px;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
+          mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
+}
+.ticker-tag{
+  position:absolute;left:0;top:0;bottom:0;z-index:3;display:flex;align-items:center;gap:7px;
+  padding:0 18px 0 28px;background:var(--surface);border-right:1px solid var(--hair);
+  font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--cobalt-bright);
+}
+.ticker-track{display:flex;width:max-content;animation:scroll 48s linear infinite}
+.ticker:hover .ticker-track{animation-play-state:paused}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tk{
+  display:flex;align-items:center;gap:10px;padding:13px 22px;border-right:1px solid var(--hair);
+  font-family:"JetBrains Mono",monospace;font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums;
+}
+.tk .sym{color:var(--text);font-weight:600}
+.tk .role{color:var(--text-3)}
+.tk .sc{font-weight:700}
+.tk .sc.hi{color:var(--green)} .tk .sc.mid{color:var(--amber)} .tk .sc.lo{color:var(--text-3)}
+.flag{font-size:9.5px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:5px}
+.flag.new{background:var(--lime);color:var(--lime-ink)}
+.flag.dl{background:var(--red-soft);color:var(--red)}
+
+/* ========================== STATS STRIP ============================== */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--hair);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);margin:42px 0}
+.stat{padding:24px 26px;border-right:1px solid var(--hair);position:relative}
+.stat:last-child{border-right:none}
+.stat .n{font-family:"JetBrains Mono",monospace;font-size:38px;font-weight:700;letter-spacing:-.03em;color:var(--text);line-height:1;font-variant-numeric:tabular-nums}
+.stat .n .u{font-size:18px;color:var(--cobalt-bright)}
+.stat .l{font-size:12.5px;color:var(--text-3);margin-top:10px;font-weight:500}
+.stat.accent .n{color:var(--cobalt-bright)}
+
+/* ========================== FEATURES ================================= */
+.section-eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--cobalt-bright)}
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:18px 0 40px}
+.feat{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-lg);padding:24px;transition:.25s}
+.feat:hover{border-color:var(--hair-strong);transform:translateY(-3px);box-shadow:var(--shadow-card)}
+.feat .ic{width:38px;height:38px;border-radius:10px;background:var(--cobalt-soft);border:1px solid color-mix(in srgb,var(--cobalt) 25%,transparent);display:grid;place-items:center;color:var(--cobalt-bright);margin-bottom:16px}
+.feat h3{font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:7px}
+.feat p{font-size:13.5px;color:var(--text-2);line-height:1.5}
+
+/* ========================== TERMINAL ================================= */
+.term-head{text-align:center;max-width:640px;margin:0 auto 26px}
+.term-head h2{font-family:"Unbounded",sans-serif;font-weight:700;font-size:clamp(28px,3.6vw,42px);letter-spacing:-.03em;line-height:1.02;margin:14px 0 12px}
+.term-head p{font-size:16px;color:var(--text-2)}
+
+.terminal{
+  border:1px solid var(--hair-strong);border-radius:var(--r-xl);overflow:hidden;
+  background:var(--surface);box-shadow:var(--shadow-float);position:relative;
+}
+.chrome{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--hair);background:var(--surface-2)}
+.chrome .dots{display:flex;gap:7px}
+.chrome .dots i{width:11px;height:11px;border-radius:50%;background:var(--hair-strong)}
+.chrome .dots i:nth-child(1){background:#ff5f57}.chrome .dots i:nth-child(2){background:#febc2e}.chrome .dots i:nth-child(3){background:#28c840}
+.chrome .addr{
+  margin:0 auto;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--text-3);
+  background:var(--surface-3);border:1px solid var(--hair);border-radius:7px;padding:5px 16px;display:flex;align-items:center;gap:8px;
+}
+.chrome .addr .lock{color:var(--green)}
+.chrome .live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-3);font-weight:600}
+
+.term-body{padding:22px 22px 24px}
+.tb-title{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.tb-title h3{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.tb-title p{font-size:13px;color:var(--text-3);margin-top:3px}
+.tb-title .greet{font-size:12.5px;color:var(--text-2)}
+.tb-title .greet b{color:var(--cobalt-bright)}
+
+/* summary tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.tile{background:var(--surface-2);border:1px solid var(--hair);border-radius:var(--r-md);padding:15px 16px;position:relative;overflow:hidden;transition:.2s}
+.tile:hover{border-color:var(--hair-strong)}
+.tile .tl{font-size:11.5px;color:var(--text-3);font-weight:500;display:flex;align-items:center;gap:6px}
+.tile .tv{font-family:"JetBrains Mono",monospace;font-size:30px;font-weight:700;letter-spacing:-.03em;margin-top:8px;color:var(--text);font-variant-numeric:tabular-nums}
+.tile .td{font-size:11px;margin-top:4px;font-family:"JetBrains Mono",monospace}
+.tile .td.up{color:var(--green)} .tile .td.dn{color:var(--red)} .tile .td.nt{color:var(--text-3)}
+.tile.hl{background:linear-gradient(180deg,var(--cobalt-soft),transparent);border-color:color-mix(in srgb,var(--cobalt) 40%,transparent);box-shadow:0 0 24px -10px var(--cobalt-glow)}
+.tile.hl .tv{color:var(--cobalt-bright)}
+.tile.hl::after{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--lime)}
+
+/* filter / chip bar */
+.filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface-2);border:1px solid var(--hair);border-radius:var(--r-md);margin-bottom:16px}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--hair);border-radius:9px;padding:8px 12px;flex:1;min-width:200px}
+.search svg{width:15px;height:15px;color:var(--text-3);flex:none}
+.search input{background:none;border:none;outline:none;color:var(--text);font-family:inherit;font-size:13.5px;width:100%}
+.search input::placeholder{color:var(--text-faint)}
+.search kbd{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--text-3);border:1px solid var(--hair);border-radius:5px;padding:2px 6px;background:var(--surface-3)}
+.chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.chip{
+  font-size:12px;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid var(--chip-line);
+  background:var(--chip-bg);color:var(--text-2);cursor:pointer;transition:.18s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.chip:hover{border-color:var(--hair-strong);color:var(--text)}
+.chip.on{background:var(--cobalt);border-color:var(--cobalt);color:#fff;box-shadow:0 4px 12px -4px var(--cobalt-glow)}
+.chip.on .x{opacity:.8}
+.chip .x{font-family:"JetBrains Mono",monospace}
+.chip.sort{background:transparent;border-style:dashed}
+.divider{width:1px;height:22px;background:var(--hair);margin:0 2px}
+.rescount{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--text-3);white-space:nowrap}
+.rescount b{color:var(--text)}
+
+/* split layout */
+.split{display:grid;grid-template-columns:1fr 312px;gap:16px}
+
+/* TABLE */
+.tablewrap{border:1px solid var(--hair);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+table{width:100%;border-collapse:collapse}
+thead th{
+  font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);
+  text-align:left;padding:11px 14px;border-bottom:1px solid var(--hair);background:var(--surface-2);white-space:nowrap;cursor:pointer;user-select:none;
+}
+thead th .ar{color:var(--cobalt-bright);font-family:"JetBrains Mono",monospace;font-size:9px}
+thead th.r,td.r{text-align:right}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--hair);vertical-align:middle;font-size:13px}
+tbody tr{transition:background .15s}
+tbody tr:nth-child(even){background:var(--table-stripe)}
+tbody tr:hover{background:var(--row-hover)}
+tbody tr:last-child td{border-bottom:none}
+
+.opp{display:flex;align-items:center;gap:11px}
+.opp-logo{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;font-weight:800;font-size:13px;border:1px solid var(--hair)}
+.opp-meta .fm{font-weight:700;font-size:13.5px;letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+.opp-meta .ro{font-size:12px;color:var(--text-3);margin-top:1px}
+.status{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:5px}
+.status.open{background:var(--green-soft);color:var(--green)}
+.status.soon{background:var(--amber-soft);color:var(--amber)}
+.status.closed{background:var(--surface-3);color:var(--text-faint);border:1px solid var(--hair)}
+
+.divp{font-size:11px;font-weight:700;letter-spacing:.03em;padding:4px 9px;border-radius:7px;display:inline-block;border:1px solid var(--chip-line);background:var(--chip-bg);color:var(--text-2)}
+.divp.ib{color:var(--cobalt-bright);border-color:color-mix(in srgb,var(--cobalt) 35%,transparent);background:var(--cobalt-soft)}
+.divp.st{color:var(--lime);border-color:color-mix(in srgb,var(--lime) 45%,transparent);background:rgba(205,251,69,.08)}
+
+.loc{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.dl{font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--text);font-variant-numeric:tabular-nums}
+.dl .days{display:block;font-size:11px;margin-top:2px}
+.dl .days.urgent{color:var(--red)} .dl .days.soon{color:var(--amber)} .dl .days.ok{color:var(--text-3)} .dl .days.closed{color:var(--text-faint)}
+
+.fit{display:flex;align-items:center;gap:11px;justify-content:flex-end}
+.fit .num{font-family:"JetBrains Mono",monospace;font-size:21px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;min-width:30px;text-align:right}
+.fit .num.s{color:var(--green)} .fit .num.g{color:var(--cobalt-bright)} .fit .num.m{color:var(--amber)} .fit .num.l{color:var(--text-3)}
+.fit .meter{width:46px;height:5px;border-radius:4px;background:var(--surface-3);overflow:hidden;flex:none}
+.fit .meter i{display:block;height:100%;border-radius:4px}
+.fit .meter i.s{background:var(--green)} .fit .meter i.g{background:var(--cobalt)} .fit .meter i.m{background:var(--amber)} .fit .meter i.l{background:var(--text-faint)}
+
+/* SIDEBAR */
+.side{display:flex;flex-direction:column;gap:16px}
+.panel{border:1px solid var(--hair);border-radius:var(--r-md);background:var(--surface);overflow:hidden}
+.panel-h{padding:13px 16px;border-bottom:1px solid var(--hair);display:flex;align-items:center;justify-content:space-between;background:var(--surface-2)}
+.panel-h .ti{font-size:13px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+.panel-h .ti .star{color:var(--lime)}
+.panel-h .badge{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--text-3);background:var(--surface-3);border:1px solid var(--hair);border-radius:6px;padding:2px 7px}
+.match{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--hair);transition:.15s;cursor:pointer}
+.match:hover{background:var(--row-hover)}
+.match:last-child{border-bottom:none}
+.rank{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;color:var(--text-faint);width:14px;flex:none}
+.match-logo{width:32px;height:32px;border-radius:8px;flex:none;display:grid;place-items:center;font-weight:800;font-size:12px;border:1px solid var(--hair)}
+.match-meta{flex:1;min-width:0}
+.match-meta .fm{font-size:13px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match-meta .ro{font-size:11.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match .ms{font-family:"JetBrains Mono",monospace;font-size:18px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums}
+
+.copilot{border:1px solid color-mix(in srgb,var(--cobalt) 35%,transparent);border-radius:var(--r-md);padding:18px;background:linear-gradient(180deg,var(--cobalt-soft),transparent);position:relative;overflow:hidden}
+.copilot::before{content:"";position:absolute;width:120px;height:120px;right:-30px;top:-30px;border-radius:50%;background:radial-gradient(circle,var(--cobalt-glow),transparent 70%);opacity:.5}
+.copilot .cp-ic{width:34px;height:34px;border-radius:9px;background:var(--cobalt);display:grid;place-items:center;color:#fff;margin-bottom:12px;box-shadow:0 6px 16px -6px var(--cobalt-glow)}
+.copilot h4{font-size:15px;font-weight:800;letter-spacing:-.01em}
+.copilot p{font-size:12.5px;color:var(--text-2);margin:6px 0 14px;line-height:1.5}
+.copilot .btn{width:100%;text-align:center}
+
+/* ========================== MANIFESTO ================================ */
+.manifesto{margin:70px 0;text-align:center;padding:64px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);position:relative}
+.manifesto h2{font-family:"Unbounded",sans-serif;font-weight:800;font-size:clamp(34px,6vw,82px);letter-spacing:-.04em;line-height:.95}
+.manifesto h2 .lime{color:var(--lime);-webkit-text-stroke:0}
+.manifesto h2 .out{color:transparent;-webkit-text-stroke:1.3px var(--text-3)}
+.manifesto p{font-size:16px;color:var(--text-2);max-width:36em;margin:24px auto 0}
+
+/* ========================== FOOTER =================================== */
+.footcta{
+  margin:0 0 64px;border:1px solid var(--hair);border-radius:var(--r-xl);padding:54px 40px;text-align:center;position:relative;overflow:hidden;
+  background:radial-gradient(700px 300px at 50% -40%,var(--cobalt-soft),transparent 70%),var(--surface);
+}
+.footcta h2{font-family:"Unbounded",sans-serif;font-weight:700;font-size:clamp(28px,4vw,48px);letter-spacing:-.03em;line-height:1.02}
+.footcta p{font-size:16px;color:var(--text-2);margin:16px auto 26px;max-width:34em}
+.footcta .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+footer{border-top:1px solid var(--hair);padding:34px 0 50px}
+.foot-inner{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.foot-inner .lf{display:flex;align-items:center;gap:11px}
+.foot-links{display:flex;gap:22px;font-size:13px;color:var(--text-3)}
+.foot-links a:hover{color:var(--text)}
+.foot-c{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--text-faint)}
+
+/* ========================== REVEAL =================================== */
+.reveal{opacity:0;transform:translateY(18px);animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+.r1{animation-delay:.05s}.r2{animation-delay:.13s}.r3{animation-delay:.21s}.r4{animation-delay:.29s}.r5{animation-delay:.37s}.r6{animation-delay:.45s}
+
+/* ========================== RESPONSIVE ============================== */
+@media(max-width:1080px){
+  .hero-grid{grid-template-columns:1fr;gap:34px}
+  .fitcard{max-width:420px}
+  .split{grid-template-columns:1fr}
+  .features{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}.stat:nth-child(2){border-right:none}.stat:nth-child(1),.stat:nth-child(2){border-bottom:1px solid var(--hair)}
+}
+@media(max-width:760px){
+  .nav-links{display:none}
+  .tiles{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:1fr}.stat{border-right:none;border-bottom:1px solid var(--hair)}
+  col.c-loc,th.c-loc,td.c-loc{display:none}
+  col.c-div,th.c-div,td.c-div{display:none}
+  .hero h1{font-size:42px}
+  .wrap{padding:0 18px}
+  .term-body{padding:14px}
+}
+@media(max-width:480px){
+  .tiles{grid-template-columns:1fr 1fr}
+  .signin{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================ NAV ============================ -->
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#"><span class="glyph"></span><b>Trackr</b><span class="dot">.</span></a>
+    <div class="nav-links">
+      <a href="#terminal">Terminal</a>
+      <a href="#how">Fit scoring</a>
+      <a href="#features">Features</a>
+      <a href="#">Employers</a>
+    </div>
+    <div class="nav-right">
+      <button class="toggle" id="themeToggle" aria-label="Switch to light mode" title="Toggle theme">
+        <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <a class="signin" href="#">Sign in</a>
+      <button class="btn btn-primary">Get my terminal</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================ HERO ============================ -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="pill reveal r1"><span class="live-dot"></span>Live · UK Summer 2026 · updated 4m ago</span>
+      <h1 class="reveal r2">Every internship,<br>scored for <span class="em">your</span> fit.</h1>
+      <p class="lede reveal r3">Trackr turns the scramble for UK finance summer internships into a single, dense dashboard — every open role scored 0–100 against your background, with a plain-English why. No noise. No guesswork.</p>
+      <div class="hero-cta reveal r4">
+        <button class="btn btn-primary btn-lg">Build my profile — free</button>
+        <button class="btn btn-ghost btn-lg">See a live demo</button>
+      </div>
+      <div class="hero-note reveal r4"><span class="mono">45</span> live roles · <span class="mono">8</span> divisions · deterministic scoring, <b>no black box</b></div>
+    </div>
+
+    <!-- floating fit-score card -->
+    <div class="fitcard reveal r5">
+      <div class="fc-top">
+        <div class="fc-firm">
+          <div class="fc-logo">M&amp;C</div>
+          <div><div class="nm">Meridian &amp; Crowe</div><div class="rl">IB Summer Analyst · London</div></div>
+        </div>
+        <span class="tier">Strong fit</span>
+      </div>
+      <div class="fc-score">
+        <span class="big">87</span><span class="of">/100</span>
+        <span class="arrow">▲ top 6%</span>
+      </div>
+      <div class="fc-meter"><i></i></div>
+      <div class="fc-break">
+        <div class="row"><span>Degree &amp; modules align (Econ, 1st)</span><span class="plus">+30</span></div>
+        <div class="row"><span>Spring week at a bank</span><span class="plus">+22</span></div>
+        <div class="row"><span>Modelling + 2 finance societies</span><span class="plus">+20</span></div>
+        <div class="row"><span>London-based, available Jun–Aug</span><span class="plus">+15</span></div>
+      </div>
+      <div class="fc-why"><b>Why this scores high:</b> Your IB spring week and modelling coursework map directly to this analyst track. Apply early — deadline is in 9 days.</div>
+    </div>
+  </div>
+
+  <!-- ============================ TICKER ============================ -->
+  <div class="ticker" aria-label="Live roles ticker">
+    <div class="ticker-tag mono">● LIVE</div>
+    <div class="ticker-track" id="track">
+      <!-- group A -->
+      <div class="tk"><span class="flag new">NEW</span><span class="sym">HELVAR CAPITAL</span><span class="role">PE Summer</span><span class="sc hi">91</span></div>
+      <div class="tk"><span class="sym">BRIGHTWATER MKTS</span><span class="role">S&amp;T Markets</span><span class="sc hi">84</span></div>
+      <div class="tk"><span class="flag dl">DEADLINE 3d</span><span class="sym">ALDGATE CREDIT</span><span class="role">Private Credit</span><span class="sc mid">73</span></div>
+      <div class="tk"><span class="sym">QUANTIS RESEARCH</span><span class="role">Quant Dev</span><span class="sc hi">88</span></div>
+      <div class="tk"><span class="sym">CASTLEREAGH</span><span class="role">Asset Mgmt</span><span class="sc mid">68</span></div>
+      <div class="tk"><span class="flag new">NEW</span><span class="sym">NORTHCOTE &amp; HALE</span><span class="role">IB Coverage</span><span class="sc hi">82</span></div>
+      <div class="tk"><span class="sym">STERLING CROSS</span><span class="role">Research</span><span class="sc lo">59</span></div>
+      <div class="tk"><span class="flag dl">DEADLINE 6d</span><span class="sym">MERIDIAN &amp; CROWE</span><span class="role">IB Analyst</span><span class="sc hi">87</span></div>
+      <!-- group B (duplicate for seamless loop) -->
+      <div class="tk"><span class="flag new">NEW</span><span class="sym">HELVAR CAPITAL</span><span class="role">PE Summer</span><span class="sc hi">91</span></div>
+      <div class="tk"><span class="sym">BRIGHTWATER MKTS</span><span class="role">S&amp;T Markets</span><span class="sc hi">84</span></div>
+      <div class="tk"><span class="flag dl">DEADLINE 3d</span><span class="sym">ALDGATE CREDIT</span><span class="role">Private Credit</span><span class="sc mid">73</span></div>
+      <div class="tk"><span class="sym">QUANTIS RESEARCH</span><span class="role">Quant Dev</span><span class="sc hi">88</span></div>
+      <div class="tk"><span class="sym">CASTLEREAGH</span><span class="role">Asset Mgmt</span><span class="sc mid">68</span></div>
+      <div class="tk"><span class="flag new">NEW</span><span class="sym">NORTHCOTE &amp; HALE</span><span class="role">IB Coverage</span><span class="sc hi">82</span></div>
+      <div class="tk"><span class="sym">STERLING CROSS</span><span class="role">Research</span><span class="sc lo">59</span></div>
+      <div class="tk"><span class="flag dl">DEADLINE 6d</span><span class="sym">MERIDIAN &amp; CROWE</span><span class="role">IB Analyst</span><span class="sc hi">87</span></div>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <!-- ============================ STATS ============================ -->
+  <section class="stats reveal r2" aria-label="Coverage stats">
+    <div class="stat"><div class="n">45</div><div class="l">Live opportunities</div></div>
+    <div class="stat"><div class="n">24</div><div class="l">Employers tracked</div></div>
+    <div class="stat accent"><div class="n">8</div><div class="l">Role families scored</div></div>
+    <div class="stat"><div class="n">0<span class="u">·ML</span></div><div class="l">Deterministic fit, fully explainable</div></div>
+  </section>
+
+  <!-- ============================ FEATURES ============================ -->
+  <section id="features">
+    <span class="section-eyebrow">Why Trackr</span>
+    <div class="features">
+      <div class="feat reveal r1">
+        <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <h3>A dashboard, not a list</h3>
+        <p>Every live UK role in one dense, sortable terminal — filter by division, location, deadline and fit. Built for scanning, not scrolling.</p>
+      </div>
+      <div class="feat reveal r2">
+        <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg></div>
+        <h3>Transparent fit scores</h3>
+        <p>A 0–100 score with the maths shown: degree, experience, modelling, location and timing. No ML black box — you see exactly what counts.</p>
+      </div>
+      <div class="feat reveal r3">
+        <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg></div>
+        <h3>Built to apply</h3>
+        <p>Deadlines counted in days, top matches surfaced first, and a copilot that drafts a tailored cover note. Spend time applying, not searching.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ TERMINAL ============================ -->
+  <section id="terminal" style="margin-top:64px">
+    <div class="term-head">
+      <span class="section-eyebrow">The terminal</span>
+      <h2>Your whole search,<br>on one screen.</h2>
+      <p>This is what you land on after onboarding — ranked, scored, and ready to act.</p>
+    </div>
+
+    <div class="terminal reveal r2">
+      <!-- browser chrome -->
+      <div class="chrome">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="addr mono"><span class="lock">🔒</span>app.trackr.uk/terminal</div>
+        <div class="live"><span class="live-dot"></span>SYNCED</div>
+      </div>
+
+      <div class="term-body">
+        <div class="tb-title">
+          <div>
+            <h3>The Terminal</h3>
+            <p>45 live opportunities · ranked for your profile</p>
+          </div>
+          <div class="greet">Welcome back, <b>Amara</b> — 3 new strong matches since Tuesday</div>
+        </div>
+
+        <!-- summary tiles -->
+        <div class="tiles">
+          <div class="tile">
+            <div class="tl"><span class="live-dot"></span>Open now</div>
+            <div class="tv">31</div>
+            <div class="td up">▲ 4 this week</div>
+          </div>
+          <div class="tile">
+            <div class="tl">New this week</div>
+            <div class="tv">7</div>
+            <div class="td up">▲ across 5 firms</div>
+          </div>
+          <div class="tile hl">
+            <div class="tl">★ Top matches 75+</div>
+            <div class="tv">12</div>
+            <div class="td up">▲ 3 since Tue</div>
+          </div>
+          <div class="tile">
+            <div class="tl">Deadlines ≤ 14d</div>
+            <div class="tv">9</div>
+            <div class="td dn">● 2 closing in 3d</div>
+          </div>
+        </div>
+
+        <!-- filter / chip bar -->
+        <div class="filterbar">
+          <label class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+            <input type="text" placeholder="Search employers, roles, divisions…" aria-label="Search opportunities">
+            <kbd>/</kbd>
+          </label>
+          <div class="chips">
+            <span class="chip on">All divisions <span class="x">×</span></span>
+            <span class="chip on">London <span class="x">×</span></span>
+            <span class="chip">Open</span>
+            <span class="chip">Fit 75+</span>
+            <div class="divider"></div>
+            <span class="chip sort">Sort: Fit ▾</span>
+          </div>
+          <span class="rescount"><b>7</b> of 45 shown</span>
+        </div>
+
+        <!-- split: table + sidebar -->
+        <div class="split">
+          <!-- TABLE -->
+          <div class="tablewrap">
+            <table>
+              <colgroup>
+                <col><col class="c-div"><col class="c-loc"><col><col>
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Opportunity</th>
+                  <th class="c-div">Division</th>
+                  <th class="c-loc">Location</th>
+                  <th>Deadline</th>
+                  <th class="r">Fit <span class="ar">▼</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- 1 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <div class="opp-logo" style="background:var(--cobalt-soft);color:var(--cobalt-bright)">HC</div>
+                      <div class="opp-meta">
+                        <div class="fm">Helvar Capital <span class="status open">Open</span></div>
+                        <div class="ro">Private Equity Summer Analyst</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="c-div"><span class="divp">PE</span></td>
+                  <td class="c-loc"><span class="loc">London</span></td>
+                  <td><span class="dl">12 Jun<span class="days days ok">7 days left</span></span></td>
+                  <td class="r"><div class="fit"><div class="meter"><i class="s" style="width:91%"></i></div><span class="num s">91</span></div></td>
+                </tr>
+                <!-- 2 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <div class="opp-logo" style="background:rgba(205,251,69,.1);color:var(--lime)">QR</div>
+                      <div class="opp-meta">
+                        <div class="fm">Quantis Research <span class="status open">Open</span></div>
+                        <div class="ro">Quant Developer Intern</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="c-div"><span class="divp">QNT</span></td>
+                  <td class="c-loc"><span class="loc">London</span></td>
+                  <td><span class="dl">20 Jun<span class="days ok">15 days left</span></span></td>
+                  <td class="r"><div class="fit"><div class="meter"><i class="s" style="width:88%"></i></div><span class="num s">88</span></div></td>
+                </tr>
+                <!-- 3 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <div class="opp-logo" style="background:var(--cobalt-soft);color:var(--cobalt-bright)">M&amp;C</div>
+                      <div class="opp-meta">
+                        <div class="fm">Meridian &amp; Crowe <span class="status soon">Soon</span></div>
+                        <div class="ro">IB Summer Analyst</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="c-div"><span class="divp ib">IB</span></td>
+                  <td class="c-loc"><span class="loc">London</span></td>
+                  <td><span class="dl">08 Jun<span class="days urgent">3 days left</span></span></td>
+                  <td class="r"><div class="fit"><div class="meter"><i class="s" style="width:87%"></i></div><span class="num s">87</span></div></td>
+                </tr>
+                <!-- 4 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <div class="opp-logo" style="background:rgba(205,251,69,.1);color:var(--lime)">BW</div>
+                      <div class="opp-meta">
+                        <div class="fm">Brightwater Markets <span class="status open">Open</span></div>
+                        <div class="ro">Sales &amp; Trading — Markets</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="c-div"><span class="divp st">S&amp;T</span></td>
+                  <td class="c-loc"><span class="loc">Edinburgh</span></td>
+                  <td><span class="dl">25 Jun<span class="days ok">20 days left</span></span></td>
+                  <td class="r"><div class="fit"><div class="meter"><i class="g" style="width:84%"></i></div><span class="num g">84</span></div></td>
+                </tr>
+                <!-- 5 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <div class="opp-logo" style="background:var(--surface-3);color:var(--text-2)">A</div>
+                      <div class="opp-meta">
+                        <div class="fm">Aldgate Credit <span class="status soon">Soon</span></div>
+                        <div class="ro">Private Credit Analyst</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="c-div"><span class="divp">PC</span></td>
+                  <td class="c-loc"><span class="loc">London</span></td>
+                  <td><span class="dl">08 Jun<span class="days urgent">3 days left</span></span></td>
+                  <td class="r"><div class="fit"><div class="meter"><i class="m" style="width:73%"></i></div><span class="num m">73</span></div></td>
+                </tr>
+                <!-- 6 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <div class="opp-logo" style="background:var(--surface-3);color:var(--text-2)">CP</div>
+                      <div class="opp-meta">
+                        <div class="fm">Castlereagh Partners <span class="status open">Open</span></div>
+                        <div class="ro">Asset Management Intern</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="c-div"><span class="divp">AM</span></td>
+                  <td class="c-loc"><span class="loc">Remote</span></td>
+                  <td><span class="dl">30 Jun<span class="days ok">25 days left</span></span></td>
+                  <td class="r"><div class="fit"><div class="meter"><i class="m" style="width:68%"></i></div><span class="num m">68</span></div></td>
+                </tr>
+                <!-- 7 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <div class="opp-logo" style="background:var(--surface-3);color:var(--text-faint)">SC</div>
+                      <div class="opp-meta">
+                        <div class="fm">Sterling Cross <span class="status closed">Closed</span></div>
+                        <div class="ro">Equity Research Summer</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="c-div"><span class="divp">Research</span></td>
+                  <td class="c-loc"><span class="loc">London</span></td>
+                  <td><span class="dl">28 May<span class="days closed">closed</span></span></td>
+                  <td class="r"><div class="fit"><div class="meter"><i class="l" style="width:59%"></i></div><span class="num l">59</span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- SIDEBAR -->
+          <aside class="side">
+            <div class="panel">
+              <div class="panel-h">
+                <div class="ti"><span class="star">★</span>Top matches for you</div>
+                <span class="badge mono">75+</span>
+              </div>
+              <div class="match">
+                <span class="rank">1</span>
+                <div class="match-logo" style="background:var(--cobalt-soft);color:var(--cobalt-bright)">HC</div>
+                <div class="match-meta"><div class="fm">Helvar Capital</div><div class="ro">PE Summer Analyst · London</div></div>
+                <span class="ms">91</span>
+              </div>
+              <div class="match">
+                <span class="rank">2</span>
+                <div class="match-logo" style="background:rgba(205,251,69,.1);color:var(--lime)">QR</div>
+                <div class="match-meta"><div class="fm">Quantis Research</div><div class="ro">Quant Developer · London</div></div>
+                <span class="ms">88</span>
+              </div>
+              <div class="match">
+                <span class="rank">3</span>
+                <div class="match-logo" style="background:var(--cobalt-soft);color:var(--cobalt-bright)">M&amp;C</div>
+                <div class="match-meta"><div class="fm">Meridian &amp; Crowe</div><div class="ro">IB Analyst · London</div></div>
+                <span class="ms">87</span>
+              </div>
+              <div class="match">
+                <span class="rank">4</span>
+                <div class="match-logo" style="background:rgba(205,251,69,.1);color:var(--lime)">BW</div>
+                <div class="match-meta"><div class="fm">Brightwater Markets</div><div class="ro">S&amp;T Markets · Edinburgh</div></div>
+                <span class="ms">84</span>
+              </div>
+            </div>
+
+            <!-- copilot card -->
+            <div class="copilot">
+              <div class="cp-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 5.4L20 9l-4 4 1 6-5-2.8L7 19l1-6-4-4 5.6-1.6z"/></svg></div>
+              <h4>Draft with Copilot</h4>
+              <p>Auto-fill applications and generate a tailored cover note for Helvar Capital using your profile.</p>
+              <button class="btn btn-primary">Draft my application →</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+  <!-- ============================ MANIFESTO ============================ -->
+  <section class="manifesto" id="how">
+    <div class="wrap">
+      <h2><span class="lime">Signal,</span> <span class="out">not noise.</span></h2>
+      <p>Spreadsheets and group chats lose you the deadline. Trackr scores every role against your real background and shows the working — so you apply to the right ones, first.</p>
+    </div>
+  </section>
+
+<div class="wrap">
+  <!-- ============================ FOOTER CTA ============================ -->
+  <section class="footcta">
+    <h2>Land the right internship.</h2>
+    <p>Build your profile in two minutes and watch all 45 live UK roles re-rank around you — for free.</p>
+    <div class="row">
+      <button class="btn btn-primary btn-lg">Build my profile</button>
+      <button class="btn btn-ghost btn-lg">Browse the terminal</button>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="lf">
+      <a class="brand" href="#"><span class="glyph"></span><b>Trackr</b><span class="dot">.</span></a>
+      <span class="foot-c">© 2026 · UK Summer Internships</span>
+    </div>
+    <div class="foot-links">
+      <a href="#">Terminal</a><a href="#">Fit scoring</a><a href="#">Employers</a><a href="#">Privacy</a>
+    </div>
+  </div>
+</footer>
+</main>
+
+<script>
+// ---- Theme toggle: flips data-theme on <html>, persists, updates aria ----
+(function(){
+  var root = document.documentElement;
+  var btn  = document.getElementById('themeToggle');
+  var saved = null;
+  try { saved = localStorage.getItem('trackr-theme'); } catch(e){}
+  if (saved) root.setAttribute('data-theme', saved);
+  function sync(){
+    var t = root.getAttribute('data-theme');
+    btn.setAttribute('aria-label', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+  sync();
+  btn.addEventListener('click', function(){
+    var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('trackr-theme', next); } catch(e){}
+    sync();
+  });
+})();
+</script>
+</body>
+</html>

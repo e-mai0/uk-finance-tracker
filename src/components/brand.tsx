@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
+/** Text-only wordmark — no glyph. A single amber full-stop carries the mark. */
 export function Brand({
   href = "/",
   className,
@@ -9,13 +10,13 @@ export function Brand({
   className?: string;
 }) {
   const inner = (
-    <span className={cn("flex items-center gap-2.5", className)}>
-      <span className="flex h-7 w-7 items-center justify-center rounded-md bg-ink font-display text-[1.05rem] font-semibold leading-none text-[var(--color-canvas)]">
-        T
-      </span>
-      <span className="font-display text-[1.1rem] font-medium tracking-tight text-ink">
-        Trackr
-      </span>
+    <span
+      className={cn(
+        "text-[1.15rem] font-extrabold tracking-tight text-ink",
+        className,
+      )}
+    >
+      Trackr<span className="text-accent">.</span>
     </span>
   );
 

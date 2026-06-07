@@ -168,7 +168,7 @@ export function ApplyProfileForm({ initial }: { initial: ApplyProfileInitial }) 
               ref={fileRef}
               type="file"
               accept=".pdf,.doc,.docx,.txt"
-              className="block max-w-full text-xs text-muted file:mr-3 file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-ink/90"
+              className="block max-w-full text-xs text-muted file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-accent-fg hover:file:bg-accent-hover"
             />
             <Button size="sm" variant="outline" onClick={onUpload} disabled={uploading}>
               {uploading ? "Uploading…" : state.cvStored ? "Replace" : "Upload"}

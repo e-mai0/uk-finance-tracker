@@ -38,13 +38,15 @@ export function SaveButton({
         onClick={onClick}
         disabled={pending}
         className={cn(
-          "inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition-colors disabled:opacity-60",
+          "inline-flex h-10 items-center gap-2 rounded-[var(--radius-control)] border px-4 text-sm font-medium transition-colors disabled:opacity-60",
           saved
             ? "border-accent bg-accent-soft text-accent"
             : "border-border-strong bg-surface text-ink hover:bg-surface-2",
         )}
       >
-        <BookmarkIcon filled={saved} />
+        <span aria-hidden className="text-base leading-none">
+          {saved ? "★" : "☆"}
+        </span>
         {saved ? "Saved" : "Save role"}
       </button>
     );
@@ -57,30 +59,13 @@ export function SaveButton({
       disabled={pending}
       aria-label={saved ? "Unsave" : "Save"}
       className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+        "inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-control)] text-base leading-none transition-colors",
         saved
           ? "text-accent hover:bg-accent-soft"
-          : "text-subtle hover:bg-surface-2 hover:text-ink",
+          : "text-faint hover:bg-surface-2 hover:text-ink",
       )}
     >
-      <BookmarkIcon filled={saved} />
+      <span aria-hidden>{saved ? "★" : "☆"}</span>
     </button>
-  );
-}
-
-function BookmarkIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      className="h-4 w-4"
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.6"
-    >
-      <path
-        d="M5 3.5h10a1 1 0 011 1V17l-6-3.2L4 17V4.5a1 1 0 011-1z"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

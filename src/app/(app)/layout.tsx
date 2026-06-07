@@ -17,9 +17,11 @@ export default async function AppLayout({
   });
 
   return (
-    <div className="min-h-full">
+    <div className="flex min-h-screen flex-col">
       <AppHeader name={session.user.name ?? "You"} savedCount={savedCount} />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">{children}</main>
+      {/* Full-bleed shell — data pages fill the viewport edge-to-edge like a
+          real terminal; content/form pages supply their own padded container. */}
+      <main className="flex-1">{children}</main>
     </div>
   );
 }

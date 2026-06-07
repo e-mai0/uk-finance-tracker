@@ -37,29 +37,22 @@ export function ToggleChipGroup<T extends string>({
             onClick={() => toggle(opt.value)}
             aria-pressed={active}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+              "inline-flex items-center gap-2 rounded-[var(--radius-control)] border px-3 py-1.5 text-sm font-medium transition-colors",
               active
                 ? "border-accent bg-accent-soft text-accent"
                 : "border-border-strong bg-surface text-muted hover:border-ink/30 hover:text-ink",
             )}
           >
             <span
+              aria-hidden
               className={cn(
-                "flex h-3.5 w-3.5 items-center justify-center rounded-full border",
-                active ? "border-accent bg-accent" : "border-border-strong",
+                "flex h-4 w-4 items-center justify-center rounded-[2px] border font-mono text-[0.66rem] leading-none",
+                active
+                  ? "border-accent bg-accent text-accent-fg"
+                  : "border-border-strong text-transparent",
               )}
             >
-              {active && (
-                <svg viewBox="0 0 10 10" className="h-2 w-2 text-white" fill="none">
-                  <path
-                    d="M1.5 5l2 2 5-5"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
+              ✓
             </span>
             {opt.label}
           </button>

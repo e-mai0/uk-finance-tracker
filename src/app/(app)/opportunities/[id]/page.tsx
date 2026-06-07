@@ -47,7 +47,7 @@ export default async function OpportunityDetailPage({
   });
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl px-4 py-6">
       <Link
         href="/dashboard"
         className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"

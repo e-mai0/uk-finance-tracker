@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<!--
+  Trackr — Variant B: "Paper Desk"
+  ----------------------------------------------------------------------------
+  CONCEPT: A modern Financial-Times-style data desk. Light-dominant, crisp,
+  hairline-ruled. Bloomberg-dense terminal on a premium light surface with
+  editorial dark bands for rhythm (ticker, manifesto, "Top matches" panel).
+
+  COLOR: Single committed accent = deep ink-blue (#16407a). Positive = forest
+  green. Deadlines/negative = muted amber/red. Restrained warm-paper salmon
+  hint used only as a faint editorial wash, kept crisp & modern.
+
+  FONTS:
+    - Editorial serif (LANDING headings ONLY): Newsreader (incl. italic)
+    - UI grotesque (terminal/everything): Hanken Grotesk
+    - Mono numerics/tickers/tabular data: Geist Mono (tabular-nums)
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trackr — the UK finance internship terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* ============================== TOKENS ============================== */
+:root{
+  /* surfaces — cool white / very light neutral with faint paper warmth */
+  --paper:        #fbfaf7;   /* page base, faint warm wash */
+  --surface:      #ffffff;   /* cards / terminal body */
+  --surface-2:    #f4f3ef;   /* subtle fills, header rows */
+  --surface-3:    #ecebe5;   /* deeper fill */
+  --salmon-wash:  #fdf3ee;   /* restrained FT salmon hint */
+
+  /* ink */
+  --ink:          #15181c;   /* near-black text */
+  --ink-2:        #43484f;   /* secondary text */
+  --ink-3:        #7c828b;   /* muted / meta */
+  --ink-4:        #a6abb2;   /* faint */
+
+  /* hairlines */
+  --line:         #e4e2db;
+  --line-strong:  #d2cfc6;
+
+  /* accent — deep ink-blue, committed */
+  --accent:       #16407a;
+  --accent-2:     #1d539e;
+  --accent-soft:  #e7eef8;
+  --accent-tint:  #f1f5fb;
+
+  /* semantic */
+  --pos:          #1f7a4d;   /* forest green positive */
+  --pos-soft:     #e4f2ea;
+  --warn:         #b4791b;   /* amber deadline */
+  --warn-soft:    #f8efdc;
+  --neg:          #b23a2e;   /* muted red */
+  --neg-soft:     #f7e7e4;
+
+  /* dark band (editorial contrast) */
+  --dark:         #11141a;
+  --dark-2:       #181c24;
+  --dark-line:    #2a2f3a;
+  --dark-ink:     #e9eaec;
+  --dark-ink-2:   #9aa0ab;
+  --dark-accent:  #6ea3ec;
+
+  /* fit tiers */
+  --tier-strong:  #1f7a4d;
+  --tier-good:    #16407a;
+  --tier-mod:     #b4791b;
+  --tier-low:     #8a8f97;
+
+  /* type */
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --ui:    "Hanken Grotesk", system-ui, sans-serif;
+  --mono:  "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* radii */
+  --r-xs: 3px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+
+  /* shadow — tasteful, low */
+  --sh-1: 0 1px 2px rgba(20,24,30,.05), 0 1px 1px rgba(20,24,30,.04);
+  --sh-2: 0 6px 18px -8px rgba(20,24,30,.18), 0 2px 6px -3px rgba(20,24,30,.10);
+  --sh-3: 0 24px 60px -24px rgba(20,30,55,.30), 0 8px 24px -12px rgba(20,24,30,.14);
+  --sh-float: 0 30px 70px -28px rgba(22,64,122,.40), 0 10px 26px -14px rgba(20,24,30,.18);
+}
+
+/* ============================== BASE ============================== */
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{
+  margin:0;
+  font-family:var(--ui);
+  color:var(--ink);
+  background:var(--paper);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  line-height:1.5;
+  /* very fine grain texture */
+  background-image:
+    radial-gradient(rgba(20,24,30,.018) 1px, transparent 1px);
+  background-size:3px 3px;
+}
+a{ color:inherit; text-decoration:none; }
+button{ font-family:inherit; cursor:pointer; }
+img{ max-width:100%; display:block; }
+
+.mono{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
+.num{ font-family:var(--mono); font-variant-numeric:tabular-nums; }
+
+.wrap{ width:min(1240px, 92vw); margin-inline:auto; }
+
+/* selection */
+::selection{ background:var(--accent); color:#fff; }
+
+/* focus */
+:focus-visible{ outline:2.5px solid var(--accent); outline-offset:2px; border-radius:3px; }
+
+/* ============================== NAV ============================== */
+.nav{
+  position:sticky; top:0; z-index:50;
+  background:rgba(251,250,247,.82);
+  backdrop-filter:saturate(140%) blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.nav-inner{ display:flex; align-items:center; gap:28px; height:62px; }
+/* text-only wordmark — no glyph. A single accent full-stop carries the mark. */
+.brand{ display:inline-flex; align-items:baseline; gap:9px; font-size:19px; }
+.brand .wm{ font-weight:800; letter-spacing:-.03em; color:var(--ink); }
+.brand .dot{ color:var(--accent); }
+.brand small{ font-family:var(--mono); font-size:10.5px; color:var(--ink-3); font-weight:500; letter-spacing:.01em; }
+.nav-links{ display:flex; gap:24px; margin-left:8px; }
+.nav-links a{ font-size:13.5px; font-weight:500; color:var(--ink-2); transition:color .15s; }
+.nav-links a:hover{ color:var(--accent); }
+.nav-right{ margin-left:auto; display:flex; align-items:center; gap:14px; }
+.signin{ font-size:13.5px; font-weight:600; color:var(--ink-2); }
+.signin:hover{ color:var(--accent); }
+.btn{
+  font-weight:600; font-size:13.5px; border-radius:var(--r-sm);
+  padding:10px 17px; border:1px solid transparent;
+  transition:background .2s cubic-bezier(.2,.7,.2,1), border-color .2s, color .2s, box-shadow .2s;
+  display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
+}
+.btn:active{ transform:translateY(.5px); }
+.btn-primary{ background:var(--accent); color:#fff; }
+.btn-primary:hover{ background:var(--accent-2); box-shadow:0 5px 16px -7px rgba(22,64,122,.65); }
+.btn-ghost{ background:transparent; color:var(--ink); border-color:var(--line-strong); }
+.btn-ghost:hover{ border-color:var(--ink); background:var(--surface); }
+.btn-dark{ background:var(--ink); color:#fff; }
+.btn-dark:hover{ background:#000; box-shadow:0 5px 16px -7px rgba(20,24,30,.5); }
+.btn-lg{ padding:13px 22px; font-size:14.5px; }
+
+/* editorial text-link — the human secondary action, breaks the twin-button cliché */
+.link{
+  font-weight:600; font-size:14px; color:var(--ink); background:none; border:none; padding:2px 0; cursor:pointer;
+  text-decoration:underline; text-decoration-color:var(--line-strong);
+  text-underline-offset:5px; text-decoration-thickness:1.5px;
+  transition:color .18s, text-decoration-color .18s;
+}
+.link:hover{ color:var(--accent); text-decoration-color:var(--accent); }
+.link.lg{ font-size:15px; }
+
+/* ============================== REVEAL ============================== */
+[data-reveal]{ opacity:0; transform:translateY(14px); }
+.revealed [data-reveal]{
+  animation:reveal .7s cubic-bezier(.2,.7,.2,1) forwards;
+  animation-delay:var(--d, 0s);
+}
+@keyframes reveal{ to{ opacity:1; transform:none; } }
+
+/* ============================== HERO ============================== */
+.hero{ position:relative; padding:62px 0 50px; overflow:hidden; }
+.hero::before{
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:radial-gradient(820px 360px at 86% -22%, var(--salmon-wash), transparent 64%);
+}
+.hero-grid{ display:grid; grid-template-columns:1.18fr .82fr; gap:54px; align-items:center; }
+/* borderless editorial kicker (not a badge-pill) + a quiet, static status dot */
+.kicker{
+  display:inline-flex; align-items:center; gap:10px;
+  font-size:12.5px; font-weight:600; color:var(--ink-2); letter-spacing:.01em;
+}
+.live-dot{ width:7px; height:7px; border-radius:50%; background:var(--pos); flex-shrink:0; box-shadow:0 0 0 3px var(--pos-soft); }
+.kicker .mono{ color:var(--ink-3); font-size:11.5px; font-weight:500; }
+
+h1.hero-title{
+  font-family:var(--serif); font-weight:500;
+  font-size:clamp(40px, 5.6vw, 70px); line-height:1.02; letter-spacing:-.018em;
+  margin:20px 0 0; color:var(--ink);
+}
+h1.hero-title em{ font-style:italic; font-weight:500; color:var(--accent); }
+.lede{ font-size:17.5px; line-height:1.55; color:var(--ink-2); max-width:50ch; margin:22px 0 0; }
+.lede b{ color:var(--ink); font-weight:600; }
+.hero-ctas{ display:flex; align-items:center; gap:18px; margin-top:28px; flex-wrap:wrap; }
+.hero-meta{ display:flex; gap:22px; margin-top:26px; flex-wrap:wrap; }
+.hero-meta div{ display:flex; flex-direction:column; gap:2px; }
+.hero-meta .k{ font-family:var(--mono); font-size:20px; font-weight:600; letter-spacing:-.01em; }
+.hero-meta .l{ font-size:11.5px; color:var(--ink-3); font-weight:500; text-transform:uppercase; letter-spacing:.06em; }
+
+/* floating fit-score card */
+.float-card{
+  background:var(--surface); border:1px solid var(--line-strong);
+  border-radius:var(--r-lg); box-shadow:var(--sh-3);
+  padding:0; overflow:hidden; position:relative;
+}
+.fc-head{ display:flex; align-items:flex-start; gap:13px; padding:18px 20px 14px; border-bottom:1px solid var(--line); }
+.fc-logo{
+  width:42px; height:42px; border-radius:9px; flex-shrink:0;
+  background:var(--accent);
+  color:#fff; display:grid; place-items:center; font-weight:800; font-size:15px;
+}
+.fc-firm{ font-weight:700; font-size:15px; letter-spacing:-.01em; }
+.fc-role{ font-size:12.5px; color:var(--ink-3); margin-top:1px; }
+.fc-tag{ margin-left:auto; }
+.tier{
+  font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  padding:3px 7px; border-radius:4px; white-space:nowrap;
+}
+.tier.strong{ color:var(--tier-strong); background:var(--pos-soft); }
+.tier.good{ color:var(--tier-good); background:var(--accent-soft); }
+.tier.mod{ color:var(--tier-mod); background:var(--warn-soft); }
+.tier.low{ color:var(--tier-low); background:var(--surface-3); }
+
+.fc-score{ display:flex; align-items:baseline; gap:8px; padding:16px 20px 8px; }
+.fc-score .big{ font-family:var(--mono); font-size:54px; font-weight:600; line-height:.9; letter-spacing:-.03em; color:var(--accent); }
+.fc-score .den{ font-family:var(--mono); font-size:17px; color:var(--ink-4); font-weight:500; }
+.fc-score .lab{ margin-left:auto; font-size:11px; color:var(--ink-3); font-weight:600; text-transform:uppercase; letter-spacing:.05em; align-self:flex-end; }
+.fc-bars{ padding:6px 20px 18px; display:flex; flex-direction:column; gap:9px; }
+.fc-row{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px; font-size:12px; }
+.fc-row .why{ color:var(--ink-2); }
+.fc-row .pts{ font-family:var(--mono); font-weight:600; color:var(--pos); font-size:12px; }
+.fc-track{ grid-column:1 / -1; height:4px; background:var(--surface-3); border-radius:100px; overflow:hidden; }
+.fc-fill{ height:100%; background:var(--accent); border-radius:100px; }
+.fc-foot{ padding:11px 20px; border-top:1px solid var(--line); background:var(--surface-2);
+  font-size:11px; color:var(--ink-3); display:flex; justify-content:space-between; align-items:center; }
+.fc-foot .mono{ color:var(--ink-2); }
+
+/* ============================== TICKER (dark band) ============================== */
+.ticker{ background:var(--dark); border-block:1px solid var(--dark-line); overflow:hidden; position:relative; }
+.ticker::before, .ticker::after{ content:""; position:absolute; top:0; bottom:0; width:80px; z-index:2; pointer-events:none; }
+.ticker::before{ left:0; background:linear-gradient(90deg, var(--dark), transparent); }
+.ticker::after{ right:0; background:linear-gradient(270deg, var(--dark), transparent); }
+.ticker-track{ display:flex; gap:0; width:max-content; animation:scroll 46s linear infinite; }
+.ticker:hover .ticker-track{ animation-play-state:paused; }
+.tk{
+  display:flex; align-items:center; gap:10px; padding:11px 22px;
+  border-right:1px solid var(--dark-line); white-space:nowrap;
+  font-family:var(--mono); font-size:12.5px; color:var(--dark-ink-2);
+}
+.tk b{ color:var(--dark-ink); font-weight:600; }
+.tk .flag{ font-size:9px; font-weight:700; letter-spacing:.06em; padding:2px 5px; border-radius:3px; }
+.flag.new{ background:rgba(110,163,236,.16); color:var(--dark-accent); }
+.flag.dl{ background:rgba(180,121,27,.2); color:#e0ac56; }
+.tk .sc{ color:#fff; font-weight:600; }
+.tk .sc.hi{ color:#74d3a0; }
+@keyframes scroll{ to{ transform:translateX(-50%); } }
+
+/* ============================== STATS STRIP ============================== */
+.stats{ border-bottom:1px solid var(--line); background:var(--surface); }
+.stats-inner{ display:grid; grid-template-columns:repeat(4,1fr); }
+.stat{ padding:26px 28px; border-right:1px solid var(--line); }
+.stat:last-child{ border-right:none; }
+.stat .n{ font-family:var(--mono); font-size:40px; font-weight:600; letter-spacing:-.03em; line-height:1; color:var(--ink); }
+.stat .n .u{ font-size:18px; color:var(--accent); }
+.stat .c{ font-size:12.5px; color:var(--ink-2); margin-top:8px; font-weight:500; }
+.stat .c span{ color:var(--ink-3); }
+
+/* ============================== FEATURES ============================== */
+.features{ padding:64px 0 12px; }
+.sec-eyebrow{ font-family:var(--mono); font-size:11.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); }
+.feat-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:var(--r-lg); overflow:hidden; margin-top:22px; }
+.feat{ background:var(--surface); padding:32px 28px 30px; }
+.feat-no{ font-family:var(--mono); font-size:12.5px; font-weight:600; color:var(--accent); letter-spacing:.06em; margin-bottom:16px; }
+.feat h3{ font-size:17px; margin:0 0 8px; letter-spacing:-.01em; font-weight:700; }
+.feat p{ font-size:14px; color:var(--ink-2); margin:0; line-height:1.55; }
+
+/* ============================== TERMINAL ============================== */
+.terminal-sec{ padding:60px 0 70px; }
+.term-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:22px; flex-wrap:wrap; }
+.term-head h2{ font-family:var(--serif); font-weight:500; font-size:clamp(28px,3.4vw,40px); letter-spacing:-.015em; margin:8px 0 0; }
+.term-head p{ font-size:15px; color:var(--ink-2); margin:6px 0 0; max-width:46ch; }
+
+/* ---- THE DESK — a dense, professional dark terminal embedded under the light page.
+   Monospace throughout, sharp corners, gridlines, color-coded data (muted base,
+   green/red semantics, amber identifiers), command + status bars. No friendly cards. ---- */
+.desk{
+  --d-bg:#0a0d11; --d-panel:#0d1117; --d-elev:#11161d;
+  --d-line:#1b212a; --d-line-2:#28313c;
+  --d-txt:#cdd5de; --d-txt-2:#9099a4; --d-dim:#6b7480;
+  --d-amber:#e8a33d; --d-amber-2:#f2b659; --d-amber-d:#3a2e16;
+  --d-up:#42c172; --d-down:#f0584f; --d-cyan:#56c2d6;
+  --d-hi:rgba(232,163,61,.06);
+  background:var(--d-bg); color:var(--d-txt);
+  border:1px solid #04070a; border-radius:8px; overflow:hidden;
+  box-shadow:0 34px 80px -34px rgba(8,12,18,.7), 0 10px 28px -14px rgba(8,12,18,.5);
+  font-family:var(--mono); font-size:12px; line-height:1.4;
+  font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1;
+}
+.desk button:focus-visible{ outline:2px solid var(--d-amber); outline-offset:2px; }
+.desk .up{ color:var(--d-up); } .desk .dn{ color:var(--d-down); }
+.desk .amb{ color:var(--d-amber); } .desk .dim{ color:var(--d-dim); }
+.fit-hi{ color:var(--d-up); } .fit-mid{ color:var(--d-amber); }
+.fit-lo{ color:var(--d-txt-2); } .fit-bad{ color:var(--d-down); }
+
+/* command bar */
+.desk-cmd{ display:flex; align-items:center; gap:14px; height:38px; padding:0 12px;
+  background:var(--d-panel); border-bottom:1px solid var(--d-line); }
+.desk-brand{ font-weight:600; font-size:12px; letter-spacing:.16em; color:var(--d-txt); white-space:nowrap; }
+.desk-brand b{ color:var(--d-amber); font-weight:600; }
+.cmd{ display:flex; align-items:center; gap:8px; flex:1; max-width:330px; height:24px; padding:0 9px;
+  background:var(--d-bg); border:1px solid var(--d-line-2); }
+.cmd .pmt{ color:var(--d-amber); font-weight:600; letter-spacing:.08em; font-size:11px; }
+.cmd .typed{ color:var(--d-txt); font-size:11px; }
+.cmd .caret{ width:7px; height:13px; background:var(--d-amber); display:inline-block; animation:blink 1.1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+.cmd .go{ margin-left:auto; color:var(--d-dim); font-size:10px; letter-spacing:.06em; }
+.fkeys{ display:flex; gap:15px; color:var(--d-dim); font-size:10.5px; letter-spacing:.04em; white-space:nowrap; }
+.fkeys b{ color:var(--d-amber); font-weight:600; }
+.desk-status{ margin-left:auto; display:flex; align-items:center; gap:8px; color:var(--d-txt-2); font-size:10.5px; letter-spacing:.05em; white-space:nowrap; }
+.desk-status .ld{ width:6px; height:6px; border-radius:50%; background:var(--d-up); box-shadow:0 0 0 3px rgba(66,193,114,.16); }
+
+/* index ribbon */
+.ribbon{ display:grid; grid-template-columns:repeat(4,1fr); background:var(--d-panel); border-bottom:1px solid var(--d-line); }
+.rcell{ padding:9px 14px; border-right:1px solid var(--d-line); }
+.rcell:last-child{ border-right:none; }
+.rcell .rl{ display:block; font-size:9.5px; letter-spacing:.12em; color:var(--d-dim); }
+.rcell .rv{ display:flex; align-items:baseline; gap:8px; margin-top:3px; }
+.rcell .rv b{ font-size:19px; font-weight:600; color:var(--d-txt); letter-spacing:-.01em; }
+.rcell .rv .dl{ font-size:10.5px; }
+
+/* filter line */
+.desk-filt{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:7px 12px;
+  background:var(--d-bg); border-bottom:1px solid var(--d-line); font-size:10.5px; color:var(--d-dim); letter-spacing:.04em; }
+.desk-filt .lab{ color:var(--d-dim); }
+.fchip{ display:inline-flex; align-items:center; gap:6px; padding:3px 8px; border:1px solid var(--d-line-2);
+  color:var(--d-txt-2); background:var(--d-elev); }
+.fchip.on{ border-color:var(--d-amber-d); color:var(--d-amber); background:rgba(232,163,61,.06); }
+.fchip .x{ color:var(--d-dim); }
+.fchip.add{ color:var(--d-dim); border-style:dashed; }
+.desk-filt .rows{ margin-left:auto; color:var(--d-txt-2); }
+.desk-filt .rows b{ color:var(--d-txt); }
+
+/* main grid */
+.desk-main{ display:grid; grid-template-columns:1fr 250px; }
+.grid-wrap{ overflow-x:auto; border-right:1px solid var(--d-line); }
+table.grid{ width:100%; border-collapse:collapse; }
+table.grid thead th{ position:sticky; top:0; z-index:1; text-align:left; font-weight:600; font-size:9.5px; letter-spacing:.1em; color:var(--d-dim);
+  padding:8px 12px; background:var(--d-panel); border-bottom:1px solid var(--d-line-2); white-space:nowrap; }
+table.grid th.r, table.grid td.r{ text-align:right; }
+table.grid th.c, table.grid td.c{ text-align:center; }
+table.grid th .sc{ color:var(--d-amber); font-size:8px; margin-left:3px; }
+table.grid tbody td{ padding:0 12px; height:37px; border-bottom:1px solid var(--d-line); white-space:nowrap; vertical-align:middle; color:var(--d-txt-2); }
+table.grid tbody tr{ transition:background .1s; }
+table.grid tbody tr:hover{ background:var(--d-hi); }
+table.grid tbody tr.closed{ opacity:.45; }
+/* selected row — left accent rail, the pro-terminal cursor */
+table.grid tbody tr.sel{ background:rgba(232,163,61,.09); box-shadow:inset 3px 0 0 var(--d-amber); }
+table.grid tbody tr.sel:hover{ background:rgba(232,163,61,.12); }
+/* density toggle — regular (default) vs compact */
+.desk.compact table.grid tbody td{ height:29px; }
+.desk.compact .ribbon .rcell{ padding-block:7px; }
+.dtog{ cursor:pointer; font-family:var(--mono); letter-spacing:.04em; }
+.g-idx{ color:var(--d-dim); font-size:10px; }
+.g-code{ color:var(--d-amber); font-weight:600; letter-spacing:.04em; }
+.g-firm{ color:var(--d-txt); font-family:var(--ui); font-weight:600; font-size:12.5px; letter-spacing:-.005em; }
+.g-role{ color:var(--d-dim); font-size:10.5px; }
+.g-num{ color:var(--d-txt); }
+.g-fit{ font-size:14px; font-weight:600; }
+.g-stat{ font-weight:600; letter-spacing:.06em; font-size:10px; }
+.st-open{ color:var(--d-up); } .st-soon{ color:var(--d-amber); } .st-closed{ color:var(--d-dim); }
+.gbar{ position:relative; display:inline-block; width:58px; height:8px; vertical-align:middle;
+  background:repeating-linear-gradient(90deg, var(--d-line-2) 0 4px, transparent 4px 5px); }
+.gbar i{ position:absolute; left:0; top:0; bottom:0;
+  background:repeating-linear-gradient(90deg, var(--c,#42c172) 0 4px, transparent 4px 5px); }
+
+/* watchlist */
+.watch{ background:var(--d-panel); display:flex; flex-direction:column; }
+.watch-h{ display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-bottom:1px solid var(--d-line); }
+.watch-h .t{ font-size:10px; letter-spacing:.1em; color:var(--d-txt-2); font-weight:600; }
+.watch-h .t b{ color:var(--d-amber); }
+.watch-h .n{ font-size:10px; color:var(--d-dim); }
+.wrow{ display:grid; grid-template-columns:14px 1fr auto; align-items:center; gap:9px; padding:8px 12px; border-bottom:1px solid var(--d-line); transition:background .1s; }
+.wrow:hover{ background:var(--d-hi); }
+.wrow .wr{ color:var(--d-dim); font-size:10px; }
+.wrow .wf{ min-width:0; overflow:hidden; }
+.wrow .wcode{ color:var(--d-amber); font-weight:600; font-size:11px; letter-spacing:.04em; }
+.wrow .wname{ color:var(--d-txt-2); font-family:var(--ui); font-size:11px; }
+.wrow .ws{ font-size:13px; font-weight:600; }
+.watch-cta{ margin-top:auto; padding:12px; border-top:1px solid var(--d-line); }
+.watch-cta .ce{ font-size:9.5px; letter-spacing:.1em; color:var(--d-amber); }
+.watch-cta .ct{ font-family:var(--ui); font-size:13.5px; font-weight:700; color:var(--d-txt); margin:5px 0 4px; letter-spacing:-.01em; }
+.watch-cta p{ font-family:var(--ui); font-size:11px; color:var(--d-txt-2); margin:0 0 11px; line-height:1.45; }
+.desk-btn{ display:block; width:100%; text-align:center; background:var(--d-amber); color:#0a0d11;
+  font-family:var(--ui); font-weight:700; font-size:12px; padding:9px; border:none; cursor:pointer; transition:background .15s; }
+.desk-btn:hover{ background:var(--d-amber-2); }
+
+/* status / legend footer */
+.desk-foot{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:7px 12px;
+  background:var(--d-panel); border-top:1px solid var(--d-line); font-size:10px; letter-spacing:.05em; color:var(--d-dim); }
+.desk-foot .leg{ display:inline-flex; align-items:center; gap:6px; }
+.desk-foot .leg i{ width:8px; height:8px; display:inline-block; }
+.desk-foot .right{ margin-left:auto; }
+
+@media (max-width:880px){
+  .desk-main{ grid-template-columns:1fr; }
+  .grid-wrap{ border-right:none; border-bottom:1px solid var(--d-line); }
+  .gc-bar{ display:none; }
+}
+@media (max-width:620px){
+  .ribbon{ grid-template-columns:1fr 1fr; }
+  .rcell:nth-child(2){ border-right:none; }
+  .rcell:nth-child(1),.rcell:nth-child(2){ border-bottom:1px solid var(--d-line); }
+  .gc-loc, .gc-div, .gc-days, .fkeys, .cmd{ display:none; }
+}
+
+/* ============================== MANIFESTO (dark) ============================== */
+.manifesto{ background:var(--dark); color:var(--dark-ink); padding:74px 0; position:relative; overflow:hidden; }
+.manifesto::before{
+  content:""; position:absolute; inset:0;
+  background:radial-gradient(700px 360px at 80% 0%, rgba(110,163,236,.10), transparent 60%);
+}
+.man-inner{ position:relative; max-width:880px; }
+.man-eye{ font-family:var(--mono); font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--dark-accent); font-weight:600; }
+.manifesto h2{
+  font-family:var(--serif); font-weight:400; font-size:clamp(30px,4.4vw,52px); line-height:1.12;
+  letter-spacing:-.015em; margin:18px 0 0;
+}
+.manifesto h2 em{ font-style:italic; color:var(--dark-accent); }
+.manifesto p{ font-size:16px; color:var(--dark-ink-2); max-width:60ch; margin:22px 0 0; line-height:1.6; }
+
+/* ============================== FOOTER CTA ============================== */
+.fcta{ padding:74px 0; text-align:center; position:relative; overflow:hidden; }
+.fcta::before{ content:""; position:absolute; inset:0; z-index:-1; background:radial-gradient(700px 300px at 50% 0%, var(--accent-tint), transparent 65%); }
+.fcta .sec-eyebrow{ display:block; }
+.fcta h2{ font-family:var(--serif); font-weight:500; font-size:clamp(32px,4.6vw,54px); letter-spacing:-.018em; margin:14px auto 0; max-width:16ch; line-height:1.05; }
+.fcta h2 em{ font-style:italic; color:var(--accent); }
+.fcta p{ font-size:16px; color:var(--ink-2); max-width:48ch; margin:18px auto 0; }
+.fcta-btns{ display:flex; align-items:center; gap:18px; justify-content:center; margin-top:28px; flex-wrap:wrap; }
+
+footer{ border-top:1px solid var(--line); background:var(--surface); }
+.foot-inner{ display:flex; align-items:center; justify-content:space-between; padding:26px 0; gap:20px; flex-wrap:wrap; }
+.foot-links{ display:flex; gap:22px; flex-wrap:wrap; }
+.foot-links a{ font-size:13px; color:var(--ink-2); }
+.foot-links a:hover{ color:var(--accent); }
+.foot-copy{ font-family:var(--mono); font-size:11.5px; color:var(--ink-4); }
+
+/* ============================== RESPONSIVE ============================== */
+@media (max-width:980px){
+  .hero-grid{ grid-template-columns:1fr; gap:40px; }
+  .float-card{ max-width:420px; }
+  .feat-grid{ grid-template-columns:1fr; }
+  .stats-inner{ grid-template-columns:repeat(2,1fr); }
+  .stat:nth-child(2){ border-right:none; }
+  .stat:nth-child(1),.stat:nth-child(2){ border-bottom:1px solid var(--line); }
+}
+@media (max-width:720px){
+  .nav-links{ display:none; }
+  .signin{ display:none; }
+  .hero-meta{ gap:16px; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{ animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+  [data-reveal]{ opacity:1 !important; transform:none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#"><span class="wm">Trackr<span class="dot">.</span></span> <small>UK finance desk</small></a>
+    <div class="nav-links">
+      <a href="#terminal">Terminal</a>
+      <a href="#how">How fit works</a>
+      <a href="#features">Features</a>
+      <a href="#manifesto">About</a>
+    </div>
+    <div class="nav-right">
+      <a class="signin" href="#">Sign in</a>
+      <a class="btn btn-primary" href="#">Start tracking</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="kicker" data-reveal style="--d:.05s">
+        <span class="live-dot"></span> Live desk
+        <span class="mono">· 45 roles open · updated 08:14</span>
+      </span>
+      <h1 class="hero-title" data-reveal style="--d:.12s">
+        Every UK finance internship, <em>scored</em> for how well it fits you.
+      </h1>
+      <p class="lede" data-reveal style="--d:.2s">
+        Trackr is a data desk for summer-internship season. We rank every live opening across IB, Markets, Asset Management, PE, Credit, Hedge Funds and Quant — each scored <b>0–100</b> against your background, with the plain-English reasons why.
+      </p>
+      <div class="hero-ctas" data-reveal style="--d:.28s">
+        <a class="btn btn-primary btn-lg" href="#">Build my terminal</a>
+        <a class="link lg" href="#terminal">See a live demo</a>
+      </div>
+      <div class="hero-meta" data-reveal style="--d:.36s">
+        <div><span class="k">45</span><span class="l">Live roles</span></div>
+        <div><span class="k">24</span><span class="l">Employers</span></div>
+        <div><span class="k">8</span><span class="l">Divisions</span></div>
+        <div><span class="k">0–100</span><span class="l">Fit score</span></div>
+      </div>
+    </div>
+
+    <!-- floating fit-score card -->
+    <div class="float-card" data-reveal style="--d:.3s" id="how">
+      <div class="fc-head">
+        <div class="fc-logo">HC</div>
+        <div>
+          <div class="fc-firm">Helvar Capital</div>
+          <div class="fc-role">Investment Banking · Summer Analyst</div>
+        </div>
+        <div class="fc-tag"><span class="tier strong">Strong fit</span></div>
+      </div>
+      <div class="fc-score">
+        <span class="big">88</span><span class="den">/100</span>
+        <span class="lab">Fit score</span>
+      </div>
+      <div class="fc-bars">
+        <div class="fc-row"><span class="why">Target-school + degree match</span><span class="pts">+30</span><span class="fc-track"><span class="fc-fill" style="width:86%"></span></span></div>
+        <div class="fc-row"><span class="why">Spring week at peer firm</span><span class="pts">+23</span><span class="fc-track"><span class="fc-fill" style="width:70%"></span></span></div>
+        <div class="fc-row"><span class="why">London + open deadline</span><span class="pts">+20</span><span class="fc-track"><span class="fc-fill" style="width:62%"></span></span></div>
+        <div class="fc-row"><span class="why">Modelling / Excel signal</span><span class="pts">+15</span><span class="fc-track"><span class="fc-fill" style="width:48%"></span></span></div>
+      </div>
+      <div class="fc-foot">
+        <span>Deterministic · no black-box ML</span>
+        <span class="mono">deadline · 11 Jul</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ TICKER (dark) ============ -->
+<div class="ticker" aria-label="Live roles ticker">
+  <div class="ticker-track" id="ticker">
+    <!-- group duplicated in JS for seamless loop -->
+  </div>
+</div>
+
+<!-- ============ STATS STRIP ============ -->
+<section class="stats">
+  <div class="wrap stats-inner">
+    <div class="stat"><div class="n">45</div><div class="c">Live opportunities <span>tracked right now</span></div></div>
+    <div class="stat"><div class="n">24</div><div class="c">Employers <span>across the City &amp; beyond</span></div></div>
+    <div class="stat"><div class="n">8</div><div class="c">Role families <span>IB · S&amp;T · AM · PE · PC · HF · QNT · Research</span></div></div>
+    <div class="stat"><div class="n">100<span class="u">%</span></div><div class="c">Deterministic <span>explainable, no black-box ML</span></div></div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="features wrap" id="features">
+  <span class="sec-eyebrow">Why a terminal</span>
+  <div class="feat-grid">
+    <div class="feat">
+      <div class="feat-no">01</div>
+      <h3>A dashboard, not a list</h3>
+      <p>Sort, filter and scan dozens of roles at Bloomberg density. Status, deadline pressure and fit all readable in a single glance — no twelve open tabs.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-no">02</div>
+      <h3>Transparent fit scores</h3>
+      <p>Every 0–100 score breaks down into the exact factors behind it — school, division, location, deadline, prior experience. You see the maths, not a vibe.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-no">03</div>
+      <h3>Built to apply</h3>
+      <p>Deadlines count down, "Soon" flags surface what's closing, and a copilot drafts tailored cover material so you spend time applying, not collating.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TERMINAL ============ -->
+<section class="terminal-sec wrap" id="terminal">
+  <div class="term-head">
+    <div>
+      <span class="sec-eyebrow">The terminal</span>
+      <h2>Your internship desk</h2>
+      <p>Every live opening, ranked for fit and pressure. This is the view you land on after onboarding.</p>
+    </div>
+    <a class="btn btn-dark" href="#">Open full terminal</a>
+  </div>
+
+  <div class="desk" data-reveal style="--d:.15s">
+    <!-- command bar -->
+    <div class="desk-cmd">
+      <span class="desk-brand">TRACKR <b>DESK</b></span>
+      <div class="cmd">
+        <span class="pmt">INTERN</span>
+        <span class="typed">IB LDN 75+</span>
+        <span class="caret"></span>
+        <span class="go">&lt;GO&gt;</span>
+      </div>
+      <div class="fkeys">
+        <span><b>F1</b> SCAN</span>
+        <span><b>F2</b> FILTER</span>
+        <span><b>F3</b> SORT</span>
+        <span><b>F8</b> SAVED</span>
+        <span><b>F9</b> DRAFT</span>
+      </div>
+      <div class="desk-status"><span class="ld"></span> LIVE · 08:14:32 · LDN</div>
+    </div>
+
+    <!-- index ribbon -->
+    <div class="ribbon">
+      <div class="rcell"><span class="rl">OPEN NOW</span><span class="rv"><b>31</b><span class="dl up">▲ 4</span></span></div>
+      <div class="rcell"><span class="rl">NEW · 7D</span><span class="rv"><b>9</b><span class="dl amb">6 firms</span></span></div>
+      <div class="rcell"><span class="rl">MATCH ≥ 75</span><span class="rv"><b>7</b><span class="dl up">strong</span></span></div>
+      <div class="rcell"><span class="rl">DEADLINE ≤ 14D</span><span class="rv"><b>12</b><span class="dl dn">▼ act</span></span></div>
+    </div>
+
+    <!-- filter line -->
+    <div class="desk-filt">
+      <span class="lab">FILTER</span>
+      <span class="fchip on">IB <span class="x">×</span></span>
+      <span class="fchip on">LONDON <span class="x">×</span></span>
+      <span class="fchip on">FIT ≥ 75 <span class="x">×</span></span>
+      <span class="fchip add">+ ADD</span>
+      <span class="lab" style="margin-left:6px">SORT</span>
+      <span class="fchip on">FIT ▾</span>
+      <button class="fchip dtog" id="dtog" type="button">DENSITY · REGULAR</button>
+      <span class="rows"><b>7</b> / 45 ROWS</span>
+    </div>
+
+    <!-- main: grid + watchlist -->
+    <div class="desk-main">
+      <div class="grid-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th class="c">#</th>
+              <th>CODE</th>
+              <th>FIRM / ROLE</th>
+              <th class="gc-div">DIV</th>
+              <th class="gc-loc">LOC</th>
+              <th>DEADLINE</th>
+              <th class="r gc-days">DAYS</th>
+              <th class="r">FIT<span class="sc">▾</span></th>
+              <th class="gc-bar"></th>
+              <th class="r">STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="sel">
+              <td class="c g-idx">01</td>
+              <td class="g-code">HLVR</td>
+              <td><span class="g-firm">Helvar Capital</span> <span class="g-role">Summer Analyst</span></td>
+              <td class="gc-div g-num">IB</td>
+              <td class="gc-loc">LON</td>
+              <td class="g-num">11 Jul</td>
+              <td class="r gc-days dim">36d</td>
+              <td class="r g-fit fit-hi">88</td>
+              <td class="gc-bar"><span class="gbar"><i style="width:88%;--c:var(--d-up)"></i></span></td>
+              <td class="r g-stat st-open">OPEN</td>
+            </tr>
+            <tr>
+              <td class="c g-idx">02</td>
+              <td class="g-code">BWTR</td>
+              <td><span class="g-firm">Brightwater Markets</span> <span class="g-role">Markets Intern</span></td>
+              <td class="gc-div g-num">S&amp;T</td>
+              <td class="gc-loc">LON</td>
+              <td class="g-num">18 Jun</td>
+              <td class="r gc-days amb">13d</td>
+              <td class="r g-fit fit-hi">84</td>
+              <td class="gc-bar"><span class="gbar"><i style="width:84%;--c:var(--d-up)"></i></span></td>
+              <td class="r g-stat st-soon">SOON</td>
+            </tr>
+            <tr>
+              <td class="c g-idx">03</td>
+              <td class="g-code">MERC</td>
+              <td><span class="g-firm">Meridian &amp; Crowe</span> <span class="g-role">Off-Cycle · M&amp;A</span></td>
+              <td class="gc-div g-num">IB</td>
+              <td class="gc-loc">LON</td>
+              <td class="g-num">02 Aug</td>
+              <td class="r gc-days dim">58d</td>
+              <td class="r g-fit fit-mid">79</td>
+              <td class="gc-bar"><span class="gbar"><i style="width:79%;--c:var(--d-amber)"></i></span></td>
+              <td class="r g-stat st-open">OPEN</td>
+            </tr>
+            <tr>
+              <td class="c g-idx">04</td>
+              <td class="g-code">QNTS</td>
+              <td><span class="g-firm">Quantis Research</span> <span class="g-role">Quant · Systematic</span></td>
+              <td class="gc-div g-num">QNT</td>
+              <td class="gc-loc">LON</td>
+              <td class="g-num">09 Jun</td>
+              <td class="r gc-days dn">4d</td>
+              <td class="r g-fit fit-mid">76</td>
+              <td class="gc-bar"><span class="gbar"><i style="width:76%;--c:var(--d-amber)"></i></span></td>
+              <td class="r g-stat st-soon">SOON</td>
+            </tr>
+            <tr>
+              <td class="c g-idx">05</td>
+              <td class="g-code">CSTL</td>
+              <td><span class="g-firm">Castlereagh Partners</span> <span class="g-role">PE Summer Associate</span></td>
+              <td class="gc-div g-num">PE</td>
+              <td class="gc-loc">LON</td>
+              <td class="g-num">25 Jul</td>
+              <td class="r gc-days dim">50d</td>
+              <td class="r g-fit fit-lo">68</td>
+              <td class="gc-bar"><span class="gbar"><i style="width:68%;--c:var(--d-txt-2)"></i></span></td>
+              <td class="r g-stat st-open">OPEN</td>
+            </tr>
+            <tr>
+              <td class="c g-idx">06</td>
+              <td class="g-code">ALDG</td>
+              <td><span class="g-firm">Aldgate Credit</span> <span class="g-role">Analyst · Direct Lending</span></td>
+              <td class="gc-div g-num">PC</td>
+              <td class="gc-loc">EDI</td>
+              <td class="g-num">14 Aug</td>
+              <td class="r gc-days dim">70d</td>
+              <td class="r g-fit fit-lo">61</td>
+              <td class="gc-bar"><span class="gbar"><i style="width:61%;--c:var(--d-txt-2)"></i></span></td>
+              <td class="r g-stat st-open">OPEN</td>
+            </tr>
+            <tr class="closed">
+              <td class="c g-idx">07</td>
+              <td class="g-code">NRTH</td>
+              <td><span class="g-firm">Northcote &amp; Hale</span> <span class="g-role">AM · Multi-Asset</span></td>
+              <td class="gc-div g-num">AM</td>
+              <td class="gc-loc">RMT</td>
+              <td class="g-num">30 May</td>
+              <td class="r gc-days dim">—</td>
+              <td class="r g-fit fit-bad">44</td>
+              <td class="gc-bar"><span class="gbar"><i style="width:44%;--c:var(--d-down)"></i></span></td>
+              <td class="r g-stat st-closed">CLOSED</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- watchlist -->
+      <aside class="watch">
+        <div class="watch-h"><span class="t">TOP MATCHES <b>≥ 75</b></span><span class="n">7</span></div>
+        <div class="wrow"><span class="wr">1</span><span class="wf"><span class="wcode">HLVR</span> <span class="wname">Helvar Capital</span></span><span class="ws fit-hi">88</span></div>
+        <div class="wrow"><span class="wr">2</span><span class="wf"><span class="wcode">BWTR</span> <span class="wname">Brightwater Mkts</span></span><span class="ws fit-hi">84</span></div>
+        <div class="wrow"><span class="wr">3</span><span class="wf"><span class="wcode">MERC</span> <span class="wname">Meridian &amp; Crowe</span></span><span class="ws fit-mid">79</span></div>
+        <div class="wrow"><span class="wr">4</span><span class="wf"><span class="wcode">QNTS</span> <span class="wname">Quantis Research</span></span><span class="ws fit-mid">76</span></div>
+        <div class="watch-cta">
+          <div class="ce">F9 · COPILOT</div>
+          <div class="ct">Draft a cover note</div>
+          <p>Grounded in your CV and the HLVR role spec. You review and submit.</p>
+          <button class="desk-btn">Draft for HLVR</button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- status / legend footer -->
+    <div class="desk-foot">
+      <span class="leg"><i style="background:var(--d-up)"></i> OPEN</span>
+      <span class="leg"><i style="background:var(--d-amber)"></i> CLOSING SOON</span>
+      <span class="leg"><i style="background:var(--d-dim)"></i> CLOSED</span>
+      <span class="right">DETERMINISTIC SCORING · NO ML · LAST SYNC 08:14:32</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MANIFESTO (dark) ============ -->
+<section class="manifesto" id="manifesto">
+  <div class="wrap man-inner">
+    <span class="man-eye">The thesis</span>
+    <h2>Signal, <em>not noise.</em> The City posts a thousand roles — only a handful are worth <em>your</em> next move.</h2>
+    <p>Spreadsheets, LinkedIn alerts and group chats bury the few openings that actually fit. Trackr does the unglamorous work — collating, deduping, dating and scoring — so the decision you're left with is simple: which strong fit do I apply to first?</p>
+  </div>
+</section>
+
+<!-- ============ FOOTER CTA ============ -->
+<section class="fcta">
+  <div class="wrap">
+    <span class="sec-eyebrow">Summer 2026 is live</span>
+    <h2>Stop scrolling job boards. <em>Start</em> a desk.</h2>
+    <p>Onboard in two minutes. Land on a terminal that already knows where you'll fit best.</p>
+    <div class="fcta-btns">
+      <a class="btn btn-primary btn-lg" href="#">Build my terminal</a>
+      <a class="link lg" href="#terminal">Explore the demo</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <a class="brand" href="#"><span class="wm">Trackr<span class="dot">.</span></span></a>
+    <div class="foot-links">
+      <a href="#terminal">Terminal</a>
+      <a href="#how">How fit works</a>
+      <a href="#features">Features</a>
+      <a href="#">Privacy</a>
+      <a href="#">Contact</a>
+    </div>
+    <div class="foot-copy">© 2026 Trackr · Not affiliated with any employer named</div>
+  </div>
+</footer>
+
+<script>
+/* ---- ticker content (mono) ---- */
+(function(){
+  const roles = [
+    {f:"Helvar Capital", d:"IB", flag:"new", sc:88, hi:true, note:"London"},
+    {f:"Brightwater Markets", d:"S&T", flag:"dl", sc:84, hi:true, note:"13d left"},
+    {f:"Meridian & Crowe", d:"IB", flag:"new", sc:79, hi:false, note:"London"},
+    {f:"Quantis Research", d:"QNT", flag:"dl", sc:76, hi:false, note:"4d left"},
+    {f:"Castlereagh Partners", d:"PE", flag:"new", sc:68, hi:false, note:"London"},
+    {f:"Sterling Cross", d:"HF", flag:"new", sc:72, hi:false, note:"London"},
+    {f:"Aldgate Credit", d:"PC", flag:"dl", sc:61, hi:false, note:"Edinburgh"},
+    {f:"Northcote & Hale", d:"AM", flag:"new", sc:57, hi:false, note:"Remote"},
+  ];
+  function item(r){
+    const flagTxt = r.flag === "new" ? "NEW" : "DEADLINE";
+    return `<div class="tk">
+      <span class="flag ${r.flag}">${flagTxt}</span>
+      <b>${r.f}</b> · ${r.d} · ${r.note}
+      <span class="sc ${r.hi?'hi':''}">${r.sc}<span style="opacity:.45">/100</span></span>
+    </div>`;
+  }
+  const html = roles.map(item).join("");
+  document.getElementById("ticker").innerHTML = html + html; // duplicate for seamless loop
+})();
+
+/* ---- desk density toggle (regular ⇄ compact) ---- */
+(function(){
+  const btn = document.getElementById("dtog");
+  if(!btn) return;
+  btn.addEventListener("click", () => {
+    const desk = document.querySelector(".desk");
+    const compact = desk.classList.toggle("compact");
+    btn.textContent = "DENSITY · " + (compact ? "COMPACT" : "REGULAR");
+  });
+})();
+
+/* ---- page-load staggered reveal ---- */
+requestAnimationFrame(()=>{ document.body.classList.add("revealed"); });
+</script>
+</body>
+</html>

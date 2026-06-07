@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 export interface SummaryStats {
   openCount: number;
   newlyAdded: number;
@@ -5,30 +7,57 @@ export interface SummaryStats {
   topMatches: number;
 }
 
-const CARDS: {
+const CELLS: {
   key: keyof SummaryStats;
   label: string;
+  glyph?: string;
   hint: string;
+  tone?: string;
 }[] = [
-  { key: "openCount", label: "Open now", hint: "Accepting applications" },
-  { key: "newlyAdded", label: "New this week", hint: "Added in last 7 days" },
-  { key: "deadlinesSoon", label: "Deadlines soon", hint: "Closing within 14 days" },
-  { key: "topMatches", label: "Strong matches", hint: "Fit score 75+" },
+  { key: "openCount", label: "Open", glyph: "▲", hint: "accepting", tone: "text-success" },
+  { key: "newlyAdded", label: "New · 7d", hint: "this week" },
+  {
+    key: "deadlinesSoon",
+    label: "Closing · 14d",
+    glyph: "▼",
+    hint: "deadline soon",
+    tone: "text-warning",
+  },
+  {
+    key: "topMatches",
+    label: "Match ≥ 75",
+    glyph: "●",
+    hint: "strong fit",
+    tone: "text-accent",
+  },
 ];
 
+/** The index ribbon — a flat, hairline-divided strip of the day's figures,
+ *  read like a terminal's market-summary bar. ▲ up / ▼ closing / ● match. */
 export function SummaryCards({ stats }: { stats: SummaryStats }) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {CARDS.map((c) => (
-        <div
-          key={c.key}
-          className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3.5 shadow-[var(--shadow-card)]"
-        >
-          <div className="text-[1.75rem] font-medium tracking-tight text-ink tabular">
-            {stats[c.key]}
+    <div className="grid grid-cols-2 gap-px overflow-hidden bg-border md:grid-cols-4">
+      {CELLS.map((c) => (
+        <div key={c.key} className="bg-surface px-4 py-2.5">
+          <div className="flex items-center gap-1.5">
+            {c.glyph && (
+              <span aria-hidden className={cn("text-[0.66rem] leading-none", c.tone)}>
+                {c.glyph}
+              </span>
+            )}
+            <span className="label text-[0.62rem] text-subtle">{c.label}</span>
           </div>
-          <div className="mt-0.5 text-sm font-medium text-ink">{c.label}</div>
-          <div className="text-xs text-subtle">{c.hint}</div>
+          <div className="mt-1.5 flex items-baseline gap-2">
+            <span
+              className={cn(
+                "tabular text-[1.7rem] font-semibold leading-none",
+                c.tone ?? "text-ink",
+              )}
+            >
+              {stats[c.key]}
+            </span>
+            <span className="text-[0.7rem] text-subtle">{c.hint}</span>
+          </div>
         </div>
       ))}
     </div>

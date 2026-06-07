@@ -1,21 +1,37 @@
 import type { OpportunityStatus } from "@prisma/client";
-import { Badge } from "@/components/ui/badge";
-import { STATUS_LABEL } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
-const TONE: Record<
-  OpportunityStatus,
-  "success" | "info" | "danger" | "neutral"
-> = {
-  OPEN: "success",
-  OPENING_SOON: "info",
-  CLOSED: "danger",
-  UNKNOWN: "neutral",
+/** Status as colour-coded uppercase text (terminal convention) — not a pill. */
+const TONE: Record<OpportunityStatus, string> = {
+  OPEN: "text-success",
+  OPENING_SOON: "text-warning",
+  CLOSED: "text-subtle",
+  UNKNOWN: "text-muted",
 };
 
-export function StatusBadge({ status }: { status: OpportunityStatus }) {
+const SHORT: Record<OpportunityStatus, string> = {
+  OPEN: "Open",
+  OPENING_SOON: "Soon",
+  CLOSED: "Closed",
+  UNKNOWN: "—",
+};
+
+export function StatusBadge({
+  status,
+  className,
+}: {
+  status: OpportunityStatus;
+  className?: string;
+}) {
   return (
-    <Badge tone={TONE[status]} dot>
-      {STATUS_LABEL[status]}
-    </Badge>
+    <span
+      className={cn(
+        "tabular text-[0.72rem] font-bold uppercase tracking-wide",
+        TONE[status],
+        className,
+      )}
+    >
+      {SHORT[status]}
+    </span>
   );
 }

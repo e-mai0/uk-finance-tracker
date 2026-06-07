@@ -1,38 +1,48 @@
 import Link from "next/link";
 import type { TrackerItem } from "@/lib/filters";
-import { Monogram } from "@/components/ui/monogram";
 import { StatusBadge } from "./status-badge";
 import { FitPill } from "./fit-pill";
 import { SaveButton } from "./save-button";
 import { ROLE_FAMILY_SHORT } from "@/lib/constants";
-import { cn, formatShortDate, daysUntil } from "@/lib/utils";
+import { cn, formatShortDate, daysUntil, ticker, locCode } from "@/lib/utils";
 
-const GRID = "grid-cols-[minmax(0,1fr)_7rem_8.5rem_7.5rem_3.5rem_2.5rem]";
+// # · CODE · FIRM/ROLE · DIV · LOC · DEADLINE · DAYS · FIT(+bar) · STATUS · SAVE
+const GRID =
+  "grid-cols-[2.25rem_3.75rem_minmax(0,1fr)_3.5rem_3rem_5rem_2.75rem_3.25rem_4.5rem_2.25rem]";
 
+// Faint vertical cell rules give the true terminal grid; first cell has none.
+const CELL = "px-2.5 border-l border-border/55 [&:first-child]:border-l-0";
+
+/** Flat, gridlined data grid — no card/shadow/rounding. Fills its container;
+ *  the desk frame supplies the outer borders. */
 export function OpportunityTable({ items }: { items: TrackerItem[] }) {
   if (items.length === 0) return <EmptyState />;
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface shadow-[var(--shadow-card)]">
-      {/* Desktop header */}
+    <div className="bg-surface">
+      {/* Sticky column header (pins beneath the command bar) */}
       <div
         className={cn(
-          "hidden gap-3 border-b border-border px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wide text-subtle md:grid",
+          "label sticky top-11 z-10 hidden border-b border-border-strong bg-surface-2 text-[0.62rem] text-subtle md:grid",
           GRID,
         )}
       >
-        <span>Role</span>
-        <span>Location</span>
-        <span>Status</span>
-        <span>Deadline</span>
-        <span className="text-right">Fit</span>
-        <span className="sr-only">Save</span>
+        <span className={cn(CELL, "py-2 text-right")}>#</span>
+        <span className={cn(CELL, "py-2")}>Code</span>
+        <span className={cn(CELL, "py-2")}>Firm / Role</span>
+        <span className={cn(CELL, "py-2")}>Div</span>
+        <span className={cn(CELL, "py-2")}>Loc</span>
+        <span className={cn(CELL, "py-2")}>Deadline</span>
+        <span className={cn(CELL, "py-2 text-right")}>Days</span>
+        <span className={cn(CELL, "py-2")}>Fit</span>
+        <span className={cn(CELL, "py-2 text-right")}>Status</span>
+        <span className={cn(CELL, "py-2 sr-only")}>Save</span>
       </div>
 
-      <ul className="divide-y divide-border">
-        {items.map((item) => (
+      <ul>
+        {items.map((item, i) => (
           <li key={item.id}>
-            <Row item={item} />
+            <Row item={item} index={i + 1} />
           </li>
         ))}
       </ul>
@@ -40,117 +50,133 @@ export function OpportunityTable({ items }: { items: TrackerItem[] }) {
   );
 }
 
-function Row({ item }: { item: TrackerItem }) {
+function Row({ item, index }: { item: TrackerItem; index: number }) {
   const dl = daysUntil(item.deadlineAt);
-  const deadlineSoon = dl !== null && dl >= 0 && dl <= 14;
+  const closed = item.status === "CLOSED";
 
   return (
     <Link
       href={`/opportunities/${item.id}`}
-      className="block px-4 py-3 transition-colors hover:bg-surface-2"
+      className={cn(
+        "group block border-b border-l-2 border-transparent border-b-border transition-colors hover:border-l-accent hover:bg-accent-tint",
+        closed && "opacity-55",
+      )}
     >
-      {/* Desktop grid */}
-      <div className={cn("hidden items-center gap-3 md:grid", GRID)}>
-        <div className="flex min-w-0 items-center gap-3">
-          <Monogram name={item.employerName} hint={item.logoHint} />
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-ink">
-              {item.title}
-            </div>
-            <div className="truncate text-xs text-muted">
-              {item.employerName}
-              <span className="text-subtle">
-                {" · "}
-                {ROLE_FAMILY_SHORT[item.roleFamily]}
-                {item.divisionDesk ? ` · ${item.divisionDesk}` : ""}
-              </span>
-            </div>
-          </div>
-        </div>
+      {/* Desktop grid row */}
+      <div className={cn("hidden items-stretch md:grid", GRID)}>
+        <span className={cn(CELL, "flex items-center justify-end py-2")}>
+          <span className="tabular text-[0.72rem] text-faint">
+            {String(index).padStart(2, "0")}
+          </span>
+        </span>
 
-        <div className="truncate text-sm text-muted">{item.location}</div>
-        <div>
+        <span className={cn(CELL, "flex items-center py-2")}>
+          <span className="tabular truncate text-[0.86rem] font-bold tracking-tight text-accent">
+            {ticker(item.employerName)}
+          </span>
+        </span>
+
+        <span className={cn(CELL, "flex min-w-0 items-baseline gap-2 py-2")}>
+          <span className="truncate text-[0.9rem] font-semibold text-ink">
+            {item.employerName}
+          </span>
+          <span className="truncate text-[0.8rem] text-muted">
+            {item.title}
+          </span>
+        </span>
+
+        <span className={cn(CELL, "flex items-center py-2")}>
+          <span className="label text-[0.62rem] text-muted">
+            {ROLE_FAMILY_SHORT[item.roleFamily]}
+          </span>
+        </span>
+
+        <span className={cn(CELL, "flex items-center py-2")}>
+          <span className="tabular text-[0.78rem] text-muted">
+            {locCode(item.location)}
+          </span>
+        </span>
+
+        <span className={cn(CELL, "flex items-center py-2")}>
+          <span className="tabular text-[0.78rem] text-ink">
+            {item.deadlineAt ? formatShortDate(item.deadlineAt) : <Dash />}
+          </span>
+        </span>
+
+        <span className={cn(CELL, "flex items-center justify-end py-2")}>
+          <DaysLeft dl={dl} />
+        </span>
+
+        <span className={cn(CELL, "flex items-center py-2")}>
+          <FitPill score={item.score} className="text-[1rem] font-bold" />
+        </span>
+
+        <span className={cn(CELL, "flex items-center justify-end py-2")}>
           <StatusBadge status={item.status} />
-        </div>
-        <div className="text-sm">
-          {item.deadlineAt ? (
-            <span
-              className={cn(
-                "tabular",
-                deadlineSoon ? "font-medium text-warning" : "text-muted",
-              )}
-            >
-              {formatShortDate(item.deadlineAt)}
-              {deadlineSoon && (
-                <span className="ml-1 text-xs">
-                  · {dl === 0 ? "today" : `${dl}d`}
-                </span>
-              )}
-            </span>
-          ) : (
-            <span className="text-subtle">—</span>
-          )}
-        </div>
-        <div className="flex justify-end">
-          <FitPill score={item.score} />
-        </div>
-        <div className="flex justify-end">
-          <SaveButton
-            opportunityId={item.id}
-            initialSaved={!!item.saved}
-          />
-        </div>
+        </span>
+
+        <span className={cn(CELL, "flex items-center justify-end py-1")}>
+          <SaveButton opportunityId={item.id} initialSaved={!!item.saved} />
+        </span>
       </div>
 
-      {/* Mobile card */}
-      <div className="md:hidden">
-        <div className="flex items-start gap-3">
-          <Monogram name={item.employerName} hint={item.logoHint} />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-ink">
-                  {item.title}
-                </div>
-                <div className="truncate text-xs text-muted">
-                  {item.employerName} · {item.location}
-                </div>
-              </div>
-              <FitPill score={item.score} />
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <StatusBadge status={item.status} />
-              {item.deadlineAt && (
-                <span
-                  className={cn(
-                    "text-xs tabular",
-                    deadlineSoon ? "font-medium text-warning" : "text-subtle",
-                  )}
-                >
-                  Closes {formatShortDate(item.deadlineAt)}
-                </span>
-              )}
-            </div>
+      {/* Mobile row */}
+      <div className="px-3 py-2.5 md:hidden">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="tabular shrink-0 text-[0.82rem] font-bold text-accent">
+              {ticker(item.employerName)}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[0.92rem] font-semibold text-ink">
+                {item.employerName}
+              </span>
+              <span className="block truncate text-[0.8rem] text-muted">
+                {item.title}
+              </span>
+            </span>
           </div>
+          <FitPill score={item.score} className="text-[1.05rem] font-bold" />
+        </div>
+        <div className="mt-1.5 flex items-center gap-3 text-xs text-muted">
+          <StatusBadge status={item.status} />
+          <span className="tabular">{locCode(item.location)}</span>
+          {item.deadlineAt && (
+            <span className="tabular">
+              {formatShortDate(item.deadlineAt)}
+              {dl != null && dl >= 0 && (
+                <span className="ml-1 text-subtle">· {dl}d</span>
+              )}
+            </span>
+          )}
         </div>
       </div>
     </Link>
   );
 }
 
+function Dash() {
+  return <span className="text-faint">—</span>;
+}
+
+function DaysLeft({ dl }: { dl: number | null }) {
+  if (dl == null || dl < 0)
+    return <span className="tabular text-[0.78rem] text-faint">—</span>;
+  const cls =
+    dl <= 7 ? "text-danger" : dl <= 14 ? "text-warning" : "text-subtle";
+  return (
+    <span className={cn("tabular text-[0.78rem] font-semibold", cls)}>
+      {dl === 0 ? "0d" : `${dl}d`}
+    </span>
+  );
+}
+
 function EmptyState() {
   return (
-    <div className="rounded-[var(--radius-card)] border border-dashed border-border-strong bg-surface px-6 py-16 text-center">
-      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-surface-2 text-subtle">
-        <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <circle cx="9" cy="9" r="6" />
-          <path d="M14 14l3 3" strokeLinecap="round" />
-        </svg>
-      </div>
-      <h3 className="mt-3 text-sm font-semibold text-ink">No roles match</h3>
-      <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
-        Try clearing a filter or broadening your search to see more
-        opportunities.
+    <div className="border border-dashed border-border-strong bg-surface px-6 py-16 text-center">
+      <div className="label text-subtle">No matching positions</div>
+      <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
+        Clear a filter or broaden your search to bring more roles onto the tape.
       </p>
     </div>
   );

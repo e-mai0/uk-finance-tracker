@@ -10,6 +10,9 @@ import {
   UK_LOCATIONS,
 } from "@/lib/constants";
 
+/* The desk filter line — a terminal command strip. Typographic glyphs only
+   (› ▾ ✓ ×), no drawn icons. */
+
 export function FiltersBar({ resultCount }: { resultCount: number }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -64,25 +67,21 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
     (get("q") ? 1 : 0);
 
   return (
-    <div className="sticky top-14 z-30 -mx-4 border-b border-border bg-canvas/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+    <div className="bg-surface px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
-        {/* Search */}
-        <div className="relative min-w-[220px] flex-1">
-          <svg
-            viewBox="0 0 20 20"
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
+        {/* Command-line search */}
+        <div className="flex min-w-[220px] flex-1 items-center border border-border-strong bg-surface focus-within:border-accent">
+          <span
+            aria-hidden
+            className="select-none pl-3 pr-1 font-mono text-sm text-accent"
           >
-            <circle cx="9" cy="9" r="6" />
-            <path d="M14 14l3 3" strokeLinecap="round" />
-          </svg>
+            ›
+          </span>
           <input
             value={q}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Search employer, role, division, keyword…"
-            className="h-10 w-full rounded-lg border border-border-strong bg-surface pl-9 pr-3 text-sm text-ink placeholder:text-subtle focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            placeholder="search firm, role, division, keyword…"
+            className="h-9 w-full bg-transparent pr-3 font-mono text-[0.82rem] text-ink placeholder:text-faint focus:outline-none"
           />
         </div>
 
@@ -121,12 +120,14 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
 
         {/* Sort */}
         <div className="ml-auto flex items-center gap-2">
-          <span className="hidden text-xs text-subtle sm:inline">Sort</span>
+          <span className="label hidden text-[0.6rem] text-subtle sm:inline">
+            Sort
+          </span>
           <div className="relative">
             <select
               value={get("sort") || "best_match"}
               onChange={(e) => setParam("sort", e.target.value)}
-              className="h-9 appearance-none rounded-lg border border-border-strong bg-surface pl-3 pr-8 text-sm font-medium text-ink focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              className="h-9 appearance-none border border-border-strong bg-surface pl-3 pr-7 font-mono text-[0.8rem] font-medium uppercase tracking-wide text-ink focus-visible:border-accent focus-visible:outline-none"
             >
               {SORT_OPTIONS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -134,28 +135,32 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
                 </option>
               ))}
             </select>
-            <svg
-              viewBox="0 0 20 20"
-              className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
+            <span
+              aria-hidden
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[0.7rem] text-subtle"
             >
-              <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+              ▾
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="mt-2 flex items-center gap-3 text-xs text-subtle">
-        <span className="tabular">{resultCount} roles</span>
+      <div className="mt-2 flex items-center gap-3">
+        <span className="label text-[0.6rem] text-subtle">
+          <span className="tabular text-ink">{resultCount}</span> rows
+        </span>
         {activeCount > 0 && (
-          <button
-            onClick={() => router.push(pathname, { scroll: false })}
-            className="font-medium text-accent hover:underline"
-          >
-            Clear all filters
-          </button>
+          <>
+            <span aria-hidden className="text-border-strong">
+              │
+            </span>
+            <button
+              onClick={() => router.push(pathname, { scroll: false })}
+              className="label text-[0.6rem] text-accent hover:text-accent-hover hover:underline"
+            >
+              × Clear {activeCount} filter{activeCount > 1 ? "s" : ""}
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -179,29 +184,26 @@ function FilterDropdown({
     <details className="group relative">
       <summary
         className={cn(
-          "flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors",
+          "flex h-9 cursor-pointer list-none items-center gap-1.5 border px-3 font-mono text-[0.8rem] font-medium uppercase tracking-wide transition-colors",
           count > 0
-            ? "border-accent/40 bg-accent-soft text-accent"
-            : "border-border-strong bg-surface text-ink hover:bg-surface-2",
+            ? "border-accent bg-accent text-accent-fg"
+            : "border-border-strong bg-surface text-ink hover:border-accent hover:text-accent",
         )}
       >
         {label}
         {count > 0 && (
-          <span className="rounded-full bg-accent px-1.5 text-[0.65rem] font-bold text-white tabular">
+          <span className="tabular bg-black/20 px-1 text-[0.62rem] font-bold text-accent-fg">
             {count}
           </span>
         )}
-        <svg
-          viewBox="0 0 20 20"
-          className="h-4 w-4 text-current opacity-60 transition-transform group-open:rotate-180"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
+        <span
+          aria-hidden
+          className="text-[0.68rem] opacity-70 transition-transform group-open:rotate-180"
         >
-          <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+          ▾
+        </span>
       </summary>
-      <div className="absolute left-0 top-[calc(100%+6px)] z-40 min-w-52 rounded-lg border border-border bg-surface p-1.5 shadow-[var(--shadow-pop)]">
+      <div className="absolute left-0 top-[calc(100%+6px)] z-40 min-w-52 rounded-[var(--radius-control)] border border-border bg-surface p-1 shadow-[var(--shadow-pop)]">
         {options.map((o) => {
           const active = selected.includes(o.value);
           return (
@@ -209,25 +211,18 @@ function FilterDropdown({
               key={o.value}
               type="button"
               onClick={() => onToggle(o.value)}
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-sm text-ink hover:bg-surface-2"
+              className="flex w-full items-center gap-2.5 rounded-[var(--radius-bar)] px-2 py-1.5 text-left text-[0.82rem] text-ink hover:bg-surface-2"
             >
               <span
+                aria-hidden
                 className={cn(
-                  "flex h-4 w-4 items-center justify-center rounded border",
-                  active ? "border-accent bg-accent" : "border-border-strong",
+                  "flex h-4 w-4 items-center justify-center border font-mono text-[0.66rem] leading-none",
+                  active
+                    ? "border-accent bg-accent text-accent-fg"
+                    : "border-border-strong text-transparent",
                 )}
               >
-                {active && (
-                  <svg viewBox="0 0 10 10" className="h-2.5 w-2.5 text-white" fill="none">
-                    <path
-                      d="M1.5 5l2 2 5-5"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
+                ✓
               </span>
               {o.label}
             </button>
@@ -253,10 +248,10 @@ function FlagToggle({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "h-9 rounded-lg border px-3 text-sm font-medium transition-colors",
+        "h-9 border px-3 font-mono text-[0.8rem] font-medium uppercase tracking-wide transition-colors",
         active
-          ? "border-accent/40 bg-accent-soft text-accent"
-          : "border-border-strong bg-surface text-ink hover:bg-surface-2",
+          ? "border-accent bg-accent text-accent-fg"
+          : "border-border-strong bg-surface text-ink hover:border-accent hover:text-accent",
       )}
     >
       {label}

@@ -9,7 +9,7 @@ export const Select = React.forwardRef<
     <select
       ref={ref}
       className={cn(
-        "h-10 w-full appearance-none rounded-lg border border-border-strong bg-surface pl-3 pr-9 text-sm text-ink",
+        "h-10 w-full appearance-none rounded-[var(--radius-control)] border border-border-strong bg-surface pl-3 pr-8 text-sm text-ink",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:border-accent",
         "disabled:cursor-not-allowed disabled:opacity-60",
         className,
@@ -18,16 +18,12 @@ export const Select = React.forwardRef<
     >
       {children}
     </select>
-    <svg
+    <span
       aria-hidden
-      viewBox="0 0 20 20"
-      className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
+      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.72rem] text-subtle"
     >
-      <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+      ▾
+    </span>
   </div>
 ));
 Select.displayName = "Select";

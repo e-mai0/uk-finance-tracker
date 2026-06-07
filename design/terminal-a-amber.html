@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trackr — UK Finance Internship Terminal</title>
+<!--
+  ============================================================================
+  TRACKR · Variant A "Amber CRT"  (classic Bloomberg terminal)
+  ----------------------------------------------------------------------------
+  CONCEPT: Dark-dominant finance terminal. Near-black charcoal canvas, hairline
+  grid lines, ultra-dense rows. Primary signal = classic terminal AMBER (#ffb000).
+  GREEN (#3ddc84) = up/positive, RED (#ff5252) = down/deadline/negative.
+  Subtle CRT scanline + grain texture on the terminal. One light editorial band
+  in the landing hero for light/dark rhythm.
+
+  FONTS:
+   - Display (landing headlines ONLY): "Archivo Expanded" (industrial grotesque)
+   - Terminal UI text: "IBM Plex Sans"
+   - ALL numerics / tabular data / tickers: "IBM Plex Mono" + tabular-nums
+  ============================================================================
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ===================== TOKENS ===================== */
+  :root{
+    /* core surfaces */
+    --bg:#0a0b0d;
+    --bg-2:#0f1114;
+    --panel:#131619;
+    --panel-2:#171b1f;
+    --panel-3:#1c2127;
+    --line:#23282e;
+    --line-soft:#1a1e23;
+
+    /* light editorial band */
+    --light:#f4f1ea;
+    --light-ink:#15171a;
+    --light-2:#e9e4d8;
+
+    /* text */
+    --ink:#e8eaec;
+    --ink-2:#aab1b8;
+    --ink-3:#727c84;
+    --ink-4:#4b545c;
+
+    /* signal */
+    --amber:#ffb000;
+    --amber-2:#ff9e00;
+    --amber-dim:#7a5500;
+    --green:#3ddc84;
+    --green-dim:#1f6b42;
+    --red:#ff5252;
+    --red-dim:#7a2727;
+    --blue:#5ab0ff;
+
+    /* tiers */
+    --tier-strong:#3ddc84;
+    --tier-good:#9be15d;
+    --tier-mod:#ffb000;
+    --tier-low:#727c84;
+
+    /* radii */
+    --r-xs:3px;
+    --r-sm:5px;
+    --r-md:8px;
+    --r-lg:12px;
+    --r-xl:18px;
+
+    /* fonts */
+    --f-display:"Archivo Expanded", system-ui, sans-serif;
+    --f-sans:"IBM Plex Sans", system-ui, sans-serif;
+    --f-mono:"IBM Plex Mono", ui-monospace, monospace;
+
+    /* shadows */
+    --sh-card:0 1px 0 rgba(255,255,255,.02), 0 18px 40px -18px rgba(0,0,0,.8);
+    --sh-float:0 30px 70px -30px rgba(0,0,0,.85), 0 0 0 1px rgba(255,176,0,.08);
+    --sh-glow:0 0 0 1px rgba(255,176,0,.25), 0 0 24px -6px rgba(255,176,0,.35);
+  }
+
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--f-sans);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+  .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;}
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  ::selection{background:var(--amber);color:#1a1200}
+
+  :focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:var(--r-xs)}
+
+  .wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+
+  /* ===================== NAV ===================== */
+  nav.top{
+    position:sticky;top:0;z-index:60;
+    background:rgba(10,11,13,.82);
+    backdrop-filter:blur(14px) saturate(140%);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-in{display:flex;align-items:center;gap:28px;height:60px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.02em;font-size:18px}
+  .glyph{
+    width:30px;height:30px;border-radius:7px;
+    background:linear-gradient(150deg,var(--amber),var(--amber-2));
+    display:grid;place-items:center;color:#1a1200;font-family:var(--f-mono);
+    font-weight:700;font-size:16px;box-shadow:var(--sh-glow);position:relative;overflow:hidden;
+  }
+  .glyph::after{content:"";position:absolute;inset:0;background:
+    repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.12) 2px 3px);opacity:.5}
+  .nav-links{display:flex;gap:22px;margin-left:8px}
+  .nav-links a{font-size:13.5px;color:var(--ink-2);font-weight:500;transition:color .15s}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .nav-signin{font-size:13.5px;color:var(--ink-2);font-weight:500}
+  .nav-signin:hover{color:var(--ink)}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;border:none;border-radius:var(--r-sm);
+    font-weight:600;font-size:14px;padding:10px 16px;transition:transform .12s, box-shadow .15s, background .15s;
+  }
+  .btn-amber{background:var(--amber);color:#1a1200;box-shadow:0 0 0 1px rgba(255,176,0,.2)}
+  .btn-amber:hover{background:#ffbe2e;transform:translateY(-1px);box-shadow:var(--sh-glow)}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--ink-3);background:var(--panel)}
+  .btn-lg{padding:13px 22px;font-size:15px}
+
+  /* ===================== HERO ===================== */
+  .hero{position:relative;padding:84px 0 72px;background:
+    radial-gradient(900px 400px at 78% -10%, rgba(255,176,0,.07), transparent 60%),
+    var(--bg);
+    overflow:hidden;border-bottom:1px solid var(--line);}
+  .hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),
+      linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+    background-size:48px 48px;mask-image:radial-gradient(700px 500px at 30% 30%,#000,transparent 80%);opacity:.5}
+  .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;position:relative}
+
+  .pill-live{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;
+    color:var(--green);background:rgba(61,220,132,.08);border:1px solid rgba(61,220,132,.25);
+    padding:5px 11px;border-radius:100px;letter-spacing:.02em;font-weight:500}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(61,220,132,.6);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(61,220,132,.5)}70%{box-shadow:0 0 0 7px rgba(61,220,132,0)}100%{box-shadow:0 0 0 0 rgba(61,220,132,0)}}
+
+  h1.hero-h{
+    font-family:var(--f-display);font-weight:800;letter-spacing:-.02em;
+    font-size:clamp(40px,6.2vw,76px);line-height:.98;margin:20px 0 0;color:#fff;
+  }
+  h1.hero-h em{font-style:normal;color:var(--amber);position:relative;text-shadow:0 0 32px rgba(255,176,0,.4)}
+  .lede{color:var(--ink-2);font-size:18px;max-width:520px;margin:22px 0 30px;line-height:1.55}
+  .hero-ctas{display:flex;gap:14px;flex-wrap:wrap}
+  .hero-meta{margin-top:26px;display:flex;gap:26px;color:var(--ink-3);font-size:12.5px;font-family:var(--f-mono)}
+  .hero-meta b{color:var(--ink);font-weight:600}
+
+  /* floating fit-score card */
+  .fitcard{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line);border-radius:var(--r-lg);
+    box-shadow:var(--sh-float);padding:20px;position:relative;overflow:hidden;
+    animation:floaty 6s ease-in-out infinite;
+  }
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .fitcard::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.012) 3px 4px)}
+  .fc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .fc-firm{font-weight:700;font-size:15.5px;color:#fff}
+  .fc-role{color:var(--ink-3);font-size:12.5px;margin-top:2px}
+  .fc-badge{font-family:var(--f-mono);font-size:10.5px;color:var(--amber);border:1px solid rgba(255,176,0,.3);
+    background:rgba(255,176,0,.07);padding:3px 7px;border-radius:4px;letter-spacing:.04em;white-space:nowrap}
+  .fc-score{display:flex;align-items:baseline;gap:8px;margin:18px 0 4px}
+  .fc-score .big{font-family:var(--f-mono);font-weight:700;font-size:60px;line-height:1;color:var(--green);
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .fc-score .of{font-family:var(--f-mono);color:var(--ink-3);font-size:18px}
+  .fc-tier{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--green);font-weight:600;margin-bottom:16px}
+  .fc-tier::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--green)}
+  .fc-break{border-top:1px dashed var(--line);padding-top:12px;display:grid;gap:8px}
+  .fc-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px}
+  .fc-row span{color:var(--ink-2)}
+  .fc-row .pts{font-family:var(--f-mono);color:var(--green);font-weight:600}
+  .fc-bar{height:5px;border-radius:3px;background:var(--panel-3);overflow:hidden;margin-top:10px}
+  .fc-bar i{display:block;height:100%;width:88%;background:linear-gradient(90deg,var(--green),var(--green-dim));border-radius:3px}
+
+  /* ===================== TICKER ===================== */
+  .ticker{
+    background:var(--bg-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    overflow:hidden;position:relative;height:42px;display:flex;align-items:center;
+  }
+  .ticker::before,.ticker::after{content:"";position:absolute;top:0;bottom:0;width:80px;z-index:2;pointer-events:none}
+  .ticker::before{left:0;background:linear-gradient(90deg,var(--bg-2),transparent)}
+  .ticker::after{right:0;background:linear-gradient(270deg,var(--bg-2),transparent)}
+  .ticker-track{display:flex;gap:0;white-space:nowrap;will-change:transform;animation:scroll 48s linear infinite}
+  .ticker:hover .ticker-track{animation-play-state:paused}
+  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .tk{display:inline-flex;align-items:center;gap:8px;padding:0 22px;font-family:var(--f-mono);font-size:12.5px;
+    border-right:1px solid var(--line-soft);color:var(--ink-2)}
+  .tk b{color:var(--ink);font-weight:600}
+  .tk .flag{font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:2px 6px;border-radius:3px}
+  .flag.new{color:#1a1200;background:var(--amber)}
+  .flag.dl{color:#fff;background:var(--red-dim);border:1px solid var(--red)}
+  .tk .sc{font-weight:700}
+  .sc.up{color:var(--green)}.sc.mid{color:var(--amber)}.sc.dn{color:var(--ink-3)}
+
+  /* ===================== STATS STRIP ===================== */
+  .stats{border-bottom:1px solid var(--line);background:var(--bg)}
+  .stats-in{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+  .stat{padding:30px 24px;border-right:1px solid var(--line)}
+  .stat:last-child{border-right:none}
+  .stat .n{font-family:var(--f-mono);font-weight:700;font-size:40px;line-height:1;color:#fff;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .stat .n .u{color:var(--amber);font-size:24px}
+  .stat .l{color:var(--ink-3);font-size:12.5px;margin-top:9px;letter-spacing:.02em;text-transform:uppercase;font-weight:500}
+
+  /* ===================== FEATURES ===================== */
+  .features{padding:64px 0;border-bottom:1px solid var(--line)}
+  .sec-kicker{font-family:var(--f-mono);font-size:12px;color:var(--amber);letter-spacing:.12em;text-transform:uppercase;font-weight:500}
+  .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+  .feat{background:linear-gradient(180deg,var(--panel),var(--bg-2));border:1px solid var(--line);
+    border-radius:var(--r-md);padding:24px;transition:border-color .2s, transform .2s}
+  .feat:hover{border-color:rgba(255,176,0,.35);transform:translateY(-3px)}
+  .feat .ico{width:38px;height:38px;border-radius:9px;background:var(--panel-3);border:1px solid var(--line);
+    display:grid;place-items:center;color:var(--amber);font-family:var(--f-mono);font-size:18px;margin-bottom:16px}
+  .feat h3{margin:0 0 8px;font-size:17px;font-weight:700;color:#fff}
+  .feat p{margin:0;color:var(--ink-2);font-size:14px;line-height:1.55}
+
+  /* ===================== TERMINAL ===================== */
+  .terminal-sec{padding:64px 0;position:relative}
+  .term-head{text-align:center;max-width:680px;margin:0 auto 34px}
+  .term-head h2{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,3.6vw,42px);letter-spacing:-.02em;margin:14px 0 0;color:#fff}
+  .term-head p{color:var(--ink-2);font-size:16px;margin-top:12px}
+
+  .terminal{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+    box-shadow:var(--sh-card);overflow:hidden;position:relative;
+  }
+  /* CRT scanline + grain over the whole terminal */
+  .terminal::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.10) 2px 3px);
+    mix-blend-mode:multiply;opacity:.45}
+  .chrome{display:flex;align-items:center;gap:14px;height:40px;padding:0 14px;background:var(--bg-2);border-bottom:1px solid var(--line)}
+  .lights{display:flex;gap:7px}
+  .lights i{width:11px;height:11px;border-radius:50%;display:block}
+  .lights i:nth-child(1){background:#ff5f56}.lights i:nth-child(2){background:#ffbd2e}.lights i:nth-child(3){background:#27c93f}
+  .chrome-url{flex:1;max-width:420px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:5px;
+    height:24px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3)}
+  .chrome-url::before{content:"⦿";color:var(--green);font-size:9px}
+  .chrome-right{font-family:var(--f-mono);font-size:11px;color:var(--ink-4)}
+
+  .term-body{padding:22px}
+  .term-title{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .term-title h3{margin:0;font-size:20px;font-weight:700;color:#fff;letter-spacing:-.01em}
+  .term-title .sub{color:var(--ink-3);font-size:13px;margin-top:3px}
+  .term-title .clock{font-family:var(--f-mono);font-size:12px;color:var(--ink-2)}
+  .term-title .clock b{color:var(--amber)}
+
+  /* tiles */
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .tile{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 15px;position:relative;overflow:hidden}
+  .tile.hot{border-color:rgba(255,176,0,.45);background:linear-gradient(180deg,rgba(255,176,0,.07),var(--panel-2))}
+  .tile.hot::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber)}
+  .tile .tl{font-size:11.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;font-weight:500;display:flex;align-items:center;gap:6px}
+  .tile .tv{font-family:var(--f-mono);font-weight:700;font-size:30px;margin-top:8px;color:#fff;line-height:1;font-variant-numeric:tabular-nums}
+  .tile.hot .tv{color:var(--amber)}
+  .tile .td{font-family:var(--f-mono);font-size:11px;margin-top:6px}
+  .td.up{color:var(--green)}.td.dn{color:var(--red)}.td.flat{color:var(--ink-4)}
+
+  /* filter / chip bar */
+  .filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .search{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;
+    padding:8px 11px;min-width:220px;flex:1;max-width:300px}
+  .search input{background:none;border:none;color:var(--ink);font-family:var(--f-mono);font-size:13px;width:100%;outline:none}
+  .search input::placeholder{color:var(--ink-4)}
+  .search .sl{color:var(--ink-4);font-size:13px}
+  .chip{font-family:var(--f-sans);font-size:12.5px;font-weight:500;padding:7px 12px;border-radius:6px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink-2);display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap}
+  .chip:hover{border-color:var(--ink-3);color:var(--ink)}
+  .chip.active{background:rgba(255,176,0,.12);border-color:rgba(255,176,0,.5);color:var(--amber)}
+  .chip .x{font-family:var(--f-mono);font-size:11px;opacity:.7}
+  .chip-sep{width:1px;height:22px;background:var(--line);margin:0 2px}
+  .sort-lbl{font-size:11.5px;color:var(--ink-4);font-family:var(--f-mono);letter-spacing:.04em}
+  .rescount{margin-left:auto;font-family:var(--f-mono);font-size:12px;color:var(--ink-3)}
+  .rescount b{color:var(--ink)}
+
+  /* two-column layout */
+  .term-cols{display:grid;grid-template-columns:1fr 296px;gap:16px;margin-top:16px}
+
+  /* TABLE */
+  .table-wrap{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--bg-2)}
+  table.grid{width:100%;border-collapse:collapse;font-size:13px}
+  table.grid thead th{
+    font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-4);
+    text-align:left;padding:9px 12px;background:var(--panel);border-bottom:1px solid var(--line);font-weight:600;white-space:nowrap;user-select:none;cursor:pointer
+  }
+  table.grid thead th .ar{color:var(--amber);font-size:9px}
+  table.grid thead th.num{text-align:right}
+  table.grid tbody tr{border-bottom:1px solid var(--line-soft);transition:background .12s}
+  table.grid tbody tr:last-child{border-bottom:none}
+  table.grid tbody tr:hover{background:rgba(255,176,0,.045)}
+  table.grid td{padding:10px 12px;vertical-align:middle}
+
+  .opp{display:flex;align-items:center;gap:11px}
+  .logo{width:30px;height:30px;border-radius:7px;flex-shrink:0;display:grid;place-items:center;font-family:var(--f-mono);
+    font-weight:700;font-size:12px;color:#0a0b0d;letter-spacing:-.02em}
+  .opp .meta .fm{font-weight:600;color:#fff;font-size:13.5px;display:flex;align-items:center;gap:7px}
+  .opp .meta .rl{color:var(--ink-3);font-size:11.5px;margin-top:1px}
+  .stat-badge{font-family:var(--f-mono);font-size:9px;font-weight:700;padding:1.5px 5px;border-radius:3px;letter-spacing:.04em}
+  .sb-open{color:var(--green);background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.3)}
+  .sb-soon{color:var(--amber);background:rgba(255,176,0,.12);border:1px solid rgba(255,176,0,.35)}
+  .sb-closed{color:var(--ink-4);background:rgba(114,124,132,.1);border:1px solid var(--line)}
+
+  .divpill{font-family:var(--f-mono);font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:4px;letter-spacing:.03em;border:1px solid;white-space:nowrap}
+  .dv-ib{color:#5ab0ff;border-color:rgba(90,176,255,.35);background:rgba(90,176,255,.08)}
+  .dv-st{color:#3ddc84;border-color:rgba(61,220,132,.35);background:rgba(61,220,132,.08)}
+  .dv-am{color:#c79bff;border-color:rgba(199,155,255,.35);background:rgba(199,155,255,.08)}
+  .dv-pe{color:#ffb000;border-color:rgba(255,176,0,.35);background:rgba(255,176,0,.08)}
+  .dv-pc{color:#ff9e6d;border-color:rgba(255,158,109,.35);background:rgba(255,158,109,.08)}
+  .dv-hf{color:#ff6db5;border-color:rgba(255,109,181,.35);background:rgba(255,109,181,.08)}
+  .dv-qnt{color:#6df0ff;border-color:rgba(109,240,255,.35);background:rgba(109,240,255,.08)}
+  .dv-res{color:#aab1b8;border-color:var(--line);background:var(--panel-2)}
+
+  td.loc{font-family:var(--f-mono);font-size:12px;color:var(--ink-2)}
+  td.deadline{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);white-space:nowrap}
+  td.deadline .dl-days{font-size:10.5px;display:block;margin-top:1px}
+  .dl-days.warn{color:var(--red)}.dl-days.soon{color:var(--amber)}.dl-days.ok{color:var(--ink-4)}.dl-days.closed{color:var(--ink-4)}
+
+  td.fit{text-align:right}
+  .fitwrap{display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .fitscore{font-family:var(--f-mono);font-weight:700;font-size:20px;line-height:1;font-variant-numeric:tabular-nums}
+  .fs-strong{color:var(--tier-strong)}.fs-good{color:var(--tier-good)}.fs-mod{color:var(--tier-mod)}.fs-low{color:var(--tier-low)}
+  .meter{width:64px;height:4px;border-radius:2px;background:var(--panel-3);overflow:hidden}
+  .meter i{display:block;height:100%;border-radius:2px}
+  .m-strong{background:var(--tier-strong)}.m-good{background:var(--tier-good)}.m-mod{background:var(--tier-mod)}.m-low{background:var(--tier-low)}
+  tr.closed-row{opacity:.55}
+
+  /* SIDEBAR */
+  .side{display:flex;flex-direction:column;gap:14px}
+  .side-panel{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+  .side-h{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+  .side-h .t{font-size:13px;font-weight:700;color:#fff}
+  .side-h .badge{font-family:var(--f-mono);font-size:10px;color:var(--amber);border:1px solid rgba(255,176,0,.3);padding:2px 6px;border-radius:4px}
+  .match{display:flex;align-items:center;gap:11px;padding:11px 14px;border-bottom:1px solid var(--line-soft);transition:background .12s}
+  .match:last-child{border-bottom:none}
+  .match:hover{background:rgba(255,176,0,.04)}
+  .rank{font-family:var(--f-mono);font-size:11px;color:var(--ink-4);width:16px;font-weight:600}
+  .match .mlogo{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-family:var(--f-mono);font-weight:700;font-size:10px;color:#0a0b0d;flex-shrink:0}
+  .match .minfo{flex:1;min-width:0}
+  .match .mf{font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .match .mr{font-size:10.5px;color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .match .ms{font-family:var(--f-mono);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+
+  .copilot{background:linear-gradient(160deg,rgba(255,176,0,.10),var(--panel-2));border:1px solid rgba(255,176,0,.3);
+    border-radius:var(--r-md);padding:16px}
+  .copilot .cp-t{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:#fff}
+  .copilot .cp-t .spark{color:var(--amber)}
+  .copilot p{margin:8px 0 14px;font-size:12.5px;color:var(--ink-2);line-height:1.5}
+  .copilot .btn{width:100%;justify-content:center}
+
+  /* ===================== MANIFESTO ===================== */
+  .manifesto{padding:84px 0;background:
+    radial-gradient(700px 300px at 50% 0%, rgba(255,176,0,.06),transparent 60%),var(--bg-2);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);text-align:center;position:relative;overflow:hidden}
+  .manifesto::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.012) 3px 4px)}
+  .manifesto h2{font-family:var(--f-display);font-weight:800;font-size:clamp(32px,5vw,60px);letter-spacing:-.02em;margin:0;color:#fff;position:relative}
+  .manifesto h2 em{font-style:normal;color:var(--amber);text-shadow:0 0 40px rgba(255,176,0,.4)}
+  .manifesto p{color:var(--ink-2);max-width:560px;margin:20px auto 0;font-size:17px;position:relative}
+
+  /* ===================== FOOTER ===================== */
+  .footcta{padding:72px 0;text-align:center}
+  .footcta h2{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,3.4vw,40px);letter-spacing:-.02em;color:#fff;margin:0 0 14px}
+  .footcta p{color:var(--ink-2);font-size:16px;margin:0 auto 28px;max-width:460px}
+  footer{border-top:1px solid var(--line);background:var(--bg-2);padding:36px 0}
+  .foot-in{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+  .foot-links{display:flex;gap:24px;font-size:13px;color:var(--ink-3)}
+  .foot-links a:hover{color:var(--ink)}
+  .foot-copy{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-4)}
+
+  /* ===================== LOAD REVEAL ===================== */
+  .reveal{opacity:0;transform:translateY(14px);animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+  .d1{animation-delay:.05s}.d2{animation-delay:.13s}.d3{animation-delay:.21s}.d4{animation-delay:.29s}
+  .d5{animation-delay:.37s}.d6{animation-delay:.45s}.d7{animation-delay:.55s}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;transition:none !important;scroll-behavior:auto}
+    .reveal{opacity:1;transform:none}
+  }
+
+  /* ===================== RESPONSIVE ===================== */
+  @media (max-width:980px){
+    .hero-grid{grid-template-columns:1fr;gap:32px}
+    .term-cols{grid-template-columns:1fr}
+    .stats-in{grid-template-columns:repeat(2,1fr)}
+    .stat:nth-child(2){border-right:none}
+    .stat:nth-child(1),.stat:nth-child(2){border-bottom:1px solid var(--line)}
+    .feat-grid{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:680px){
+    .nav-links,.nav-signin{display:none}
+    .hero-meta{flex-wrap:wrap;gap:14px}
+    table.grid .col-loc,table.grid .col-div{display:none}
+    .stat .n{font-size:32px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="top">
+  <div class="wrap nav-in">
+    <a class="brand" href="#"><span class="glyph mono">T</span>Trackr</a>
+    <div class="nav-links">
+      <a href="#terminal">Terminal</a>
+      <a href="#features">How it works</a>
+      <a href="#manifesto">Method</a>
+      <a href="#">Pricing</a>
+    </div>
+    <div class="nav-right">
+      <a class="nav-signin" href="#">Sign in</a>
+      <button class="btn btn-amber">Get your fit scores →</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="pill-live reveal d1"><span class="dot"></span>LIVE · 45 OPPORTUNITIES TRACKED</span>
+      <h1 class="hero-h reveal d2">Every UK finance internship,<br>scored for <em>you.</em></h1>
+      <p class="lede reveal d3">Trackr ranks every summer internship across IB, Markets, PE, Quant and more against your background — then tells you, in plain English, exactly why each one fits.</p>
+      <div class="hero-ctas reveal d4">
+        <button class="btn btn-amber btn-lg">Build my terminal →</button>
+        <button class="btn btn-ghost btn-lg">See a live demo</button>
+      </div>
+      <div class="hero-meta reveal d5">
+        <span><b>0</b> setup cost</span>
+        <span><b>2 min</b> onboarding</span>
+        <span><b>Deterministic</b> · no black box</span>
+      </div>
+    </div>
+
+    <div class="reveal d4">
+      <div class="fitcard">
+        <div class="fc-top">
+          <div>
+            <div class="fc-firm">Helvar Capital</div>
+            <div class="fc-role">Summer Analyst · Investment Banking</div>
+          </div>
+          <span class="fc-badge mono">STRONG FIT</span>
+        </div>
+        <div class="fc-score">
+          <span class="big mono">88</span><span class="of mono">/100</span>
+        </div>
+        <div class="fc-tier">Strong match for your profile</div>
+        <div class="fc-break">
+          <div class="fc-row"><span>Target uni + degree match</span><span class="pts mono">+30</span></div>
+          <div class="fc-row"><span>Prior IB spring week</span><span class="pts mono">+20</span></div>
+          <div class="fc-row"><span>Modelling / Excel signal</span><span class="pts mono">+15</span></div>
+          <div class="fc-row"><span>London preference</span><span class="pts mono">+23</span></div>
+          <div class="fc-bar"><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ TICKER ============ -->
+<div class="ticker reveal d6" aria-label="Live roles ticker">
+  <div class="ticker-track" id="tkr">
+    <!-- group A -->
+    <span class="tk"><span class="flag new">NEW</span><b>Meridian &amp; Crowe</b> IB Summer Analyst <span class="sc up">91</span></span>
+    <span class="tk"><b>Brightwater Markets</b> S&amp;T Intern <span class="sc up">84</span></span>
+    <span class="tk"><span class="flag dl">DEADLINE 3d</span><b>Castlereagh Partners</b> PE Insight <span class="sc mid">72</span></span>
+    <span class="tk"><b>Quantis Research</b> QNT Summer <span class="sc up">79</span></span>
+    <span class="tk"><span class="flag new">NEW</span><b>Aldgate Credit</b> Private Credit Analyst <span class="sc mid">68</span></span>
+    <span class="tk"><b>Northcote &amp; Hale</b> AM Intern <span class="sc up">81</span></span>
+    <span class="tk"><span class="flag dl">DEADLINE 6d</span><b>Sterling Cross</b> Research Summer <span class="sc dn">54</span></span>
+    <span class="tk"><b>Helvar Capital</b> IB Summer Analyst <span class="sc up">88</span></span>
+    <!-- group B (dup for seamless loop) -->
+    <span class="tk"><span class="flag new">NEW</span><b>Meridian &amp; Crowe</b> IB Summer Analyst <span class="sc up">91</span></span>
+    <span class="tk"><b>Brightwater Markets</b> S&amp;T Intern <span class="sc up">84</span></span>
+    <span class="tk"><span class="flag dl">DEADLINE 3d</span><b>Castlereagh Partners</b> PE Insight <span class="sc mid">72</span></span>
+    <span class="tk"><b>Quantis Research</b> QNT Summer <span class="sc up">79</span></span>
+    <span class="tk"><span class="flag new">NEW</span><b>Aldgate Credit</b> Private Credit Analyst <span class="sc mid">68</span></span>
+    <span class="tk"><b>Northcote &amp; Hale</b> AM Intern <span class="sc up">81</span></span>
+    <span class="tk"><span class="flag dl">DEADLINE 6d</span><b>Sterling Cross</b> Research Summer <span class="sc dn">54</span></span>
+    <span class="tk"><b>Helvar Capital</b> IB Summer Analyst <span class="sc up">88</span></span>
+  </div>
+</div>
+
+<!-- ============ STATS STRIP ============ -->
+<section class="stats">
+  <div class="wrap stats-in">
+    <div class="stat reveal d1"><div class="n mono">45</div><div class="l">Live opportunities</div></div>
+    <div class="stat reveal d2"><div class="n mono">24</div><div class="l">Employers tracked</div></div>
+    <div class="stat reveal d3"><div class="n mono">8</div><div class="l">Role families</div></div>
+    <div class="stat reveal d4"><div class="n mono">100<span class="u">%</span></div><div class="l">Deterministic · no ML</div></div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="features" id="features">
+  <div class="wrap">
+    <span class="sec-kicker">Why Trackr</span>
+    <div class="feat-grid">
+      <div class="feat reveal d1">
+        <div class="ico mono">▤</div>
+        <h3>A dashboard, not a list</h3>
+        <p>Sort, filter and scan every live role in one dense terminal view — divisions, deadlines and fit, aligned and tabular.</p>
+      </div>
+      <div class="feat reveal d2">
+        <div class="ico mono">%</div>
+        <h3>Transparent fit scores</h3>
+        <p>Every 0–100 score breaks down into the exact points it earned. No black box, no ML guesswork — just rules you can read.</p>
+      </div>
+      <div class="feat reveal d3">
+        <div class="ico mono">→</div>
+        <h3>Built to apply</h3>
+        <p>Deadlines surface before they bite. Top matches rise to the top. A copilot drafts your application when you're ready.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TERMINAL ============ -->
+<section class="terminal-sec" id="terminal">
+  <div class="wrap">
+    <div class="term-head">
+      <span class="sec-kicker">The Terminal</span>
+      <h2>Your dashboard at 6:00 GMT.</h2>
+      <p>Dense, sortable, ranked. This is where you live every morning until offers land.</p>
+    </div>
+
+    <div class="terminal reveal d2">
+      <!-- chrome -->
+      <div class="chrome">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="chrome-url mono">app.trackr.uk/terminal</div>
+        <div class="chrome-right mono">SYNCED 06:00:14</div>
+      </div>
+
+      <div class="term-body">
+        <div class="term-title">
+          <div>
+            <h3>Summer 2026 · Internship Terminal</h3>
+            <div class="sub">Ranked for <b style="color:var(--amber)">Eric C.</b> · Economics, target uni · IB / Markets lean</div>
+          </div>
+          <div class="clock mono">FRI 05 JUN · <b>06:00 GMT</b></div>
+        </div>
+
+        <!-- tiles -->
+        <div class="tiles">
+          <div class="tile">
+            <div class="tl">Open now</div>
+            <div class="tv mono">31</div>
+            <div class="td up mono">▲ 4 since Mon</div>
+          </div>
+          <div class="tile">
+            <div class="tl">New this week</div>
+            <div class="tv mono">7</div>
+            <div class="td up mono">▲ 2 today</div>
+          </div>
+          <div class="tile hot">
+            <div class="tl">Top matches · 75+</div>
+            <div class="tv mono">9</div>
+            <div class="td up mono">▲ 1 new strong</div>
+          </div>
+          <div class="tile">
+            <div class="tl">Deadlines ≤ 14d</div>
+            <div class="tv mono">5</div>
+            <div class="td dn mono">▼ act soon</div>
+          </div>
+        </div>
+
+        <!-- filter bar -->
+        <div class="filterbar">
+          <label class="search">
+            <span class="sl">⌕</span>
+            <input type="text" placeholder="search firms, roles…" value="" aria-label="Search opportunities" />
+          </label>
+          <button class="chip active">IB <span class="x">×</span></button>
+          <button class="chip active">S&amp;T <span class="x">×</span></button>
+          <button class="chip">London</button>
+          <button class="chip">Open only</button>
+          <span class="chip-sep"></span>
+          <span class="sort-lbl">SORT</span>
+          <button class="chip active">Fit ▼</button>
+          <button class="chip">Deadline</button>
+          <span class="rescount mono">showing <b>7</b> of <b>45</b></span>
+        </div>
+
+        <!-- columns -->
+        <div class="term-cols">
+          <!-- TABLE -->
+          <div class="table-wrap">
+            <table class="grid">
+              <thead>
+                <tr>
+                  <th>Opportunity</th>
+                  <th class="col-div">Division</th>
+                  <th class="col-loc">Location</th>
+                  <th>Deadline <span class="ar">▲</span></th>
+                  <th class="num">Fit <span class="ar">▼</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- 1 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <span class="logo" style="background:linear-gradient(150deg,#5ab0ff,#2e7fd1)">MC</span>
+                      <div class="meta">
+                        <div class="fm">Meridian &amp; Crowe <span class="stat-badge sb-open">OPEN</span></div>
+                        <div class="rl">Summer Analyst · Investment Banking</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-div"><span class="divpill dv-ib">IB</span></td>
+                  <td class="loc col-loc">London</td>
+                  <td class="deadline">12 Jan 26<span class="dl-days ok">221d left</span></td>
+                  <td class="fit"><div class="fitwrap"><span class="fitscore fs-strong mono">91</span><span class="meter"><i class="m-strong" style="width:91%"></i></span></div></td>
+                </tr>
+                <!-- 2 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <span class="logo" style="background:linear-gradient(150deg,#ffb000,#cf8400)">HC</span>
+                      <div class="meta">
+                        <div class="fm">Helvar Capital <span class="stat-badge sb-open">OPEN</span></div>
+                        <div class="rl">Summer Analyst · Investment Banking</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-div"><span class="divpill dv-ib">IB</span></td>
+                  <td class="loc col-loc">London</td>
+                  <td class="deadline">28 Nov 25<span class="dl-days ok">176d left</span></td>
+                  <td class="fit"><div class="fitwrap"><span class="fitscore fs-strong mono">88</span><span class="meter"><i class="m-strong" style="width:88%"></i></span></div></td>
+                </tr>
+                <!-- 3 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <span class="logo" style="background:linear-gradient(150deg,#3ddc84,#1f9c5b)">BM</span>
+                      <div class="meta">
+                        <div class="fm">Brightwater Markets <span class="stat-badge sb-soon">SOON</span></div>
+                        <div class="rl">Summer Intern · Sales &amp; Trading</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-div"><span class="divpill dv-st">S&amp;T</span></td>
+                  <td class="loc col-loc">London</td>
+                  <td class="deadline">18 Jun 26<span class="dl-days soon">13d left</span></td>
+                  <td class="fit"><div class="fitwrap"><span class="fitscore fs-strong mono">84</span><span class="meter"><i class="m-strong" style="width:84%"></i></span></div></td>
+                </tr>
+                <!-- 4 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <span class="logo" style="background:linear-gradient(150deg,#6df0ff,#2bbdd1)">QR</span>
+                      <div class="meta">
+                        <div class="fm">Quantis Research <span class="stat-badge sb-open">OPEN</span></div>
+                        <div class="rl">Quant Summer Analyst</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-div"><span class="divpill dv-qnt">QNT</span></td>
+                  <td class="loc col-loc">Edinburgh</td>
+                  <td class="deadline">02 Feb 26<span class="dl-days ok">242d left</span></td>
+                  <td class="fit"><div class="fitwrap"><span class="fitscore fs-good mono">79</span><span class="meter"><i class="m-good" style="width:79%"></i></span></div></td>
+                </tr>
+                <!-- 5 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <span class="logo" style="background:linear-gradient(150deg,#c79bff,#8a5fd1)">NH</span>
+                      <div class="meta">
+                        <div class="fm">Northcote &amp; Hale <span class="stat-badge sb-open">OPEN</span></div>
+                        <div class="rl">Summer Intern · Asset Management</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-div"><span class="divpill dv-am">AM</span></td>
+                  <td class="loc col-loc">London</td>
+                  <td class="deadline">15 Dec 25<span class="dl-days ok">193d left</span></td>
+                  <td class="fit"><div class="fitwrap"><span class="fitscore fs-good mono">76</span><span class="meter"><i class="m-good" style="width:76%"></i></span></div></td>
+                </tr>
+                <!-- 6 -->
+                <tr>
+                  <td>
+                    <div class="opp">
+                      <span class="logo" style="background:linear-gradient(150deg,#ff9e6d,#d1602e)">AC</span>
+                      <div class="meta">
+                        <div class="fm">Aldgate Credit <span class="stat-badge sb-soon">SOON</span></div>
+                        <div class="rl">Private Credit Analyst Intern</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-div"><span class="divpill dv-pc">PC</span></td>
+                  <td class="loc col-loc">Remote</td>
+                  <td class="deadline">10 Jun 26<span class="dl-days warn">5d left</span></td>
+                  <td class="fit"><div class="fitwrap"><span class="fitscore fs-mod mono">68</span><span class="meter"><i class="m-mod" style="width:68%"></i></span></div></td>
+                </tr>
+                <!-- 7 closed -->
+                <tr class="closed-row">
+                  <td>
+                    <div class="opp">
+                      <span class="logo" style="background:linear-gradient(150deg,#727c84,#4b545c)">SC</span>
+                      <div class="meta">
+                        <div class="fm">Sterling Cross <span class="stat-badge sb-closed">CLOSED</span></div>
+                        <div class="rl">Summer Research Intern</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-div"><span class="divpill dv-res">RES</span></td>
+                  <td class="loc col-loc">London</td>
+                  <td class="deadline">01 Jun 26<span class="dl-days closed">closed</span></td>
+                  <td class="fit"><div class="fitwrap"><span class="fitscore fs-low mono">54</span><span class="meter"><i class="m-low" style="width:54%"></i></span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- SIDEBAR -->
+          <aside class="side">
+            <div class="side-panel">
+              <div class="side-h">
+                <span class="t">Top matches for you</span>
+                <span class="badge mono">75+</span>
+              </div>
+              <div class="match">
+                <span class="rank mono">01</span>
+                <span class="mlogo" style="background:linear-gradient(150deg,#5ab0ff,#2e7fd1)">MC</span>
+                <div class="minfo"><div class="mf">Meridian &amp; Crowe</div><div class="mr">IB Summer Analyst · London</div></div>
+                <span class="ms fs-strong mono">91</span>
+              </div>
+              <div class="match">
+                <span class="rank mono">02</span>
+                <span class="mlogo" style="background:linear-gradient(150deg,#ffb000,#cf8400)">HC</span>
+                <div class="minfo"><div class="mf">Helvar Capital</div><div class="mr">IB Summer Analyst · London</div></div>
+                <span class="ms fs-strong mono">88</span>
+              </div>
+              <div class="match">
+                <span class="rank mono">03</span>
+                <span class="mlogo" style="background:linear-gradient(150deg,#3ddc84,#1f9c5b)">BM</span>
+                <div class="minfo"><div class="mf">Brightwater Markets</div><div class="mr">S&amp;T Intern · London</div></div>
+                <span class="ms fs-strong mono">84</span>
+              </div>
+              <div class="match">
+                <span class="rank mono">04</span>
+                <span class="mlogo" style="background:linear-gradient(150deg,#6df0ff,#2bbdd1)">QR</span>
+                <div class="minfo"><div class="mf">Quantis Research</div><div class="mr">QNT Summer · Edinburgh</div></div>
+                <span class="ms fs-good mono">79</span>
+              </div>
+            </div>
+
+            <div class="copilot">
+              <div class="cp-t"><span class="spark mono">✦</span> Apply with Copilot</div>
+              <p>Draft a tailored cover note for Meridian &amp; Crowe using your profile and their scoring signals.</p>
+              <button class="btn btn-amber">Draft application →</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MANIFESTO ============ -->
+<section class="manifesto" id="manifesto">
+  <div class="wrap">
+    <h2>Signal, <em>not noise.</em></h2>
+    <p>Thirty open tabs, six spreadsheets and a panic at midnight isn't a strategy. Trackr distils every open role into one ranked, explainable view — so you spend your hours applying, not searching.</p>
+  </div>
+</section>
+
+<!-- ============ FOOTER CTA ============ -->
+<section class="footcta">
+  <div class="wrap">
+    <h2>Find your fit before the deadline finds you.</h2>
+    <p>Two-minute onboarding. Your terminal, ranked and ready by morning.</p>
+    <button class="btn btn-amber btn-lg">Build my terminal →</button>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-in">
+    <a class="brand" href="#"><span class="glyph mono">T</span>Trackr</a>
+    <div class="foot-links">
+      <a href="#terminal">Terminal</a>
+      <a href="#features">How it works</a>
+      <a href="#manifesto">Method</a>
+      <a href="#">Privacy</a>
+      <a href="#">Contact</a>
+    </div>
+    <div class="foot-copy mono">© 2026 TRACKR · UK FINANCE · BUILT FOR APPLICANTS</div>
+  </div>
+</footer>
+
+</body>
+</html>
