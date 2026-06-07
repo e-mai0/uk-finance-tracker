@@ -80,6 +80,22 @@ chrome.runtime.onMessage.addListener(
             }),
           );
           break;
+        case "plan":
+          sendResponse(
+            await apiFetch("/api/ext/plan", {
+              method: "POST",
+              body: JSON.stringify(msg.payload),
+            }),
+          );
+          break;
+        case "saveFact":
+          sendResponse(
+            await apiFetch("/api/ext/fact", {
+              method: "POST",
+              body: JSON.stringify(msg.payload),
+            }),
+          );
+          break;
         default:
           sendResponse({ ok: false, error: "Unknown request." });
       }

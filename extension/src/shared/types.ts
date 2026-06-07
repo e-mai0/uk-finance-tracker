@@ -27,6 +27,45 @@ export interface TrackPayload {
   status?: string;
 }
 
+export type FieldType =
+  | "text" | "email" | "tel" | "url" | "number"
+  | "textarea" | "select" | "radio" | "checkbox" | "date";
+
+export interface FieldSchema {
+  id: string;
+  label: string;
+  nearbyText?: string;
+  type: FieldType;
+  options?: string[];
+  required: boolean;
+  charLimit?: number;
+}
+
+export type FillAction = "fill" | "ask" | "draft" | "skip";
+
+export interface FillPlanItem {
+  fieldId: string;
+  action: FillAction;
+  value?: string;
+  profileKey?: string;
+  confidence: number;
+  question?: string;
+  reason?: string;
+}
+
+export interface PlanPayload {
+  fields: FieldSchema[];
+  employer?: string;
+  role?: string;
+  url?: string;
+}
+
+export interface FactPayload {
+  profileKey?: string;
+  questionText: string;
+  answer: string;
+}
+
 export type BgRequest =
   | { type: "connect"; token: string; apiBase: string }
   | { type: "status" }
@@ -34,7 +73,9 @@ export type BgRequest =
   | { type: "getProfile" }
   | { type: "getCv" }
   | { type: "answer"; payload: AnswerPayload }
-  | { type: "trackApplication"; payload: TrackPayload };
+  | { type: "trackApplication"; payload: TrackPayload }
+  | { type: "plan"; payload: PlanPayload }
+  | { type: "saveFact"; payload: FactPayload };
 
 export interface BgResponse<T = unknown> {
   ok: boolean;
