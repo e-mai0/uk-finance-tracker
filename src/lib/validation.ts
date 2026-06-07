@@ -234,3 +234,12 @@ export interface FillPlanItem {
   question?: string;
   reason?: string;
 }
+
+// Payload the extension POSTs to /api/ext/fact when the user answers a ❓.
+export const extFactSchema = z.object({
+  profileKey: optStr(60),
+  questionText: z.string().trim().min(1).max(600),
+  answer: z.string().trim().min(1).max(2000),
+});
+
+export type ExtFactInput = z.infer<typeof extFactSchema>;

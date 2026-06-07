@@ -110,3 +110,34 @@ describe("mergeMappings", () => {
     expect(merged[0].action).toBe("ask");
   });
 });
+
+import { routeAskedAnswer } from "../lib/form-plan";
+
+describe("routeAskedAnswer", () => {
+  it("routes a known profile key to its ApplyProfile column", () => {
+    expect(routeAskedAnswer("phone", "Phone?", "+44 7…")).toEqual({
+      target: "profile",
+      column: "phone",
+      value: "+44 7…",
+    });
+  });
+
+  it("routes city to the addressCity column", () => {
+    expect(routeAskedAnswer("city", "City?", "London")).toMatchObject({
+      target: "profile",
+      column: "addressCity",
+    });
+  });
+
+  it("routes an unknown question to the answer bank", () => {
+    expect(routeAskedAnswer(undefined, "Expected salary?", "55000")).toEqual({
+      target: "bank",
+      questionText: "Expected salary?",
+      answer: "55000",
+    });
+  });
+
+  it("routes a non-ApplyProfile profile key (e.g. firstName) to the bank", () => {
+    expect(routeAskedAnswer("firstName", "First name?", "Ada").target).toBe("bank");
+  });
+});

@@ -115,6 +115,41 @@ export function mergeMappings(
   });
 }
 
+export type FactRoute =
+  | { target: "profile"; column: string; value: string }
+  | { target: "bank"; questionText: string; answer: string };
+
+// Profile keys that correspond to a writable ApplyProfile column.
+const PROFILE_COLUMN_BY_KEY: Record<string, string> = {
+  phone: "phone",
+  city: "addressCity",
+  country: "country",
+  linkedinUrl: "linkedinUrl",
+  githubUrl: "githubUrl",
+  websiteUrl: "websiteUrl",
+  pronouns: "pronouns",
+  noticePeriod: "noticePeriod",
+  earliestStart: "earliestStart",
+  gender: "selfIdGender",
+  ethnicity: "selfIdEthnicity",
+};
+
+/**
+ * Decide where an answer to an asked question should be persisted. Keys that map
+ * to a writable ApplyProfile column update the profile; everything else (essay
+ * answers, derived/account fields like firstName, unrecognized questions) is
+ * stored in the answer bank for fuzzy reuse.
+ */
+export function routeAskedAnswer(
+  profileKey: string | undefined,
+  questionText: string,
+  answer: string,
+): FactRoute {
+  const column = profileKey ? PROFILE_COLUMN_BY_KEY[profileKey] : undefined;
+  if (column) return { target: "profile", column, value: answer };
+  return { target: "bank", questionText, answer };
+}
+
 /** Parse the LLM's JSON response into mappings, tolerating prose/code fences. */
 export function parseMappings(raw: string): LlmMapping[] {
   const match = raw.match(/\{[\s\S]*\}/);
