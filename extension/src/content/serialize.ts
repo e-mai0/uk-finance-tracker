@@ -1,0 +1,75 @@
+import { getLabelText, collectFields, type FillableEl } from "./field-map";
+import type { FieldSchema, FieldType } from "../shared/types";
+
+export interface SerializedForm {
+  fields: FieldSchema[];
+  elements: Map<string, FillableEl>;
+}
+
+function fieldType(el: FillableEl): FieldType {
+  if (el instanceof HTMLTextAreaElement) return "textarea";
+  if (el instanceof HTMLSelectElement) return "select";
+  const t = (el.type || "text").toLowerCase();
+  if (t === "email") return "email";
+  if (t === "tel") return "tel";
+  if (t === "url") return "url";
+  if (t === "number") return "number";
+  if (t === "date") return "date";
+  if (t === "radio") return "radio";
+  if (t === "checkbox") return "checkbox";
+  return "text";
+}
+
+function optionsFor(el: FillableEl): string[] | undefined {
+  if (el instanceof HTMLSelectElement) {
+    const opts = Array.from(el.options).map((o) => o.text.trim()).filter(Boolean);
+    return opts.length ? opts.slice(0, 80) : undefined;
+  }
+  return undefined;
+}
+
+/** Walk a form container into a compact FieldSchema[] plus an id→element map. */
+export function serializeForm(root: ParentNode): SerializedForm {
+  const elements = new Map<string, FillableEl>();
+  const fields: FieldSchema[] = [];
+  const seenRadioGroups = new Set<string>();
+  let i = 0;
+
+  for (const el of collectFields(root)) {
+    // Collapse radio groups to one schema field, keyed on the first radio.
+    if (el instanceof HTMLInputElement && el.type === "radio") {
+      if (!el.name || seenRadioGroups.has(el.name)) continue;
+      seenRadioGroups.add(el.name);
+    }
+
+    const id = `f${i++}`;
+    el.setAttribute("data-trackr-fid", id);
+    elements.set(id, el);
+
+    const type = fieldType(el);
+    const options =
+      type === "radio" && el instanceof HTMLInputElement && el.name
+        ? radioOptions(root, el.name)
+        : optionsFor(el);
+
+    fields.push({
+      id,
+      label: getLabelText(el),
+      type,
+      options,
+      required: el.hasAttribute("required") || el.getAttribute("aria-required") === "true",
+      charLimit:
+        el instanceof HTMLTextAreaElement && el.maxLength > 0 ? el.maxLength : undefined,
+    });
+  }
+
+  return { fields, elements };
+}
+
+function radioOptions(root: ParentNode, name: string): string[] | undefined {
+  const radios = Array.from(
+    root.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${CSS.escape(name)}"]`),
+  );
+  const labels = radios.map((r) => getLabelText(r)).filter(Boolean);
+  return labels.length ? labels : undefined;
+}
