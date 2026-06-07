@@ -13,21 +13,14 @@
   },
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [
-    "https://*.greenhouse.io/*",
-    "https://jobs.lever.co/*",
-    "https://*.ashbyhq.com/*",
-    "https://*.myworkdayjobs.com/*",
+    "<all_urls>",
     "http://localhost:3000/*",
     "https://trackr-brown.vercel.app/*"
   ],
   "content_scripts": [
     {
-      "matches": [
-        "https://*.greenhouse.io/*",
-        "https://jobs.lever.co/*",
-        "https://*.ashbyhq.com/*",
-        "https://*.myworkdayjobs.com/*"
-      ],
+      "matches": ["<all_urls>"],
+      "exclude_matches": ["http://localhost:3000/*", "https://trackr-brown.vercel.app/*"],
       "js": ["src/content/index.ts"],
       "run_at": "document_idle"
     },
