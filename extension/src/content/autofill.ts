@@ -1,20 +1,4 @@
-import {
-  getLabelText,
-  matchKey,
-  isFreeTextQuestion,
-  collectFields,
-} from "./field-map";
-
-export interface FreeTextQuestion {
-  el: HTMLTextAreaElement;
-  label: string;
-  charLimit?: number;
-}
-
-export interface FillResult {
-  filled: number;
-  questions: FreeTextQuestion[];
-}
+import { getLabelText } from "./field-map";
 
 /** Set a value the way React's controlled inputs expect (native setter + events). */
 function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
@@ -61,73 +45,6 @@ function fillRadioGroup(radios: HTMLInputElement[], desired: string): boolean {
     }
   }
   return false;
-}
-
-/**
- * Fill recognized fields in a container from the field map, and collect any
- * free-text questions for the AI panel. Never touches submit buttons.
- */
-export function fillForm(
-  root: ParentNode,
-  fields: Record<string, string>,
-): FillResult {
-  let filled = 0;
-  const questions: FreeTextQuestion[] = [];
-  const seenRadioGroups = new Set<string>();
-
-  for (const el of collectFields(root)) {
-    // Radio groups: resolve the question label, then pick the option.
-    if (el instanceof HTMLInputElement && el.type === "radio") {
-      const name = el.name;
-      if (!name || seenRadioGroups.has(name)) continue;
-      seenRadioGroups.add(name);
-      const group = Array.from(
-        root.querySelectorAll<HTMLInputElement>(
-          `input[type="radio"][name="${CSS.escape(name)}"]`,
-        ),
-      );
-      const fieldset = el.closest("fieldset");
-      const qLabel =
-        fieldset?.querySelector("legend")?.textContent?.trim() ||
-        getLabelText(el.closest("[class*=field], [class*=question]") ?? el);
-      const key = matchKey(qLabel ?? "");
-      if (key && fields[key]) {
-        if (fillRadioGroup(group, fields[key])) filled++;
-      }
-      continue;
-    }
-
-    const label = getLabelText(el);
-    const key = matchKey(label);
-
-    if (el instanceof HTMLSelectElement) {
-      if (key && fields[key] && fillSelect(el, fields[key])) filled++;
-      continue;
-    }
-
-    if (el instanceof HTMLTextAreaElement) {
-      if (key && fields[key]) {
-        setNativeValue(el, fields[key]);
-        filled++;
-      } else if (isFreeTextQuestion(el, label)) {
-        questions.push({
-          el,
-          label,
-          charLimit: el.maxLength > 0 ? el.maxLength : undefined,
-        });
-      }
-      continue;
-    }
-
-    if (el instanceof HTMLInputElement) {
-      if (key && fields[key] && !el.value) {
-        setNativeValue(el, fields[key]);
-        filled++;
-      }
-    }
-  }
-
-  return { filled, questions };
 }
 
 import type { FillableEl } from "./field-map";

@@ -5,16 +5,15 @@
  * the panel never touches the form's submit button.
  */
 
-export interface PanelQuestion {
-  label: string;
-  charLimit?: number;
-}
+export interface AskItem { fieldId: string; label: string; profileKey?: string; options?: string[]; }
+export interface DraftItem { fieldId: string; label: string; charLimit?: number; }
 
 export interface PanelHandlers {
-  onAutofill: () => void;
-  onGenerate: (index: number) => Promise<string | null>;
-  onInsert: (index: number, text: string) => void;
-  onSave: (index: number, text: string) => Promise<boolean>;
+  onEngage: () => void;                                                // user asked to plan this form
+  onAnswerAsk: (fieldId: string, value: string) => Promise<boolean>;   // fill + write-back
+  onGenerate: (fieldId: string) => Promise<string | null>;
+  onInsert: (fieldId: string, text: string) => void;
+  onSaveDraft: (fieldId: string, label: string, text: string) => Promise<boolean>;
 }
 
 const STYLE = `
@@ -127,48 +126,106 @@ export class Panel {
         : "Application form detected.";
     const btn = el("button", "btn");
     btn.textContent = "Autofill this form";
-    btn.addEventListener("click", () => this.handlers.onAutofill());
+    btn.addEventListener("click", () => this.handlers.onEngage());
     this.body.append(p, btn);
   }
 
-  showFilled(count: number, questions: PanelQuestion[]) {
+  showTriage(filled: number, asks: AskItem[], drafts: DraftItem[]) {
     this.clearBody();
+
     const summary = el("p", "muted");
-    summary.innerHTML = `Filled <strong>${count}</strong> field${count === 1 ? "" : "s"}. Review everything before submitting.`;
+    summary.innerHTML = `✅ Filled <strong>${filled}</strong> field${filled === 1 ? "" : "s"}. Review before submitting.`;
     this.body.append(summary);
 
-    const again = el("button", "btn sec");
-    again.textContent = "Autofill again";
-    again.addEventListener("click", () => this.handlers.onAutofill());
-    this.body.append(again);
-
-    if (questions.length === 0) {
-      const none = el("p", "muted");
-      none.style.marginTop = "10px";
-      none.textContent = "No open-ended questions detected on this step.";
-      this.body.append(none);
-      return;
+    if (asks.length) {
+      const h = el("p", "muted");
+      h.style.marginTop = "12px";
+      h.textContent = `❓ Needs you (${asks.length})`;
+      this.body.append(h);
+      asks.forEach((a) => this.body.append(this.askCard(a)));
     }
 
-    const heading = el("p", "muted");
-    heading.style.marginTop = "12px";
-    heading.textContent = "Draft answers (you can edit before inserting):";
-    this.body.append(heading);
+    if (drafts.length) {
+      const h = el("p", "muted");
+      h.style.marginTop = "12px";
+      h.textContent = `✏️ Drafts to review (${drafts.length})`;
+      this.body.append(h);
+      drafts.forEach((d) => this.body.append(this.draftCard(d)));
+    }
 
-    questions.forEach((q, i) => this.body.append(this.questionCard(q, i)));
+    if (!asks.length && !drafts.length) {
+      const none = el("p", "muted");
+      none.style.marginTop = "10px";
+      none.textContent = "Nothing else needs you on this step.";
+      this.body.append(none);
+    }
   }
 
-  private questionCard(q: PanelQuestion, index: number): HTMLElement {
+  private askCard(a: AskItem): HTMLElement {
     const card = el("div", "q");
     const label = el("p", "q-label");
-    label.textContent =
-      q.label + (q.charLimit ? `  (max ${q.charLimit} chars)` : "");
-    card.append(label);
+    label.textContent = a.label;
 
+    // select/radio asks render a dropdown of the field's options; everything
+    // else gets a free-text box. `readValue` abstracts the two.
+    let readValue: () => string;
+    let control: HTMLElement;
+    if (a.options && a.options.length) {
+      const sel = el("select") as HTMLSelectElement;
+      sel.style.cssText =
+        "width:100%;box-sizing:border-box;font:inherit;font-size:12px;padding:6px;border:1px solid #d6cfbd;border-radius:6px;background:#fff;";
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "— select —";
+      sel.append(placeholder);
+      for (const opt of a.options) {
+        const o = document.createElement("option");
+        o.value = opt;
+        o.textContent = opt;
+        sel.append(o);
+      }
+      control = sel;
+      readValue = () => sel.value.trim();
+    } else {
+      const input = el("textarea") as HTMLTextAreaElement;
+      input.style.minHeight = "38px";
+      control = input;
+      readValue = () => input.value.trim();
+    }
+
+    const actions = el("div", "q-actions");
+    const fill = el<HTMLButtonElement>("button", "btn row");
+    fill.textContent = "Fill & save";
+    const msg = el("span", "err");
+    msg.style.display = "none";
+
+    fill.addEventListener("click", async () => {
+      const value = readValue();
+      if (!value) return;
+      fill.disabled = true;
+      const ok = await this.handlers.onAnswerAsk(a.fieldId, value);
+      fill.textContent = ok ? "Saved ✓" : "Failed";
+      if (!ok) {
+        msg.textContent = "Couldn’t save — is the extension connected?";
+        msg.style.display = "block";
+      }
+      setTimeout(() => {
+        fill.disabled = false;
+        fill.textContent = "Fill & save";
+      }, 1500);
+    });
+
+    actions.append(fill);
+    card.append(label, control, actions, msg);
+    return card;
+  }
+
+  private draftCard(d: DraftItem): HTMLElement {
+    const card = el("div", "q");
+    const label = el("p", "q-label");
+    label.textContent = d.label + (d.charLimit ? `  (max ${d.charLimit} chars)` : "");
     const ta = el("textarea") as HTMLTextAreaElement;
     ta.placeholder = "Click Draft to generate an answer…";
-    card.append(ta);
-
     const actions = el("div", "q-actions");
     const draft = el<HTMLButtonElement>("button", "btn sec row");
     draft.textContent = "Draft";
@@ -183,7 +240,7 @@ export class Panel {
       draft.disabled = true;
       draft.textContent = "Drafting…";
       msg.style.display = "none";
-      const text = await this.handlers.onGenerate(index);
+      const text = await this.handlers.onGenerate(d.fieldId);
       draft.disabled = false;
       draft.textContent = "Redraft";
       if (text == null) {
@@ -193,26 +250,22 @@ export class Panel {
         ta.value = text;
       }
     });
-
     insert.addEventListener("click", () => {
-      if (ta.value.trim()) this.handlers.onInsert(index, ta.value);
+      if (ta.value.trim()) this.handlers.onInsert(d.fieldId, ta.value);
     });
-
     save.addEventListener("click", async () => {
       if (!ta.value.trim()) return;
       save.disabled = true;
-      const ok = await this.handlers.onSave(index, ta.value);
+      const ok = await this.handlers.onSaveDraft(d.fieldId, d.label, ta.value);
       save.textContent = ok ? "Saved ✓" : "Save failed";
-      if (ok) save.className = "btn sec row ok";
       setTimeout(() => {
         save.disabled = false;
         save.textContent = "Save to bank";
-        save.className = "btn sec row";
       }, 1500);
     });
 
     actions.append(draft, insert, save);
-    card.append(actions, msg);
+    card.append(label, ta, actions, msg);
     return card;
   }
 

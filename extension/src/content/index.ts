@@ -1,114 +1,124 @@
 import { pickAdapter } from "./adapters";
-import { fillForm, insertIntoField, type FreeTextQuestion } from "./autofill";
+import { serializeForm, type SerializedForm } from "./serialize";
+import { applyPlan, insertIntoField, setFieldValue, type PlanQuestion } from "./autofill";
 import { Panel } from "./panel";
 import { send } from "./messaging";
-import type { FieldMapResponse } from "../shared/types";
+import { looksLikeApplication, mountCue } from "./detect";
+import type { FieldSchema, FillPlanItem } from "../shared/types";
 
 /**
- * Entry point injected on ATS application pages. Detects the form, mounts the
- * panel, and wires Autofill + per-question AI drafting to the background worker.
+ * Content-script entry point, injected on all pages (except Trackr's own — see
+ * manifest exclude_matches). It detects application forms, shows a dormant cue,
+ * and on engage: serializes the form, asks the backend for a fill plan, applies
+ * it, and renders the ask-or-deduce triage. No network call happens until the
+ * user clicks the cue. The panel never submits the form.
  */
 
 const adapter = pickAdapter();
-let questions: FreeTextQuestion[] = [];
 let mounted = false;
+let serialized: SerializedForm | null = null;
+let askIndex = new Map<string, PlanQuestion>();
+let draftIndex = new Map<string, PlanQuestion>();
 
 const panel = new Panel({
-  onAutofill: runAutofill,
-  onGenerate: generateAnswer,
-  onInsert: (i, text) => {
-    const q = questions[i];
-    if (q) insertIntoField(q.el, text);
+  onEngage: engage,
+  onAnswerAsk: async (fieldId, value) => {
+    const q = askIndex.get(fieldId);
+    if (!q) return false;
+    setFieldValue(q.el, value); // handles text, textarea, select, and radio
+    const res = await send({
+      type: "saveFact",
+      payload: { profileKey: q.profileKey, questionText: q.label, answer: value },
+    });
+    return res.ok;
   },
-  onSave: saveAnswer,
+  onGenerate: async (fieldId) => {
+    const q = draftIndex.get(fieldId);
+    if (!q) return null;
+    const { employer, role } = adapter.employerRole();
+    const res = await send<{ answer?: string }>({
+      type: "answer",
+      payload: {
+        questionText: q.label, questionType: "long", charLimit: q.charLimit,
+        employer, role, externalUrl: location.href.split("#")[0],
+      },
+    });
+    return res.ok && res.data?.answer ? res.data.answer : null;
+  },
+  onInsert: (fieldId, text) => {
+    const q = draftIndex.get(fieldId);
+    // Drafts are always textareas, but PlanQuestion.el is the wider FillableEl.
+    if (q && (q.el instanceof HTMLTextAreaElement || q.el instanceof HTMLInputElement)) {
+      insertIntoField(q.el, text);
+    }
+  },
+  onSaveDraft: async (_fieldId, label, text) => {
+    const { employer } = adapter.employerRole();
+    const res = await send({
+      type: "answer",
+      payload: { questionText: label, answer: text, employer, save: true },
+    });
+    return res.ok;
+  },
 });
 
-async function runAutofill() {
-  const container = adapter.formContainer();
-  if (!container) {
-    panel.showError("No application form found on this page.");
-    return;
-  }
+function formContainer(): ParentNode | null {
+  return adapter.formContainer() ?? (looksLikeApplication() ? document.body : null);
+}
 
-  const res = await send<FieldMapResponse>({ type: "getProfile" });
-  if (!res.ok || !res.data) {
-    panel.showConnectPrompt();
-    return;
-  }
+async function engage() {
+  const container = formContainer();
+  if (!container) { panel.showError("No application form found on this page."); return; }
 
-  const { filled, questions: qs } = fillForm(container, res.data.fields);
-  questions = qs;
-  panel.setStatus(res.data.hasCv ? "CV on file" : "");
-  panel.showFilled(filled, qs.map((q) => ({ label: q.label, charLimit: q.charLimit })));
+  const status = await send<{ connected: boolean }>({ type: "status" });
+  if (!status.ok || !status.data?.connected) { panel.showConnectPrompt(); return; }
 
-  // Record the application (best-effort; don't block the UI).
+  serialized = serializeForm(container);
+  const schemaById = new Map(serialized.fields.map((f) => [f.id, f]));
   const { employer, role } = adapter.employerRole();
+
+  const res = await send<{ plan: FillPlanItem[] }>({
+    type: "plan",
+    payload: { fields: serialized.fields as FieldSchema[], employer, role, url: location.href.split("#")[0] },
+  });
+  if (!res.ok || !res.data?.plan) { panel.showError(res.error || "Couldn’t plan this form."); return; }
+
+  const applied = applyPlan(res.data.plan, serialized.elements, schemaById);
+  askIndex = new Map(applied.asks.map((q) => [q.fieldId, q]));
+  draftIndex = new Map(applied.drafts.map((q) => [q.fieldId, q]));
+
+  panel.showTriage(
+    applied.filled,
+    applied.asks.map((q) => ({ fieldId: q.fieldId, label: q.label, profileKey: q.profileKey, options: q.options })),
+    applied.drafts.map((q) => ({ fieldId: q.fieldId, label: q.label, charLimit: q.charLimit })),
+  );
+
   void send({
     type: "trackApplication",
     payload: {
-      externalUrl: location.href.split("#")[0],
-      ats: adapter.kind,
-      employerName: employer,
-      roleTitle: role,
-      status: "AUTOFILLED",
+      externalUrl: location.href.split("#")[0], ats: adapter.kind,
+      employerName: employer, roleTitle: role, status: "AUTOFILLED",
     },
   });
 }
 
-async function generateAnswer(index: number): Promise<string | null> {
-  const q = questions[index];
-  if (!q) return null;
-  const { employer, role } = adapter.employerRole();
-  const res = await send<{ answer?: string }>({
-    type: "answer",
-    payload: {
-      questionText: q.label,
-      questionType: "long",
-      charLimit: q.charLimit,
-      employer,
-      role,
-      externalUrl: location.href.split("#")[0],
-    },
-  });
-  return res.ok && res.data?.answer ? res.data.answer : null;
-}
-
-async function saveAnswer(index: number, text: string): Promise<boolean> {
-  const q = questions[index];
-  if (!q) return false;
-  const { employer } = adapter.employerRole();
-  const res = await send({
-    type: "answer",
-    payload: { questionText: q.label, answer: text, employer, save: true },
-  });
-  return res.ok;
-}
-
-async function initWhenReady() {
+function init() {
   if (mounted) return;
-  const container = adapter.formContainer();
-  if (!container) return; // wait for SPA to render
-
+  if (!formContainer()) return;
   mounted = true;
-  panel.mount();
-
-  const status = await send<{ connected: boolean }>({ type: "status" });
-  const { employer, role } = adapter.employerRole();
-  if (status.ok && status.data?.connected) {
-    panel.showReady(employer, role);
-  } else {
-    panel.setStatus("not connected");
-    panel.showConnectPrompt();
-  }
+  mountCue(() => { panel.mount(); panel.setStatus(""); void engage(); });
 }
 
-// Static pages: form is present now. SPAs (Ashby/Workday): observe until it is.
-void initWhenReady();
+void init();
 
+// Re-check on DOM changes for SPA-rendered forms, debounced so the heuristic
+// (which scans innerText) runs at most ~once / 300ms on busy pages, and stops
+// observing as soon as we've mounted the cue.
+let debounce: ReturnType<typeof setTimeout> | null = null;
 const observer = new MutationObserver(() => {
-  if (!mounted) void initWhenReady();
+  if (mounted) { observer.disconnect(); return; }
+  if (debounce) return;
+  debounce = setTimeout(() => { debounce = null; init(); }, 300);
 });
 observer.observe(document.documentElement, { childList: true, subtree: true });
-
-// Stop observing after a while to avoid overhead on pages that never show a form.
 setTimeout(() => observer.disconnect(), 20000);
