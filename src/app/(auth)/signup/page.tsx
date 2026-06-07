@@ -12,24 +12,30 @@ export default async function SignupPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">
-        Create your tracker
-      </h1>
-      <p className="mt-1.5 text-sm text-muted">
-        Two minutes to set up. Then onboard and see your matches.
-      </p>
-
-      <div className="mt-6">
-        <SignupForm />
+    <div className="border border-border-strong bg-surface shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between border-b border-border-strong bg-surface-2 px-4 py-2">
+        <span className="label text-[0.62rem] text-accent">▸ New account</span>
+        <span className="label text-[0.6rem] text-subtle">SU27</span>
       </div>
+      <div className="p-5">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">
+          Create your tracker
+        </h1>
+        <p className="mt-1.5 text-sm text-muted">
+          Two minutes to set up. Then onboard and see your matches.
+        </p>
 
-      <p className="mt-6 text-center text-sm text-muted">
-        Already have an account?{" "}
-        <Link href="/login" className="font-medium text-accent hover:underline">
-          Sign in
-        </Link>
-      </p>
+        <div className="mt-5">
+          <SignupForm />
+        </div>
+
+        <p className="mt-5 text-center text-sm text-muted">
+          Already have an account?{" "}
+          <Link href="/login" className="font-medium text-accent hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

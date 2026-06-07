@@ -50,11 +50,9 @@ export default async function OpportunityDetailPage({
     <div className="mx-auto max-w-5xl px-4 py-6">
       <Link
         href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"
+        className="label inline-flex items-center gap-1.5 text-[0.62rem] text-subtle transition-colors hover:text-accent"
       >
-        <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <span aria-hidden className="text-sm leading-none">‹</span>
         Back to tracker
       </Link>
 
@@ -90,12 +88,10 @@ export default async function OpportunityDetailPage({
               href={applyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-medium text-accent-fg shadow-sm transition-colors hover:bg-accent-hover"
+              className="inline-flex h-10 items-center gap-2 bg-accent px-4 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-hover"
             >
               Apply
-              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M7 13l6-6M8 7h5v5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <span aria-hidden className="text-base leading-none">↗</span>
             </a>
           )}
         </div>

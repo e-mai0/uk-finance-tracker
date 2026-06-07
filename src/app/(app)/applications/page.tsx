@@ -25,7 +25,8 @@ export default async function ApplicationsPage() {
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">
+          <div className="label text-[0.6rem] text-subtle">Pipeline</div>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
             Applications
           </h1>
           <p className="mt-0.5 text-sm text-muted">

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { Button } from "@/components/ui/button";
-import { Brand } from "@/components/brand";
 import { prisma } from "@/server/db";
 import { ROLE_FAMILIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -21,18 +20,28 @@ export default async function LandingPage() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-        <Brand href={null} />
-        <div className="flex items-center gap-5">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-muted transition-colors hover:text-ink"
-          >
-            Sign in
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Get started</Button>
-          </Link>
+      {/* Dark command rail — nav + ticker stack into one black bar, like the desk */}
+      <header className="chrome sticky top-0 z-40 border-b border-chrome-line">
+        <div className="mx-auto flex h-12 w-full max-w-6xl items-center justify-between px-6">
+          <div className="flex items-baseline gap-4">
+            <span className="text-[1.1rem] font-extrabold tracking-tight text-white">
+              Trackr<span className="text-amber">.</span>
+            </span>
+            <span className="label hidden text-[0.6rem] text-chrome-dim sm:inline">
+              UK Finance · SU27
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/login"
+              className="label px-2.5 py-1.5 text-[0.62rem] text-chrome-ink-2 transition-colors hover:text-white"
+            >
+              Sign in
+            </Link>
+            <Link href="/signup">
+              <Button size="sm">Get started</Button>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -119,19 +128,21 @@ export default async function LandingPage() {
  *  previewed. CSS marquee (globals.css), pauses on hover, halts on reduced
  *  motion. Sample positions; the real desk renders your tracked roles. */
 function DemoTape() {
+  const up = "text-[#46c178]";
+  const down = "text-[#f0584f]";
   const lanes = [
-    ["MERC", "▲", "text-success", "12d"],
-    ["BLAC", "▲", "text-success", "8d"],
-    ["LAZ", "◆", "text-warning", "SOON"],
-    ["GRNH", "▲", "text-success", "21d"],
-    ["HLVR", "▼", "text-danger", "3d"],
-    ["ARDN", "▲", "text-success", "16d"],
-    ["WLTN", "▲", "text-success", "9d"],
-    ["KEST", "◆", "text-warning", "SOON"],
-    ["BRYN", "▲", "text-success", "27d"],
-    ["CALD", "▲", "text-success", "5d"],
-    ["ORML", "▼", "text-danger", "2d"],
-    ["VANE", "▲", "text-success", "18d"],
+    ["MERC", "▲", up, "12d"],
+    ["BLAC", "▲", up, "8d"],
+    ["LAZ", "◆", "text-amber", "SOON"],
+    ["GRNH", "▲", up, "21d"],
+    ["HLVR", "▼", down, "3d"],
+    ["ARDN", "▲", up, "16d"],
+    ["WLTN", "▲", up, "9d"],
+    ["KEST", "◆", "text-amber", "SOON"],
+    ["BRYN", "▲", up, "27d"],
+    ["CALD", "▲", up, "5d"],
+    ["ORML", "▼", down, "2d"],
+    ["VANE", "▲", up, "18d"],
   ] as const;
 
   const Cell = ({
@@ -146,12 +157,12 @@ function DemoTape() {
     chg: string;
   }) => (
     <span className="inline-flex items-center gap-2 px-4 py-1.5">
-      <span className="tabular text-[0.74rem] font-semibold tracking-wide text-accent">
+      <span className="tabular text-[0.74rem] font-semibold tracking-wide text-amber">
         {code}
       </span>
       <span className={cn("text-[0.66rem] leading-none", tone)}>{glyph}</span>
       <span className={cn("tabular text-[0.72rem]", tone)}>{chg}</span>
-      <span aria-hidden className="ml-2 text-border-strong">
+      <span aria-hidden className="ml-2 text-chrome-line">
         │
       </span>
     </span>
@@ -166,14 +177,20 @@ function DemoTape() {
   );
 
   return (
-    <div className="border-y border-border bg-surface">
-      <div className="ticker relative mx-auto max-w-6xl overflow-hidden px-0">
-        <div className="ticker-track" style={{ "--ticker-duration": "46s" } as CSSProperties}>
-          {run("a", false)}
-          {run("b", true)}
+    <div className="chrome border-b border-chrome-line">
+      <div className="mx-auto flex max-w-6xl items-stretch">
+        <div className="flex shrink-0 items-center gap-2 border-r border-chrome-line px-4">
+          <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-success" />
+          <span className="label text-[0.6rem] text-chrome-ink-2">Live tape</span>
         </div>
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-surface to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface to-transparent" />
+        <div className="ticker relative min-w-0 flex-1 overflow-hidden">
+          <div className="ticker-track" style={{ "--ticker-duration": "46s" } as CSSProperties}>
+            {run("a", false)}
+            {run("b", true)}
+          </div>
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-chrome to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-chrome to-transparent" />
+        </div>
       </div>
     </div>
   );
