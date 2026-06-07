@@ -3,6 +3,7 @@ import {
   signupSchema,
   educationSchema,
   onboardingSchema,
+  extPlanRequestSchema,
 } from "../lib/validation";
 
 describe("signupSchema", () => {
@@ -87,5 +88,48 @@ describe("onboardingSchema", () => {
   it("requires at least one target role family", () => {
     const noFamily = { ...valid, targetRoleFamilies: [] };
     expect(onboardingSchema.safeParse(noFamily).success).toBe(false);
+  });
+});
+
+describe("extPlanRequestSchema", () => {
+  const validField = {
+    id: "f0",
+    label: "Email",
+    type: "email",
+    required: true,
+  };
+
+  it("accepts a minimal valid request", () => {
+    const r = extPlanRequestSchema.safeParse({ fields: [validField] });
+    expect(r.success).toBe(true);
+  });
+
+  it("defaults required to false and trims label", () => {
+    const r = extPlanRequestSchema.parse({
+      fields: [{ id: "f1", label: "  Full name  ", type: "text" }],
+    });
+    expect(r.fields[0].required).toBe(false);
+    expect(r.fields[0].label).toBe("Full name");
+  });
+
+  it("rejects an empty fields array", () => {
+    const r = extPlanRequestSchema.safeParse({ fields: [] });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects an unknown field type", () => {
+    const r = extPlanRequestSchema.safeParse({
+      fields: [{ id: "f0", label: "x", type: "color" }],
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("caps fields at 200 to bound payload size", () => {
+    const many = Array.from({ length: 201 }, (_, i) => ({
+      id: `f${i}`,
+      label: "x",
+      type: "text",
+    }));
+    expect(extPlanRequestSchema.safeParse({ fields: many }).success).toBe(false);
   });
 });

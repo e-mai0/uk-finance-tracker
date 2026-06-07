@@ -193,3 +193,44 @@ export const extApplicationSchema = z.object({
 });
 
 export type ExtApplicationInput = z.infer<typeof extApplicationSchema>;
+
+// ---------------------------------------------------------------------------
+// Apply copilot — universal form planning (/api/ext/plan)
+// ---------------------------------------------------------------------------
+
+export const FIELD_TYPES = [
+  "text", "email", "tel", "url", "number",
+  "textarea", "select", "radio", "checkbox", "date",
+] as const;
+
+export const fieldSchemaSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  label: z.string().trim().max(400).default(""),
+  nearbyText: z.string().trim().max(600).optional(),
+  type: z.enum(FIELD_TYPES),
+  options: z.array(z.string().trim().max(200)).max(80).optional(),
+  required: z.boolean().default(false),
+  charLimit: z.number().int().positive().max(20000).optional(),
+});
+
+export const extPlanRequestSchema = z.object({
+  fields: z.array(fieldSchemaSchema).min(1).max(200),
+  employer: optStr(160),
+  role: optStr(200),
+  url: optStr(500),
+});
+
+export type FieldSchema = z.infer<typeof fieldSchemaSchema>;
+export type ExtPlanRequest = z.infer<typeof extPlanRequestSchema>;
+
+export type FillAction = "fill" | "ask" | "draft" | "skip";
+
+export interface FillPlanItem {
+  fieldId: string;
+  action: FillAction;
+  value?: string;
+  profileKey?: string;
+  confidence: number;
+  question?: string;
+  reason?: string;
+}
