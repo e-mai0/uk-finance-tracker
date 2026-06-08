@@ -3,12 +3,15 @@ import { findApplicationForm, parseTitle, firstHeading } from "./util";
 
 export const greenhouse: AtsAdapter = {
   kind: "GREENHOUSE",
-  matches: (host) => host.includes("greenhouse.io"),
+  matches: (host) =>
+    host.includes("greenhouse.io") || host.includes("boards.greenhouse.io"),
   formContainer() {
     return (
-      document.querySelector("#application_form") ??
-      document.querySelector("#application-form") ??
+      document.querySelector("#application_form") ??       // classic boards
+      document.querySelector("#application-form") ??       // new job board
+      document.querySelector('form[id*="application" i]') ??
       document.querySelector('form[action*="greenhouse"]') ??
+      document.querySelector("main form") ??               // job-boards.greenhouse.io
       findApplicationForm()
     );
   },
