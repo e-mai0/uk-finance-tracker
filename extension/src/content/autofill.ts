@@ -55,7 +55,7 @@ import type { FieldSchema, FillPlanItem } from "../shared/types";
 export type FillTarget = FillableEl | AriaControl;
 
 function isAria(el: FillTarget): el is AriaControl {
-  return (el as AriaControl).kind === "aria";
+  return "kind" in el && (el as AriaControl).kind === "aria";
 }
 
 export interface PlanQuestion {
