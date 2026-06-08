@@ -43,3 +43,19 @@ describe("looksLikeApplication", () => {
     expect(looksLikeApplication()).toBe(false);
   });
 });
+
+describe("looksLikeApplication — form-less layouts", () => {
+  it("detects a cluster of inputs not wrapped in a <form>", () => {
+    document.body.innerHTML = `
+      <div><input type="text"/></div>
+      <div><input type="email"/></div>
+      <div><input type="tel"/></div>
+      <div><textarea></textarea></div>`;
+    expect(looksLikeApplication()).toBe(true);
+  });
+
+  it("ignores a single stray search box", () => {
+    document.body.innerHTML = `<input type="search" placeholder="Search"/>`;
+    expect(looksLikeApplication()).toBe(false);
+  });
+});
