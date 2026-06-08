@@ -59,3 +59,29 @@ describe("looksLikeApplication — form-less layouts", () => {
     expect(looksLikeApplication()).toBe(false);
   });
 });
+
+describe("detection counts ARIA choice widgets", () => {
+  const radiogroup = (label: string) => `
+    <div role="radiogroup" aria-label="${label}">
+      <div role="radio" aria-label="Yes"></div>
+      <div role="radio" aria-label="No"></div>
+    </div>`;
+
+  it("hasAnyField is true for an ARIA-only form (no native inputs)", () => {
+    document.body.innerHTML = radiogroup("Eligible to work in the UK?");
+    expect(hasAnyField()).toBe(true);
+  });
+
+  it("looksLikeApplication is true for 4 ARIA radiogroups and no native fields", () => {
+    document.body.innerHTML = ["a", "b", "c", "d"].map(radiogroup).join("");
+    expect(looksLikeApplication()).toBe(true);
+  });
+
+  it("counts native fields and ARIA widgets together toward the threshold", () => {
+    document.body.innerHTML = `
+      <input type="text"/><input type="email"/>
+      ${radiogroup("Sponsorship needed?")}`; // 2 native + 1 ARIA = 3
+    document.body.innerHTML += `<p>cover letter</p>`; // apply wording for the 3-field case
+    expect(looksLikeApplication()).toBe(true);
+  });
+});

@@ -10,14 +10,21 @@ const APPLY_HINT =
 const FILLABLE_SELECTOR =
   "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]), textarea, select";
 
+const ARIA_CONTROL_SELECTOR = '[role="radiogroup"], [role="listbox"]';
+
 /** True if the page has at least one fillable field. */
 export function hasAnyField(doc: Document = document): boolean {
-  return doc.querySelector(FILLABLE_SELECTOR) != null;
+  return (
+    doc.querySelector(FILLABLE_SELECTOR) != null ||
+    doc.querySelector(ARIA_CONTROL_SELECTOR) != null
+  );
 }
 
 /** True if the page has a form-like cluster of inputs and application wording. */
 export function looksLikeApplication(doc: Document = document): boolean {
-  const count = doc.querySelectorAll(FILLABLE_SELECTOR).length;
+  const count =
+    doc.querySelectorAll(FILLABLE_SELECTOR).length +
+    doc.querySelectorAll(ARIA_CONTROL_SELECTOR).length;
   if (count < 3) return false;
   const hasTextarea = doc.querySelector("textarea") != null;
   const text = (doc.body?.innerText ?? doc.body?.textContent ?? "").slice(0, 5000);
