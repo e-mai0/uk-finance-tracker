@@ -7,15 +7,23 @@
 const APPLY_HINT =
   /\b(apply|application|cover letter|why (do|are) you|right to work|sponsorship|notice period|cv|resume)\b/i;
 
+const FILLABLE_SELECTOR =
+  "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]), textarea, select";
+
+/** True if the page has at least one fillable field. */
+export function hasAnyField(doc: Document = document): boolean {
+  return doc.querySelector(FILLABLE_SELECTOR) != null;
+}
+
 /** True if the page has a form-like cluster of inputs and application wording. */
 export function looksLikeApplication(doc: Document = document): boolean {
-  const fields = doc.querySelectorAll(
-    "input:not([type=hidden]):not([type=submit]):not([type=button]), textarea, select",
-  );
-  if (fields.length < 4) return false;
+  const count = doc.querySelectorAll(FILLABLE_SELECTOR).length;
+  if (count < 3) return false;
   const hasTextarea = doc.querySelector("textarea") != null;
-  const text = (doc.body?.innerText || "").slice(0, 5000);
-  return hasTextarea || APPLY_HINT.test(text);
+  const text = (doc.body?.innerText ?? doc.body?.textContent ?? "").slice(0, 5000);
+  const applyish = hasTextarea || APPLY_HINT.test(text);
+  // 4+ fields look like a form on their own; exactly 3 needs apply wording.
+  return count >= 4 ? true : applyish;
 }
 
 /** Mount the dormant cue. Calls onEngage exactly once when clicked. */

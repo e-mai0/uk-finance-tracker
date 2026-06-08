@@ -3,7 +3,7 @@ import { serializeForm, type SerializedForm } from "./serialize";
 import { applyPlan, insertIntoField, setFieldValue, type PlanQuestion } from "./autofill";
 import { Panel } from "./panel";
 import { send } from "./messaging";
-import { looksLikeApplication, mountCue } from "./detect";
+import { looksLikeApplication, hasAnyField, mountCue } from "./detect";
 import type { FieldSchema, FillPlanItem } from "../shared/types";
 
 /**
@@ -66,8 +66,9 @@ function formContainer(): ParentNode | null {
   return adapter.formContainer() ?? (looksLikeApplication() ? document.body : null);
 }
 
-async function engage() {
-  const container = formContainer();
+async function engage(force = false) {
+  const container =
+    formContainer() ?? (force && hasAnyField() ? document.body : null);
   if (!container) { panel.showError("No application form found on this page."); return; }
 
   const status = await send<{ connected: boolean }>({ type: "status" });
@@ -101,6 +102,21 @@ async function engage() {
     },
   });
 }
+
+// The popup (extension icon) broadcasts this to every frame; the frame that
+// owns a form engages, the rest no-op. This is the universal fallback for pages
+// the auto-detector declines.
+chrome.runtime.onMessage.addListener((msg: { type?: string }, _sender, sendResponse) => {
+  if (msg?.type !== "trackr:activate") return false;
+  const hasForm = formContainer() != null || hasAnyField();
+  if (!hasForm) { sendResponse({ ok: false }); return true; }
+  document.getElementById("trackr-cue-root")?.remove();
+  panel.mount();
+  panel.setStatus("");
+  void engage(true);
+  sendResponse({ ok: true });
+  return true;
+});
 
 function init() {
   if (mounted) return;
