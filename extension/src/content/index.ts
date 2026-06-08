@@ -82,7 +82,10 @@ async function engage(force = false) {
     type: "plan",
     payload: { fields: serialized.fields as FieldSchema[], employer, role, url: location.href.split("#")[0] },
   });
-  if (!res.ok || !res.data?.plan) { panel.showError(res.error || "Couldn’t plan this form."); return; }
+  if (!res.ok || !res.data?.plan) {
+    panel.showError(res.error || "Couldn’t plan this form. Try reloading the page.");
+    return;
+  }
 
   const applied = applyPlan(res.data.plan, serialized.elements, schemaById);
   askIndex = new Map(applied.asks.map((q) => [q.fieldId, q]));
