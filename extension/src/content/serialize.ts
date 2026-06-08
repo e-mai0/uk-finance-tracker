@@ -1,10 +1,12 @@
 import { getLabelText, collectFields, type FillableEl } from "./field-map";
+import { collectAriaControls } from "./aria-controls";
+import type { FillTarget } from "./autofill";
 import type { FieldSchema, FieldType } from "../shared/types";
 import { LIMITS } from "../shared/limits";
 
 export interface SerializedForm {
   fields: FieldSchema[];
-  elements: Map<string, FillableEl>;
+  elements: Map<string, FillTarget>;
 }
 
 function fieldType(el: FillableEl): FieldType {
@@ -31,7 +33,7 @@ function optionsFor(el: FillableEl): string[] | undefined {
 
 /** Walk a form container into a compact FieldSchema[] plus an id→element map. */
 export function serializeForm(root: ParentNode): SerializedForm {
-  const elements = new Map<string, FillableEl>();
+  const elements = new Map<string, FillTarget>();
   const fields: FieldSchema[] = [];
   const seenRadioGroups = new Set<string>();
   let i = 0;
@@ -61,6 +63,18 @@ export function serializeForm(root: ParentNode): SerializedForm {
       required: el.hasAttribute("required") || el.getAttribute("aria-required") === "true",
       charLimit:
         el instanceof HTMLTextAreaElement && el.maxLength > 0 ? el.maxLength : undefined,
+    });
+  }
+
+  for (const control of collectAriaControls(root)) {
+    const id = `f${i++}`;
+    elements.set(id, control);
+    fields.push({
+      id,
+      label: control.label,
+      type: control.type,
+      options: control.options.map((o) => o.label),
+      required: control.required,
     });
   }
 
