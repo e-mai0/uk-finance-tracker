@@ -9,6 +9,7 @@ const connectBtn = $<HTMLButtonElement>("connect");
 const tokenInput = $<HTMLInputElement>("token");
 const apiBaseSelect = $<HTMLSelectElement>("apiBase");
 const msg = $<HTMLDivElement>("msg");
+const activateBtn = $<HTMLButtonElement>("activate");
 
 function setMsg(text: string, ok = false) {
   msg.textContent = text;
@@ -52,6 +53,18 @@ disconnectBtn.addEventListener("click", async () => {
   await send({ type: "disconnect" });
   setMsg("Disconnected.", true);
   await refresh();
+});
+
+activateBtn.addEventListener("click", async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) { setMsg("No active tab."); return; }
+  // Broadcast to all frames; the frame with a form will engage.
+  chrome.tabs.sendMessage(tab.id, { type: "trackr:activate" }, () => {
+    // Swallow "no receiving end" when the content script isn't injected here.
+    void chrome.runtime.lastError;
+  });
+  setMsg("Activated — look bottom-right of the page.", true);
+  setTimeout(() => window.close(), 700);
 });
 
 void refresh();
