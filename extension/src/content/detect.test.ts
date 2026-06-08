@@ -30,4 +30,16 @@ describe("looksLikeApplication", () => {
       <input type="text"/><input type="email"/><input type="tel"/>`;
     expect(looksLikeApplication()).toBe(true);
   });
+  it("is false for exactly 3 fields with no textarea and no apply wording", () => {
+    document.body.innerHTML = `
+      <p>Newsletter signup</p>
+      <input type="text"/><input type="email"/><input type="tel"/>`;
+    expect(looksLikeApplication()).toBe(false);
+  });
+  it("is false for 2 fields regardless of wording", () => {
+    document.body.innerHTML = `
+      <p>Apply now with your cover letter</p>
+      <input type="text"/><input type="email"/>`;
+    expect(looksLikeApplication()).toBe(false);
+  });
 });

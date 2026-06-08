@@ -109,7 +109,8 @@ async function engage(force = false) {
 chrome.runtime.onMessage.addListener((msg: { type?: string }, _sender, sendResponse) => {
   if (msg?.type !== "trackr:activate") return false;
   const hasForm = formContainer() != null || hasAnyField();
-  if (!hasForm) { sendResponse({ ok: false }); return true; }
+  if (!hasForm) return false;
+  mounted = true;
   document.getElementById("trackr-cue-root")?.remove();
   panel.mount();
   panel.setStatus("");
