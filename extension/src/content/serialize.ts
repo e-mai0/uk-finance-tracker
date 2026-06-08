@@ -1,5 +1,6 @@
 import { getLabelText, collectFields, type FillableEl } from "./field-map";
 import type { FieldSchema, FieldType } from "../shared/types";
+import { LIMITS } from "../shared/limits";
 
 export interface SerializedForm {
   fields: FieldSchema[];
@@ -63,7 +64,24 @@ export function serializeForm(root: ParentNode): SerializedForm {
     });
   }
 
-  return { fields, elements };
+  return { fields: clampFields(fields), elements };
+}
+
+/** Clamp serialized fields to the server's accepted bounds (defense in depth —
+ *  the server clamps too). Truncates over-long text and caps option/field counts. */
+export function clampFields(fields: FieldSchema[]): FieldSchema[] {
+  return fields.slice(0, LIMITS.maxFields).map((f) => ({
+    ...f,
+    label: (f.label ?? "").slice(0, LIMITS.maxLabel),
+    nearbyText: f.nearbyText
+      ? f.nearbyText.slice(0, LIMITS.maxNearbyText)
+      : undefined,
+    options: f.options
+      ? f.options.slice(0, LIMITS.maxOptions).map((o) => o.slice(0, LIMITS.maxOption))
+      : undefined,
+    charLimit:
+      f.charLimit && f.charLimit > LIMITS.maxCharLimit ? LIMITS.maxCharLimit : f.charLimit,
+  }));
 }
 
 function radioOptions(root: ParentNode, name: string): string[] | undefined {
