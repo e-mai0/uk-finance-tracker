@@ -176,4 +176,23 @@ describe("sanitizePlanBody", () => {
     });
     expect(extPlanRequestSchema.safeParse(clean).success).toBe(true);
   });
+
+  it("drops a field whose id is only whitespace", () => {
+    const clean = sanitizePlanBody({
+      fields: [field({ id: "   " }), field({ id: "ok" })],
+    }) as { fields: { id: string }[] };
+    expect(clean.fields.length).toBe(1);
+    expect(clean.fields[0].id).toBe("ok");
+    expect(extPlanRequestSchema.safeParse(clean).success).toBe(true);
+  });
+
+  it("coerces non-string employer/role/url to undefined so the schema accepts them", () => {
+    const clean = sanitizePlanBody({
+      fields: [field()],
+      employer: 42,
+      role: ["x"],
+      url: { nope: true },
+    });
+    expect(extPlanRequestSchema.safeParse(clean).success).toBe(true);
+  });
 });

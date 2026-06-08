@@ -247,7 +247,7 @@ export function sanitizePlanBody(body: unknown): unknown {
             .map((o) => o.slice(0, 200))
         : undefined;
       return {
-        id: typeof f.id === "string" ? f.id.slice(0, 40) : "",
+        id: typeof f.id === "string" ? f.id.trim().slice(0, 40) : "",
         label: typeof f.label === "string" ? f.label.slice(0, 400) : "",
         nearbyText:
           typeof f.nearbyText === "string" ? f.nearbyText.slice(0, 600) : undefined,
@@ -265,9 +265,9 @@ export function sanitizePlanBody(body: unknown): unknown {
 
   return {
     fields,
-    employer: typeof b.employer === "string" ? b.employer.slice(0, 160) : b.employer,
-    role: typeof b.role === "string" ? b.role.slice(0, 200) : b.role,
-    url: typeof b.url === "string" ? b.url.slice(0, 500) : b.url,
+    employer: typeof b.employer === "string" ? b.employer.slice(0, 160) : undefined,
+    role: typeof b.role === "string" ? b.role.slice(0, 200) : undefined,
+    url: typeof b.url === "string" ? b.url.slice(0, 500) : undefined,
   };
 }
 
