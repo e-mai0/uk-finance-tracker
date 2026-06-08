@@ -121,6 +121,8 @@ chrome.runtime.onMessage.addListener((msg: { type?: string }, _sender, sendRespo
 
 function init() {
   if (mounted) return;
+  // In sub-frames, only bother with reasonably sized frames (skip ad/util iframes).
+  if (window.top !== window && window.innerWidth * window.innerHeight < 90_000) return;
   if (!formContainer()) return;
   mounted = true;
   mountCue(() => { panel.mount(); panel.setStatus(""); void engage(); });
