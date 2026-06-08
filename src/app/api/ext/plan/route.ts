@@ -1,7 +1,7 @@
 import { requireToken } from "../../../../server/ext-auth";
 import { buildFieldMap } from "../../../../server/ext-profile";
 import { planForm } from "../../../../server/ai/generate";
-import { extPlanRequestSchema } from "../../../../lib/validation";
+import { extPlanRequestSchema, sanitizePlanBody } from "../../../../lib/validation";
 import { json, unauthorized, preflight } from "../../../../server/ext-http";
 
 export const runtime = "nodejs";
@@ -22,10 +22,13 @@ export async function POST(req: Request) {
     return json({ error: "Invalid JSON body." }, 400);
   }
 
-  const parsed = extPlanRequestSchema.safeParse(body);
+  const parsed = extPlanRequestSchema.safeParse(sanitizePlanBody(body));
   if (!parsed.success) {
     return json(
-      { error: "Invalid request.", fieldErrors: parsed.error.flatten().fieldErrors },
+      {
+        error: "No usable form fields were found on this page.",
+        fieldErrors: parsed.error.flatten().fieldErrors,
+      },
       400,
     );
   }
