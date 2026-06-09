@@ -2,9 +2,12 @@ import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from 
 import { sonnet } from "@/server/ai/models";
 import { buildTools } from "@/server/ai/tools";
 import { memoryService } from "@/server/memory/service";
+import { annotateDecay } from "@/server/memory/facts";
+import { recordUsage } from "@/server/ai/budget";
 import { prisma } from "@/server/db";
 
 const CORE_PATHS = ["profile.md", "voice.md", "strategy.md"];
+const MAX_CORE_CHARS = 6000;
 
 export function buildSystemPrompt(
   coreFiles: { path: string; content: string }[],
@@ -27,28 +30,51 @@ Memory rules:
 Style: plain, direct, specific. British English. No em dashes. Use the user's actual stories and facts, never generic filler. Be honest about weak fit; flattery costs the user money and time.${questions}`;
 }
 
+/** Load the 3 oldest pending gardener questions for this user. Does NOT mark them asked. */
+export async function loadPendingQuestions(userId: string): Promise<{ id: string; question: string }[]> {
+  return prisma.gardenerQuestion.findMany({
+    where: { userId, status: "pending" },
+    orderBy: { createdAt: "asc" },
+    take: 3,
+    select: { id: true, question: true },
+  });
+}
+
 export async function streamCyclops(args: { userId: string; messages: UIMessage[] }) {
   const files = await memoryService.list(args.userId);
+  const now = new Date();
+
   const core = CORE_PATHS.map((p) => files.find((f) => f.path === p))
     .filter((f): f is NonNullable<typeof f> => Boolean(f))
-    .map((f) => ({ path: f.path, content: f.content }));
-
-  const pending = await prisma.gardenerQuestion.findMany({
-    where: { userId: args.userId, status: "pending" },
-    take: 3,
-  });
-  if (pending.length) {
-    await prisma.gardenerQuestion.updateMany({
-      where: { id: { in: pending.map((q) => q.id) } },
-      data: { status: "asked" },
+    .map((f) => {
+      // Item 2: annotate decay and cap at MAX_CORE_CHARS
+      let content = annotateDecay(f.path, f.content, now);
+      if (content.length > MAX_CORE_CHARS) {
+        content = content.slice(0, MAX_CORE_CHARS) + "\n[truncated]";
+      }
+      return { path: f.path, content };
     });
-  }
 
-  return streamText({
+  // Item 4: fetch pending questions but DO NOT mark them asked here
+  const pendingRows = await loadPendingQuestions(args.userId);
+  const pendingQuestions = pendingRows.map((r) => r.question);
+
+  const result = streamText({
     model: sonnet,
-    system: buildSystemPrompt(core, pending.map((q) => q.question)),
+    system: buildSystemPrompt(core, pendingQuestions),
     messages: await convertToModelMessages(args.messages),
     tools: buildTools(args.userId),
     stopWhen: stepCountIs(12),
+    // Item 5: per-step budget recording (fire-and-forget)
+    onStepFinish: (step) => {
+      const tokens = step.usage?.totalTokens ?? 0;
+      if (tokens > 0) {
+        recordUsage(args.userId, tokens).catch((err) =>
+          console.error("[cyclops] failed to record step usage", { userId: args.userId, err }),
+        );
+      }
+    },
   });
+
+  return { result, pendingQuestions: pendingRows };
 }
