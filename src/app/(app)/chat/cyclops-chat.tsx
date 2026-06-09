@@ -1,8 +1,8 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, isToolUIPart, isTextUIPart } from "ai";
-import type { UIMessage, UIMessagePart } from "ai";
+import { DefaultChatTransport, isToolUIPart, isTextUIPart, getToolName } from "ai";
+import type { UIMessage, UIMessagePart, ToolUIPart, DynamicToolUIPart } from "ai";
 import { useRef, useState, useEffect, FormEvent, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,7 @@ const TOOL_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-type HitChip = { kind: string; confidence: number };
+type HitChip = { kind: string; confidence: string };
 
 // ---------------------------------------------------------------------------
 // MessagePart sub-component
@@ -34,10 +34,11 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
   }
 
   if (isToolUIPart(part)) {
-    // Narrow to the shared structure we need
-    const toolName = (part as { toolName?: string }).toolName ?? "";
-    const state = (part as { state?: string }).state ?? "";
-    const output = (part as { output?: unknown }).output;
+    // Bug 1 fix: use SDK helper — static parts derive name from type, dynamic from .toolName
+    const toolPart = part as ToolUIPart | DynamicToolUIPart;
+    const toolName = getToolName(toolPart);
+    const state = toolPart.state;
+    const output = (toolPart.state === "output-available") ? toolPart.output : undefined;
 
     const label = TOOL_LABELS[toolName] ?? toolName;
 
@@ -58,11 +59,12 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
     ) {
       const out = output as Record<string, unknown>;
       if (Array.isArray(out.semantic)) {
+        // Bug 3 fix: server returns confidence as "high"|"medium"|"low" string
         semanticHits = (out.semantic as Array<Record<string, unknown>>)
           .slice(0, 3)
           .map((h) => ({
             kind: String(h.kind ?? h.type ?? "match"),
-            confidence: Number(h.confidence ?? h.score ?? 0),
+            confidence: String(h.confidence ?? ""),
           }));
       }
     }
@@ -72,8 +74,11 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
         <span
           className={cn(
             "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[0.62rem]",
-            state === "result" || state === "output"
+            // Bug 2 fix: real finished states per SDK are output-available/output-error/output-denied
+            state === "output-available" || state === "output-denied"
               ? "border-border bg-surface-2 text-muted"
+              : state === "output-error"
+              ? "border-danger-soft bg-danger-soft text-danger"
               : "border-border-strong bg-surface text-subtle",
           )}
         >
@@ -106,12 +111,13 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
                 key={i}
                 className="border border-border-strong bg-surface-2 px-1 py-0.5 font-mono text-[0.58rem] uppercase tracking-wide text-muted"
               >
+                {/* Bug 3 fix: confidence is "high"|"medium"|"low" — render uppercased string */}
                 {h.kind.toUpperCase()}
                 <span aria-hidden className="mx-0.5 text-border-strong">
                   ·
                 </span>
                 <span className="text-accent">
-                  {Math.round(h.confidence * 100)}%
+                  {h.confidence.toUpperCase()}
                 </span>
               </span>
             ))}
