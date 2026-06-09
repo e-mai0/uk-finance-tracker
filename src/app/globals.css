@@ -11,21 +11,22 @@
    editorial serif (Newsreader, marketing headlines only). Light theme.
 --------------------------------------------------------------------------- */
 @theme {
-  /* Surfaces — warm financial-newsprint white, layered by elevation */
-  --color-canvas: #faf8f4; /* page base, faint warm wash */
+  /* Surfaces — "Porcelain": crisp near-white, faintly cool-neutral. De-yellowed
+     from the old warm wash so the desk reads clean rather than tinted. */
+  --color-canvas: #f6f6f5; /* page base, near-white */
   --color-surface: #ffffff; /* panels / the terminal body */
-  --color-surface-2: #f3f1ec; /* header rows, ribbon cells, subtle fills */
-  --color-surface-3: #eae7df; /* deeper fill / pressed */
+  --color-surface-2: #f1f1ef; /* header rows, ribbon cells, subtle fills */
+  --color-surface-3: #e7e7e3; /* deeper fill / pressed */
 
   /* Ink scale */
-  --color-ink: #14171b; /* near-black primary text */
-  --color-muted: #444a52; /* secondary text */
-  --color-subtle: #797f88; /* meta / labels */
-  --color-faint: #a4a9b0; /* faintest */
+  --color-ink: #18181a; /* near-black primary text */
+  --color-muted: #56565a; /* secondary text */
+  --color-subtle: #86868b; /* meta / labels */
+  --color-faint: #ababb0; /* faintest */
 
   /* Hairlines — the terminal's gridlines */
-  --color-border: #e6e3da;
-  --color-border-strong: #d3cfc4;
+  --color-border: #e8e8e5;
+  --color-border-strong: #d9d9d5;
 
   /* Accent — committed AMBER identifier (codes, links, active, command, live).
      Burnt so it stays legible as text/fill on the white desk; the bright amber
@@ -35,7 +36,7 @@
   --color-accent-hover: #8f3f06;
   --color-accent-fg: #ffffff;
   --color-accent-soft: #f8ecda;
-  --color-accent-tint: #fcf5e9;
+  --color-accent-tint: #f8f2ea; /* cooler so the warm active-row wash doesn't read yellow on near-white */
 
   /* Dark command chrome — the striking near-black rail over the white desk */
   --color-chrome: #111519;

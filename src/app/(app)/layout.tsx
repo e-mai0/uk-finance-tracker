@@ -17,7 +17,7 @@ export default async function AppLayout({
   });
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-1 flex-col">
       <AppHeader name={session.user.name ?? "You"} savedCount={savedCount} />
       {/* Full-bleed shell — data pages fill the viewport edge-to-edge like a
           real terminal; content/form pages supply their own padded container. */}

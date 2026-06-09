@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Libre_Franklin, JetBrains_Mono, Newsreader } from "next/font/google";
+import { StatusBar } from "@/components/status-bar";
 import "./globals.css";
 
 // UI grotesque — Franklin Gothic lineage, an institutional / financial-press
@@ -44,7 +45,10 @@ export default function RootLayout({
       lang="en"
       className={`${sans.variable} ${mono.variable} ${display.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <div className="flex flex-1 flex-col">{children}</div>
+        <StatusBar />
+      </body>
     </html>
   );
 }

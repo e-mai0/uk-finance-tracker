@@ -5,6 +5,7 @@ import { FitPill } from "./fit-pill";
 import { SaveButton } from "./save-button";
 import { ROLE_FAMILY_SHORT } from "@/lib/constants";
 import { cn, formatShortDate, daysUntil, ticker, locCode } from "@/lib/utils";
+import { DaysLeft, Dash } from "./signals";
 
 // # · CODE · FIRM/ROLE · DIV · LOC · DEADLINE · DAYS · FIT(+bar) · STATUS · SAVE
 const GRID =
@@ -104,7 +105,7 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
         </span>
 
         <span className={cn(CELL, "flex items-center justify-end py-2")}>
-          <DaysLeft dl={dl} />
+          <DaysLeft dl={dl} className="text-[0.78rem]" />
         </span>
 
         <span className={cn(CELL, "flex items-center py-2")}>
@@ -152,22 +153,6 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
         </div>
       </div>
     </Link>
-  );
-}
-
-function Dash() {
-  return <span className="text-faint">—</span>;
-}
-
-function DaysLeft({ dl }: { dl: number | null }) {
-  if (dl == null || dl < 0)
-    return <span className="tabular text-[0.78rem] text-faint">—</span>;
-  const cls =
-    dl <= 7 ? "text-danger" : dl <= 14 ? "text-warning" : "text-subtle";
-  return (
-    <span className={cn("tabular text-[0.78rem] font-semibold", cls)}>
-      {dl === 0 ? "0d" : `${dl}d`}
-    </span>
   );
 }
 
