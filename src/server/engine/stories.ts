@@ -1,6 +1,11 @@
 import matter from "gray-matter";
 import type { Story } from "@/server/engine/types";
 
+/** Slugify an employer name the same way companies/<slug>.md paths are formed. */
+export function employerSlugOf(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 export function parseStory(path: string, content: string): Story | null {
   if (!content.startsWith("---")) return null;
   let data: Record<string, unknown>;
@@ -70,10 +75,16 @@ export function selectStories(
   if (!opts.themes.length) return [];
   return stories
     .filter((s) => s.themes.some((t) => opts.themes.includes(t)))
-    .filter((s) => !opts.employerSlug || !s.employersUsed.some((u) => u.employer === opts.employerSlug))
-    .sort(
-      (a, b) =>
-        (STRENGTH_ORDER[b.strengthSignal ?? ""] ?? 2) - (STRENGTH_ORDER[a.strengthSignal ?? ""] ?? 2),
+    .filter(
+      (s) =>
+        !opts.employerSlug ||
+        !s.employersUsed.some((u) => employerSlugOf(u.employer) === opts.employerSlug),
     )
+    .sort((a, b) => {
+      const diff =
+        (STRENGTH_ORDER[b.strengthSignal ?? ""] ?? 2) - (STRENGTH_ORDER[a.strengthSignal ?? ""] ?? 2);
+      if (diff !== 0) return diff;
+      return a.slug.localeCompare(b.slug);
+    })
     .slice(0, opts.max);
 }

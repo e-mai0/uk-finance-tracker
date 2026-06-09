@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseStory, classifyQuestion, selectStories } from "@/server/engine/stories";
+import { parseStory, classifyQuestion, selectStories, employerSlugOf } from "@/server/engine/stories";
 import type { Story } from "@/server/engine/types";
 
 const ROWING = `---
@@ -55,6 +55,18 @@ describe("classifyQuestion", () => {
   });
 });
 
+describe("employerSlugOf", () => {
+  it("slugifies display names correctly", () => {
+    expect(employerSlugOf("Goldman Sachs")).toBe("goldman-sachs");
+    expect(employerSlugOf("Barclays")).toBe("barclays");
+    expect(employerSlugOf("J.P. Morgan")).toBe("j-p-morgan");
+  });
+
+  it("is idempotent on already-slug-format strings", () => {
+    expect(employerSlugOf("goldman-sachs")).toBe("goldman-sachs");
+  });
+});
+
 describe("selectStories", () => {
   const mk = (slug: string, themes: string[], used: string[], strength: string | null): Story => ({
     path: `stories/${slug}.md`,
@@ -69,7 +81,7 @@ describe("selectStories", () => {
     finalVersions: "",
   });
 
-  it("excludes stories already used at this employer", () => {
+  it("excludes stories already used at this employer (slug-format employers_used)", () => {
     const out = selectStories([mk("a", ["leadership"], ["goldman-sachs"], "high"), mk("b", ["leadership"], [], null)], {
       themes: ["leadership"],
       employerSlug: "goldman-sachs",
@@ -88,5 +100,29 @@ describe("selectStories", () => {
 
   it("returns empty for kinds with no themes", () => {
     expect(selectStories([mk("a", ["leadership"], [], "high")], { themes: [], employerSlug: undefined, max: 2 })).toEqual([]);
+  });
+
+  // Item 2: name-format employers_used entry excluded when employerSlug matches slug
+  it("excludes stories with display-name employers_used entry when employerSlug matches", () => {
+    // employers_used has "Goldman Sachs" (display name), employerSlug="goldman-sachs"
+    const out = selectStories(
+      [mk("a", ["leadership"], ["Goldman Sachs"], "high"), mk("b", ["leadership"], [], "medium")],
+      { themes: ["leadership"], employerSlug: "goldman-sachs", max: 2 },
+    );
+    expect(out.map((s) => s.slug)).not.toContain("a");
+    expect(out.map((s) => s.slug)).toContain("b");
+  });
+
+  // Item 6: deterministic slug tie-break in sort
+  it("breaks strength ties by slug (alphabetical)", () => {
+    const out = selectStories(
+      [
+        mk("zebra", ["teamwork"], [], "high"),
+        mk("alpha", ["teamwork"], [], "high"),
+        mk("middle", ["teamwork"], [], "high"),
+      ],
+      { themes: ["teamwork"], employerSlug: undefined, max: 3 },
+    );
+    expect(out.map((s) => s.slug)).toEqual(["alpha", "middle", "zebra"]);
   });
 });

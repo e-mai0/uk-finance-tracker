@@ -101,7 +101,7 @@ function prismaMemoryDbFor(client: typeof prisma | PrismaTransactionClient): Omi
     findFileById: (id) =>
       client.memoryFile.findUnique({ where: { id } }),
     listFiles: (userId) =>
-      client.memoryFile.findMany({ where: { userId } }),
+      client.memoryFile.findMany({ where: { userId }, orderBy: { path: "asc" } }),
     upsertFile: (userId, path, content) =>
       client.memoryFile.upsert({
         where: { userId_path: { userId, path } },

@@ -21,16 +21,26 @@ export const GLOBAL_TELLS = [
 
 const NON_LITERAL_TELLS = new Set(["em dashes", "symmetric three-item lists"]);
 
+/** Normalize curly/smart quotes to straight quotes for reliable matching. */
+function normalizeCurlyQuotes(s: string): string {
+  return s
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"');
+}
+
 export function checkTells(text: string, userTells: string[]): string[] {
   const found: string[] = [];
-  if (/[—–]/.test(text)) found.push("em dash");
-  const lower = text.toLowerCase();
+  // Only flag em dash U+2014; en dash U+2013 is allowed (legitimate in ranges)
+  if (/—/.test(text)) found.push("em dash");
+  const normalized = normalizeCurlyQuotes(text).toLowerCase();
   for (const tell of GLOBAL_TELLS) {
-    if (lower.includes(tell.toLowerCase())) found.push(tell);
+    const normalizedTell = normalizeCurlyQuotes(tell).toLowerCase();
+    if (normalized.includes(normalizedTell)) found.push(tell);
   }
   for (const tell of userTells) {
     if (NON_LITERAL_TELLS.has(tell.toLowerCase())) continue;
-    if (lower.includes(tell.toLowerCase())) found.push(tell);
+    const normalizedTell = normalizeCurlyQuotes(tell).toLowerCase();
+    if (normalized.includes(normalizedTell)) found.push(tell);
   }
   return [...new Set(found)];
 }
@@ -39,9 +49,9 @@ export async function critiqueAndRevise(
   userId: string,
   draft: string,
   voice: VoiceProfile,
-): Promise<{ text: string; checksFailed: string[]; revised: boolean }> {
+): Promise<{ text: string; checksFailed: string[]; revised: boolean; residualTells: string[] }> {
   const failed = checkTells(draft, voice.bannedTells);
-  if (!failed.length) return { text: draft, checksFailed: [], revised: false };
+  if (!failed.length) return { text: draft, checksFailed: [], revised: false, residualTells: [] };
 
   const { text: revisedText, usage } = await generateText({
     model: haiku,
@@ -60,7 +70,7 @@ Return only the rewritten text.`,
   const revised = revisedText.trim();
   const stillFailing = checkTells(revised, voice.bannedTells);
   if (stillFailing.length >= failed.length) {
-    return { text: draft, checksFailed: failed, revised: false };
+    return { text: draft, checksFailed: failed, revised: false, residualTells: failed };
   }
-  return { text: revised, checksFailed: failed, revised: true };
+  return { text: revised, checksFailed: failed, revised: true, residualTells: stillFailing };
 }

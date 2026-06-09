@@ -52,6 +52,7 @@ export type Provenance = {
   checksFailed: string[]; // tells found in the first draft
   revised: boolean;
   questionKind: string;
+  residualTells: string[]; // tells remaining in the final text
 };
 
 export type DraftResult = { text: string; provenance: Provenance };
