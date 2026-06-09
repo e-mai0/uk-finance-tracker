@@ -94,15 +94,17 @@ model User {
   createdAt    DateTime  @default(now())
   onboardedAt  DateTime?
 
-  profile      Profile?
-  preferences  Preferences?
-  applyProfile ApplyProfile?
-  saved        SavedOpportunity[]
-  matches      MatchScore[]
-  apiTokens    ApiToken[]
-  answerBank   AnswerBankItem[]
-  applications Application[]
-  drafts       GeneratedDraft[]
+  profile       Profile?
+  preferences   Preferences?
+  applyProfile  ApplyProfile?
+  saved         SavedOpportunity[]
+  matches       MatchScore[]
+  apiTokens     ApiToken[]
+  answerBank    AnswerBankItem[]
+  applications  Application[]
+  drafts        GeneratedDraft[]
+  memoryFiles   MemoryFile[]
+  chatSessions  ChatSession[]
 }
 
 model Profile {
@@ -371,4 +373,90 @@ model ApiToken {
   revokedAt  DateTime?
 
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Cyclops — memory, chat, gardener, usage (Phase 1)
+// ---------------------------------------------------------------------------
+
+enum MemoryAuthor {
+  USER
+  CYCLOPS
+}
+
+model MemoryFile {
+  id        String           @id @default(cuid())
+  userId    String
+  path      String
+  content   String           @db.Text
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revisions MemoryRevision[]
+
+  @@unique([userId, path])
+  @@index([userId])
+}
+
+model MemoryRevision {
+  id           String       @id @default(cuid())
+  memoryFileId String
+  before       String       @db.Text
+  after        String       @db.Text
+  author       MemoryAuthor
+  reason       String?
+  createdAt    DateTime     @default(now())
+  file         MemoryFile   @relation(fields: [memoryFileId], references: [id], onDelete: Cascade)
+
+  @@index([memoryFileId, createdAt])
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  userId    String
+  title     String        @default("New conversation")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  role      String // "user" | "assistant"
+  parts     String      @db.Text // JSON-serialised UIMessage parts
+  createdAt DateTime    @default(now())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+model GardenerQuestion {
+  id        String   @id @default(cuid())
+  userId    String
+  question  String
+  status    String   @default("pending") // pending | asked | resolved
+  createdAt DateTime @default(now())
+
+  @@index([userId, status])
+}
+
+model GardenerRun {
+  id     String   @id @default(cuid())
+  userId String
+  ranAt  DateTime @default(now())
+
+  @@index([userId, ranAt])
+}
+
+model DailyUsage {
+  id     String @id @default(cuid())
+  userId String
+  day    String // YYYY-MM-DD (UTC)
+  tokens Int    @default(0)
+
+  @@unique([userId, day])
 }
