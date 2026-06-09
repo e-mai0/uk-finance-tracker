@@ -46,4 +46,51 @@ describe("memory service", () => {
     const { diff } = await svc.write("u1", "profile.md", "# Profile\n- new fact (confidence: high, confirmed: 2026-06-09)\n", "CYCLOPS");
     expect(diff).toContain("+- new fact");
   });
+
+  it("revert returns a diff string", async () => {
+    const db = fakeDb();
+    const svc = createMemoryService(db);
+    await svc.list("u1");
+    await svc.write("u1", "profile.md", "v2 content", "CYCLOPS");
+    const file = await db.findFile("u1", "profile.md");
+    const [rev] = await db.listRevisions(file!.id);
+    const result = await svc.revert("u1", rev.id);
+    expect(result).toHaveProperty("diff");
+    expect(result.diff).toContain("v2 content");
+  });
+
+  it("revert throws for a revision belonging to another user", async () => {
+    const db = fakeDb();
+    const svc = createMemoryService(db);
+    await svc.list("u1");
+    await svc.write("u1", "profile.md", "u1 content", "CYCLOPS");
+    const file = await db.findFile("u1", "profile.md");
+    const [rev] = await db.listRevisions(file!.id);
+    await expect(svc.revert("u2", rev.id)).rejects.toThrow("not your revision");
+  });
+
+  it("PROFILE.MD normalizes to profile.md and does not create a duplicate", async () => {
+    const db = fakeDb();
+    const svc = createMemoryService(db);
+    await svc.list("u1"); // seeds profile.md
+    await svc.write("u1", "PROFILE.MD", "# Profile\nnew content", "CYCLOPS");
+    const files = await db.listFiles("u1");
+    const profileFiles = files.filter((f) => f.path.toLowerCase() === "profile.md");
+    expect(profileFiles).toHaveLength(1);
+    expect(profileFiles[0].path).toBe("profile.md");
+    expect(profileFiles[0].content).toContain("new content");
+  });
+
+  it("seeds missing canonical files even when tree is non-empty", async () => {
+    const db = fakeDb();
+    // Pre-populate with a non-canonical file so seed skips with the old logic
+    await db.upsertFile("u1", "stories/x.md", "content");
+    const svc = createMemoryService(db);
+    const files = await svc.list("u1");
+    const paths = files.map((f) => f.path).sort();
+    expect(paths).toContain("profile.md");
+    expect(paths).toContain("voice.md");
+    expect(paths).toContain("strategy.md");
+    expect(paths).toContain("stories/x.md");
+  });
 });
