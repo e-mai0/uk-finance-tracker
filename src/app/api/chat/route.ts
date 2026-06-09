@@ -1,13 +1,60 @@
 import { after } from "next/server";
+import { z } from "zod";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { streamCyclops } from "@/server/ai/brain";
-import { checkBudget, recordUsage } from "@/server/ai/budget";
+import { checkBudget } from "@/server/ai/budget";
 import { gardenerDue, runGardenerForUser } from "@/server/memory/gardener";
 import type { UIMessage } from "ai";
 
 export const maxDuration = 120;
 
+// ---------------------------------------------------------------------------
+// Zod schema for the POST body (item 1)
+// ---------------------------------------------------------------------------
+const TextPartSchema = z.object({ type: z.literal("text"), text: z.string() });
+
+const UIMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["user", "assistant", "system", "tool"]),
+  parts: z.array(TextPartSchema).max(8),
+});
+
+const ChatBodySchema = z.object({
+  sessionId: z.string().min(1),
+  messages: z.array(UIMessageSchema).min(1),
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Load the last 30 persisted ChatMessages for a session as UIMessages. */
+async function loadSessionHistory(sessionId: string): Promise<UIMessage[]> {
+  const rows = await prisma.chatMessage.findMany({
+    where: { sessionId },
+    orderBy: { createdAt: "asc" },
+    take: 30,
+  });
+
+  return rows.map((row) => {
+    let parts: UIMessage["parts"] = [];
+    try {
+      parts = JSON.parse(row.parts) as UIMessage["parts"];
+    } catch {
+      parts = [{ type: "text", text: "" }];
+    }
+    return {
+      id: row.clientId ?? row.id,
+      role: row.role as UIMessage["role"],
+      parts,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
 export async function POST(req: Request) {
   const session = await auth();
   const userId = session?.user?.id;
@@ -24,19 +71,53 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = (await req.json()) as { messages: UIMessage[]; sessionId: string };
+  // --- Parse + validate body (item 1) ---
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
 
+  const parsed = ChatBodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return Response.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const body = parsed.data;
+
+  // Extract the last message and enforce it is a user message (item 1)
+  const incomingMessage = body.messages[body.messages.length - 1];
+  if (!incomingMessage || incomingMessage.role !== "user") {
+    return Response.json(
+      { error: "Last message must have role 'user'." },
+      { status: 400 },
+    );
+  }
+
+  // Enforce total text length <= 8000 chars across all text parts (item 1)
+  const totalTextLength = incomingMessage.parts.reduce((sum, p) => sum + p.text.length, 0);
+  if (totalTextLength > 8000) {
+    return Response.json(
+      { error: "Message text exceeds 8000 characters." },
+      { status: 400 },
+    );
+  }
+
+  // --- Validate session ownership ---
   const chatSession = await prisma.chatSession.findFirst({
     where: { id: body.sessionId, userId },
   });
   if (!chatSession) return new Response("Not found", { status: 404 });
 
-  const result = await streamCyclops({ userId, messages: body.messages });
+  // --- Rebuild history server-side (item 1) ---
+  const storedHistory = await loadSessionHistory(chatSession.id);
+  const serverMessages: UIMessage[] = [...storedHistory, incomingMessage as UIMessage];
 
-  // Schedule the gardener check at route-handler level while still inside the
-  // request's async context. after() reads workAsyncStorage synchronously, so
-  // calling it inside the SDK's onFinish callback (which fires after the stream
-  // has closed) would throw "after was called outside a request scope".
+  // --- Stream ---
+  const { result, pendingQuestions } = await streamCyclops({ userId, messages: serverMessages });
+
+  // Schedule gardener inside request scope
   after(async () => {
     try {
       if (await gardenerDue(userId)) {
@@ -48,34 +129,54 @@ export async function POST(req: Request) {
   });
 
   return result.toUIMessageStreamResponse({
-    // Passing originalMessages enables persistence mode: the SDK tracks
-    // the full updated list in onFinish({ messages }).
-    originalMessages: body.messages,
-    onFinish: async ({ responseMessage }) => {
-      // Save only the latest user message + the new assistant response —
-      // previous turns are already persisted in the DB from prior requests.
-      const lastUserMsg = body.messages[body.messages.length - 1];
-      const toSave = lastUserMsg ? [lastUserMsg, responseMessage] : [responseMessage];
+    // originalMessages is the server-rebuilt array (item 1)
+    originalMessages: serverMessages,
+    onFinish: async ({ responseMessage, isAborted }) => {
+      const lastUserMsg = incomingMessage as UIMessage;
+      const toSave = [lastUserMsg, responseMessage];
 
-      // 1. Persist chat messages — most important, run first.
+      // 1. Persist chat messages with clientId + skipDuplicates (items 6 & 7)
       try {
         await prisma.chatMessage.createMany({
           data: toSave.map((m) => ({
             sessionId: chatSession.id,
+            clientId: m.id ?? null,
             role: m.role,
             parts: JSON.stringify(m.parts),
+            aborted: m === responseMessage ? isAborted : false,
           })),
+          skipDuplicates: true,
         });
       } catch (err) {
         console.error("[chat] failed to persist messages", { sessionId: chatSession.id, err });
       }
 
-      // 2. Record token usage.
+      // 2. Mark gardener questions asked if assistant text contains distinctive chunk (item 4)
       try {
-        const usage = await result.totalUsage;
-        await recordUsage(userId, usage?.totalTokens ?? 0);
+        if (pendingQuestions.length > 0) {
+          // Collect all text from the assistant response
+          const assistantText = responseMessage.parts
+            .filter((p): p is { type: "text"; text: string } => p.type === "text")
+            .map((p) => p.text)
+            .join(" ")
+            .toLowerCase();
+
+          const toMarkAsked = pendingQuestions
+            .filter((q) => {
+              const chunk = q.question.trim().slice(0, 25).toLowerCase();
+              return chunk.length > 0 && assistantText.includes(chunk);
+            })
+            .map((q) => q.id);
+
+          if (toMarkAsked.length > 0) {
+            await prisma.gardenerQuestion.updateMany({
+              where: { id: { in: toMarkAsked } },
+              data: { status: "asked" },
+            });
+          }
+        }
       } catch (err) {
-        console.error("[chat] failed to record usage", { userId, err });
+        console.error("[chat] failed to mark questions asked", { userId, err });
       }
 
       // 3. Auto-title the session on first user message.
