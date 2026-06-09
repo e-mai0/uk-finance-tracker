@@ -33,6 +33,20 @@ export async function POST(req: Request) {
 
   const result = await streamCyclops({ userId, messages: body.messages });
 
+  // Schedule the gardener check at route-handler level while still inside the
+  // request's async context. after() reads workAsyncStorage synchronously, so
+  // calling it inside the SDK's onFinish callback (which fires after the stream
+  // has closed) would throw "after was called outside a request scope".
+  after(async () => {
+    try {
+      if (await gardenerDue(userId)) {
+        await runGardenerForUser(userId);
+      }
+    } catch (err) {
+      console.error("gardener trigger failed", err);
+    }
+  });
+
   return result.toUIMessageStreamResponse({
     // Passing originalMessages enables persistence mode: the SDK tracks
     // the full updated list in onFinish({ messages }).
@@ -88,20 +102,6 @@ export async function POST(req: Request) {
       } catch (err) {
         console.error("[chat] failed to update session timestamp", { sessionId: chatSession.id, err });
       }
-
-      // 5. Trigger the gardener in the background after the response completes.
-      // Using after() so it runs outside the streaming response lifecycle.
-      after(async () => {
-        try {
-          if (await gardenerDue(userId)) {
-            void runGardenerForUser(userId).catch((err) =>
-              console.error("gardener trigger failed", err),
-            );
-          }
-        } catch (err) {
-          console.error("[chat] gardener check failed", err);
-        }
-      });
     },
   });
 }
