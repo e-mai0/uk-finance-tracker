@@ -24,6 +24,7 @@ function downgrade(c: Confidence): Confidence {
 
 export function effectiveConfidence(f: Fact, v: Volatility, now: Date): Confidence {
   const ageDays = (now.getTime() - new Date(f.confirmed).getTime()) / 86_400_000;
+  if (!Number.isFinite(ageDays)) return "low";
   if (v === "volatile" && ageDays > 30) return "low";
   if (v === "stable" && ageDays > 180) return downgrade(f.confidence);
   return f.confidence;

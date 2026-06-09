@@ -39,6 +39,16 @@ describe("confidence decay", () => {
     expect(effectiveConfidence({ text: "x", confidence: "high", confirmed: "2025-11-01" }, "stable", now)).toBe("medium");
     expect(effectiveConfidence({ text: "x", confidence: "low", confirmed: "2025-01-01" }, "stable", now)).toBe("low");
   });
+
+  it("returns low when confirmed date is invalid (NaN guard)", () => {
+    expect(
+      effectiveConfidence(
+        { text: "x", confidence: "high", confirmed: "not-a-date" },
+        "volatile",
+        new Date("2026-06-09"),
+      ),
+    ).toBe("low");
+  });
 });
 
 describe("volatility classes", () => {
