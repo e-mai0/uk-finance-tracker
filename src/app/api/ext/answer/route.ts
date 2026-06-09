@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { requireToken } from "../../../../server/ext-auth";
 import { prisma } from "../../../../server/db";
 import { loadApplicantContext } from "../../../../server/ext-profile";
@@ -41,11 +42,11 @@ export async function POST(req: Request) {
       select: { id: true },
     });
     if (existing) {
-      await prisma.answerBankItem.update({
+      const updated = await prisma.answerBankItem.update({
         where: { id: existing.id },
         data: { answer: d.answer, employer: d.employer || null },
       });
-      void indexContent({ userId, kind: "answer", sourceId: existing.id, content: `${d.questionText}\n${d.answer}` });
+      after(() => indexContent({ userId, kind: "answer", sourceId: updated.id, content: `${updated.questionText}\n${updated.answer}` }));
     } else {
       const item = await prisma.answerBankItem.create({
         data: {
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
           employer: d.employer || null,
         },
       });
-      void indexContent({ userId, kind: "answer", sourceId: item.id, content: `${d.questionText}\n${d.answer}` });
+      after(() => indexContent({ userId, kind: "answer", sourceId: item.id, content: `${item.questionText}\n${item.answer}` }));
     }
     return json({ answer: d.answer, source: "saved" });
   }
@@ -97,36 +98,28 @@ export async function POST(req: Request) {
 
   // 3. Optionally save to the bank for reuse.
   if (d.save && answer) {
-    prisma.answerBankItem
-      .create({
-        data: {
-          userId,
-          questionText: d.questionText,
-          questionNormalized: normalizeQuestion(d.questionText),
-          answer,
-          employer: d.employer || null,
-        },
-      })
-      .then((item) => {
-        void indexContent({ userId, kind: "answer", sourceId: item.id, content: `${d.questionText}\n${answer}` });
-      })
-      .catch(() => {});
+    const item = await prisma.answerBankItem.create({
+      data: {
+        userId,
+        questionText: d.questionText,
+        questionNormalized: normalizeQuestion(d.questionText),
+        answer,
+        employer: d.employer || null,
+      },
+    }).catch(() => null);
+    if (item) after(() => indexContent({ userId, kind: "answer", sourceId: item.id, content: `${item.questionText}\n${item.answer}` }));
   }
 
   // Record the generated draft for history.
-  prisma.generatedDraft
-    .create({
-      data: {
-        userId,
-        kind: "ANSWER",
-        content: answer,
-        context: { question: d.questionText, employer: d.employer, role: d.role },
-      },
-    })
-    .then((draft) => {
-      void indexContent({ userId, kind: "draft", sourceId: draft.id, content: draft.content });
-    })
-    .catch(() => {});
+  const draft = await prisma.generatedDraft.create({
+    data: {
+      userId,
+      kind: "ANSWER",
+      content: answer,
+      context: { question: d.questionText, employer: d.employer, role: d.role },
+    },
+  }).catch(() => null);
+  if (draft) after(() => indexContent({ userId, kind: "draft", sourceId: draft.id, content: draft.content }));
 
   return json({ answer, source: "generated" });
 }

@@ -460,3 +460,23 @@ model DailyUsage {
 
   @@unique([userId, day])
 }
+
+// ---------------------------------------------------------------------------
+// Cyclops Phase 1 — vector embeddings (managed via prisma/sql/2026-06-09-pgvector.sql)
+// ---------------------------------------------------------------------------
+
+// Shadow model so Prisma does not drift-drop the raw SQL table.
+// Column/index shapes must match the SQL file exactly.
+model ContentEmbedding {
+  id        String   @id
+  userId    String   @map("user_id")
+  kind      String
+  sourceId  String   @map("source_id")
+  content   String
+  embedding Unsupported("vector(1024)")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([kind, sourceId])
+  @@index([userId, kind])
+  @@map("content_embeddings")
+}

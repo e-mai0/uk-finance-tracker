@@ -1,4 +1,6 @@
 -- Cyclops Phase 1: memory, chat, gardener, usage models
+-- IMPORTANT: Apply to the shared Supabase DB in order: this file first, then
+-- 2026-06-09-pgvector.sql. Both must be applied BEFORE setting VOYAGE_API_KEY.
 
 -- CreateEnum
 CREATE TYPE "MemoryAuthor" AS ENUM ('USER', 'CYCLOPS');

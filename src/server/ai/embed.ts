@@ -11,6 +11,7 @@ export async function embed(texts: string[]): Promise<number[][]> {
       Authorization: `Bearer ${process.env.VOYAGE_API_KEY}`,
     },
     body: JSON.stringify({ model: MODEL, input: texts }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`voyage embeddings failed: ${res.status}`);
   const json = (await res.json()) as { data: { embedding: number[] }[] };
@@ -28,8 +29,10 @@ export async function indexContent(args: {
   sourceId: string;
   content: string;
 }): Promise<void> {
+  if (!process.env.VOYAGE_API_KEY) return;
   try {
     const [vec] = await embed([args.content.slice(0, 8000)]);
+    if (!vec) return;
     await prisma.$executeRaw`
       INSERT INTO content_embeddings (id, user_id, kind, source_id, content, embedding)
       VALUES (${crypto.randomUUID()}, ${args.userId}, ${args.kind}, ${args.sourceId},
@@ -53,7 +56,9 @@ export async function semanticSearch(
   query: string,
   limit = 8,
 ): Promise<SemanticHit[]> {
+  if (!process.env.VOYAGE_API_KEY) throw new Error("VOYAGE_API_KEY not configured");
   const [vec] = await embed([query]);
+  if (!vec) return [];
   const lit = toVectorLiteral(vec);
   return prisma.$queryRaw<SemanticHit[]>`
     SELECT kind, source_id, content,

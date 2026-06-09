@@ -1,3 +1,7 @@
+-- IMPORTANT: Apply to the shared Supabase DB AFTER 2026-06-09-cyclops-memory.sql
+-- and BEFORE setting VOYAGE_API_KEY. On Supabase, verify the `vector` extension
+-- is installed in a schema on the public search_path (Dashboard → Extensions).
+
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE content_embeddings (
