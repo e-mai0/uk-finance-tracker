@@ -2,6 +2,7 @@ import { requireToken } from "../../../../server/ext-auth";
 import { prisma } from "../../../../server/db";
 import { loadApplicantContext } from "../../../../server/ext-profile";
 import { generateAnswer, aiConfigured } from "../../../../server/ai/generate";
+import { indexContent } from "../../../../server/ai/embed";
 import { normalizeQuestion, bestAnswerMatch } from "../../../../lib/answers";
 import { extAnswerSchema } from "../../../../lib/validation";
 import { json, unauthorized, preflight } from "../../../../server/ext-http";
@@ -44,8 +45,9 @@ export async function POST(req: Request) {
         where: { id: existing.id },
         data: { answer: d.answer, employer: d.employer || null },
       });
+      void indexContent({ userId, kind: "answer", sourceId: existing.id, content: `${d.questionText}\n${d.answer}` });
     } else {
-      await prisma.answerBankItem.create({
+      const item = await prisma.answerBankItem.create({
         data: {
           userId,
           questionText: d.questionText,
@@ -54,6 +56,7 @@ export async function POST(req: Request) {
           employer: d.employer || null,
         },
       });
+      void indexContent({ userId, kind: "answer", sourceId: item.id, content: `${d.questionText}\n${d.answer}` });
     }
     return json({ answer: d.answer, source: "saved" });
   }
@@ -94,7 +97,7 @@ export async function POST(req: Request) {
 
   // 3. Optionally save to the bank for reuse.
   if (d.save && answer) {
-    await prisma.answerBankItem
+    prisma.answerBankItem
       .create({
         data: {
           userId,
@@ -103,6 +106,9 @@ export async function POST(req: Request) {
           answer,
           employer: d.employer || null,
         },
+      })
+      .then((item) => {
+        void indexContent({ userId, kind: "answer", sourceId: item.id, content: `${d.questionText}\n${answer}` });
       })
       .catch(() => {});
   }
@@ -116,6 +122,9 @@ export async function POST(req: Request) {
         content: answer,
         context: { question: d.questionText, employer: d.employer, role: d.role },
       },
+    })
+    .then((draft) => {
+      void indexContent({ userId, kind: "draft", sourceId: draft.id, content: draft.content });
     })
     .catch(() => {});
 
