@@ -35,6 +35,29 @@ export function volatilityFor(path: string): Volatility {
 }
 
 /**
+ * Annotate each fact line in `content` whose effective confidence (given the
+ * file's volatility and `now`) has decayed below its stored confidence level.
+ * Non-fact lines are returned unchanged.
+ * Uses `volatilityFor(path)` so the correct volatility class is always derived
+ * from the normalized file path (fixes item 9: never use the raw input arg).
+ */
+export function annotateDecay(path: string, content: string, now: Date): string {
+  const volatility = volatilityFor(path);
+  return content
+    .split("\n")
+    .map((line) => {
+      const fact = parseFactLine(line);
+      if (!fact) return line;
+      const effective = effectiveConfidence(fact, volatility, now);
+      if (effective !== fact.confidence) {
+        return `${line}  [decayed to: ${effective}]`;
+      }
+      return line;
+    })
+    .join("\n");
+}
+
+/**
  * Pure helper: given the current content of profile.md, a label/value pair,
  * and today's date string (YYYY-MM-DD), returns the updated content.
  *

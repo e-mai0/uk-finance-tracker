@@ -5,6 +5,7 @@ import {
   effectiveConfidence,
   volatilityFor,
   applyFact,
+  annotateDecay,
 } from "@/server/memory/facts";
 
 describe("fact annotations", () => {
@@ -140,5 +141,28 @@ describe("applyFact", () => {
     expect(result).toContain(
       "- Visa: sponsored (confidence: high, confirmed: 2026-06-09)",
     );
+  });
+});
+
+describe("annotateDecay", () => {
+  const now = new Date("2026-06-09T00:00:00Z");
+
+  it("volatile fact older than 30 days gets [decayed to: low] annotation", () => {
+    const content = "- Targeting quant (confidence: high, confirmed: 2026-04-01)\n";
+    // strategy.md is volatile, confirmed 2026-04-01 is 69 days before now → decays to low
+    const result = annotateDecay("strategy.md", content, now);
+    expect(result).toContain("[decayed to: low]");
+  });
+
+  it("fresh volatile fact (within 30 days) is not annotated", () => {
+    const content = "- Targeting quant (confidence: high, confirmed: 2026-06-01)\n";
+    const result = annotateDecay("strategy.md", content, now);
+    expect(result).not.toContain("[decayed to:");
+  });
+
+  it("non-fact lines (headings, blanks) are returned unchanged", () => {
+    const content = "## Section heading\n\nSome plain text\n";
+    const result = annotateDecay("profile.md", content, now);
+    expect(result).toBe(content);
   });
 });
