@@ -6,6 +6,7 @@ import { normalizeQuestion } from "../../../../lib/answers";
 import { extFactSchema } from "../../../../lib/validation";
 import { json, unauthorized, preflight } from "../../../../server/ext-http";
 import { memoryService } from "../../../../server/memory/service";
+import { applyFact } from "../../../../server/memory/facts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,29 +21,16 @@ async function writeFactToMemory(userId: string, label: string, value: string): 
       file = await memoryService.read(userId, "profile.md");
     }
     if (!file) return;
-    const line = `- ${label}: ${value} (confidence: high, confirmed: ${today})`;
-    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (!file.content.includes(`- ${label}:`)) {
-      await memoryService.write(
-        userId,
-        "profile.md",
-        `${file.content.trimEnd()}\n${line}\n`,
-        "CYCLOPS",
-        "fact from application form",
-      );
-    } else {
-      const replaced = file.content.replace(
-        new RegExp(`^- ${escapedLabel}:.*$`, "m"),
-        line,
-      );
-      await memoryService.write(
-        userId,
-        "profile.md",
-        replaced,
-        "CYCLOPS",
-        "fact updated from application form",
-      );
-    }
+    const next = applyFact(file.content, label, value, today);
+    // No-op: same-day identical re-confirmation produces no revision noise.
+    if (next === file.content) return;
+    await memoryService.write(
+      userId,
+      "profile.md",
+      next,
+      "CYCLOPS",
+      "fact from application form",
+    );
   } catch (err) {
     console.error("[fact route] memory write-back failed:", err);
   }
