@@ -164,12 +164,38 @@ model MemoryRevision {
 ```
 profile.md      # facts beyond structured profile: grades, modules, interests, constraints
 voice.md        # writing voice: banned tells, observed traits, 3–5 exemplar snippets
-strategy.md     # season goals, priorities, target firms, what user optimises for
-stories/<slug>.md   # one real anecdote per file: situation, role, outcome,
-                    # themes (leadership/teamwork/failure/...), usage log (employer + date)
+strategy.md     # CURRENT direction only + dated history section (see anti-rot, §5.5)
+stories/<slug>.md   # one real anecdote per file — structured schema below
 companies/<slug>.md # user's personal angle on an employer: why-them, contacts,
                     # past answers given, interview history
 ```
+
+**Structured markdown, not freeform prose.** Pure prose degrades after dozens
+of edits and retrieves poorly. Every memory file carries YAML frontmatter;
+prose is confined to designated sections. Stories use a fixed schema:
+
+```markdown
+---
+title: Rowing club treasurer turnaround
+themes: [leadership, teamwork, pressure]
+employers_used:
+  - { employer: goldman-sachs, date: 2026-10-02, question_kind: leadership }
+strength_signal: high     # how well this story has landed (outcome-informed, §6.4)
+failure_signal: null      # known weaknesses ("reads junior for VP-level qs")
+timeline: 2024-09..2025-06
+confidence: high          # how sure Cyclops is the details are accurate
+last_confirmed: 2026-06-09
+---
+## Raw notes
+<user's own words, never rewritten by Cyclops>
+## Final versions
+<polished tellings actually used, one per question_kind>
+```
+
+`profile.md` and `strategy.md` use sectioned fact lists where each fact line
+carries `(confidence: high|medium|low, confirmed: YYYY-MM-DD)`. Retrieval
+filters on frontmatter (themes, employers_used, signals) before any
+embedding search — structured fields first, vectors second.
 
 Seeded at onboarding (§7); grown by chat, ask-panel answers, and edit-diff
 distillation. Structured data (ApplyProfile, AnswerBankItem, Application)
@@ -198,6 +224,49 @@ appends notable facts to `profile.md`.
 - User edits always win; Cyclops never overwrites a user revision silently.
 - No memory content is ever shared across users. Only §6.3 employer research
   (containing zero user data) is shared.
+
+### 5.5 Anti-rot: supersession, freshness, and the gardener
+
+**Memory corruption is the project's #1 risk** — bigger than agent
+reliability. Memory does not improve monotonically; it rots. A user says "I'm
+interested in macro investing", later "actually software PE", later "no,
+quant research". Append-only files turn `strategy.md`, `voice.md`, and
+stories into contradictory sludge. Defences, all mandatory in phase 1:
+
+- **Supersede, don't append.** The memory-editing prompt requires that new
+  information contradicting an existing fact REPLACES it in the live file;
+  the old fact moves to the file's dated history section (strategy.md) or
+  lives only in MemoryRevision history. Live files contain only current
+  truth. Contradictions Cyclops can't resolve confidently become a question
+  to the user, not a second entry.
+- **Confidence + freshness on every fact** (schema in §5.2). Inferred facts
+  start `confidence: medium`; user-stated facts `high`; anything restated or
+  confirmed bumps `last_confirmed`.
+- **Volatility classes.** `strategy.md` and interests are volatile (stale
+  after 30 days unconfirmed); biography and stories are stable (180 days).
+  Stale volatile facts decay to `confidence: low` automatically.
+- **Memory gardener job.** Periodic per-user pass (cron, and after every 10
+  Cyclops memory edits): Haiku scans the tree for contradictions, duplicates,
+  stale volatile facts, and over-budget files; proposes consolidation as a
+  normal diffable revision; and queues at most 2–3 confirmation questions
+  that Cyclops asks naturally in the next chat ("In March you said quant
+  research — still the focus?"). Never silently deletes user-authored raw
+  notes.
+
+### 5.6 Uncertainty surfacing
+
+Cyclops will sometimes hallucinate memory links; it must expose uncertainty
+rather than assert. Required behaviours:
+
+- Memory tools return confidence/freshness with every fact; the system prompt
+  forbids asserting `medium`-or-below memory as flat fact. Bad: "You usually
+  use rowing here." Good: "You've previously used rowing for teamwork
+  questions (confidence: medium) — right?"
+- Low-confidence memory is never silently used in a draft; it is either
+  confirmed in-flow (one plain question) or omitted.
+- Chat and panel render a small confidence chip next to recalled facts and on
+  draft provenance ("based on: rowing story (high), your PE interest
+  (low — confirm?)").
 
 ## 6. Writing engine
 
@@ -256,6 +325,26 @@ model EmployerResearch {
 - Contains zero user data, so it is safely shared across all users; the
   user-specific angle lives in their own `companies/<slug>.md`.
 
+### 6.4 Application-outcome learning
+
+Cyclops learns not just what the user says, but what *works*. The existing
+`Application.status` lifecycle (AUTOFILLED → SUBMITTED → INTERVIEWING →
+OFFER / REJECTED) is the signal; GeneratedDraft and story `employers_used`
+logs already record which content went into which application.
+
+- **Ingestion (phase 2):** when a user updates an application's status (web
+  app, or Cyclops asks in chat about applications submitted >2 weeks ago),
+  the outcome links to the drafts and stories used in it.
+- **Distillation (phase 3):** a periodic job correlates outcomes with content:
+  story `strength_signal`/`failure_signal` updates, and observations written
+  to `strategy.md` ("your asset-management applications progress at 3× your
+  IB rate"). At UK-finance sample sizes this is weak evidence — outputs are
+  always framed as observations with confidence levels (§5.6), never causal
+  claims, and never silently change story selection without provenance
+  showing it.
+- Story selection in §6 step 1 prefers high-`strength_signal` stories and
+  avoids known `failure_signal` matches for the question kind.
+
 ## 7. Onboarding additions (multi-user requirement)
 
 Two steps appended to the existing wizard (skippable, nudged later in chat):
@@ -297,6 +386,11 @@ Each phase ships independently to real users.
   diff/revert); pgvector setup + embedding-on-write for answer bank and drafts.
 - Brain service (AI SDK 6 tool loop) with tools: memory, search_applications,
   search_opportunities, fit_check.
+- Structured-markdown schemas, confidence/freshness conventions, supersession
+  rules, and the memory gardener job (§5.5) — anti-rot ships WITH the memory
+  core, not after it.
+- Uncertainty surfacing (§5.6): confidence on tool returns, prompt rules,
+  confidence chips in chat.
 - `/chat` page (threads, streaming, tool chips, memory diff chips);
   `/memory` page (browse/edit/history).
 - Onboarding steps for writing samples and stories.
@@ -307,6 +401,8 @@ Each phase ships independently to real users.
   DraftEdit capture + distillation job.
 - EmployerResearch model + background refresh job + research tool.
 - Rewire `/api/ext/answer` and `draftCoverLetter` through the engine.
+- Outcome ingestion (§6.4): status updates link outcomes to drafts/stories
+  used; Cyclops nudges for stale application statuses in chat.
 - Eval harness: ~20 real application questions, old vs new pipeline,
   user-judged "sounds like me" rubric stored in repo.
 
@@ -316,6 +412,8 @@ Each phase ships independently to real users.
 - Ask answers and draft edits write back to memory (and structured tables).
 - Pre-staged drafts: when a tracked opportunity's apply page is opened and
   the form matches known question patterns, drafts generate immediately.
+- Outcome distillation (§6.4): strength/failure signals on stories,
+  observation notes in strategy.md, outcome-aware story selection.
 - "Discuss in Cyclops" deep link from panel to `/chat`.
 
 **Phase 4 — Agent fallback + queue** *(the long tail)*
@@ -334,13 +432,49 @@ Each phase ships independently to real users.
 - Eval: phase 2 harness above; re-run on prompt changes.
 - Manual: Greenhouse/Lever/Workday smoke flows per phase (existing test pages).
 
-## 11. Risks
+## 11. Risks (ranked)
 
-- **Voice quality is the product.** If phase 2 drafts don't clearly beat the
-  current pipeline in the eval, stop and iterate there before phase 3.
-- **Memory bloat/staleness:** mitigated by file-budget compaction prompts and
-  user-visible memory page; revisit if files exceed budgets in practice.
-- **MV3/extension drift:** phase 3 keeps the deterministic path primary, so
-  ATS UI changes degrade to today's behaviour, never below it.
-- **Cost:** Sonnet on every draft is the main driver; critique on Haiku and
-  answer-bank reuse keep per-application cost in single-digit pennies.
+1. **Memory corruption — the #1 risk.** Contradictory, stale, or hallucinated
+   memory destroys trust faster than any missing feature, and a corrupted
+   voice.md poisons every draft. Mitigations are §5.5 (supersession,
+   confidence/freshness, volatility decay, gardener) and §5.6 (uncertainty
+   surfacing) — these ship in phase 1 as part of the memory core, and the
+   phase-1 test suite must cover contradiction scenarios explicitly (the
+   macro→PE→quant→policy sequence is a named test case).
+2. **Voice quality is the product.** The key determinant of differentiation
+   is whether users say "this genuinely sounds like me". If phase 2 drafts
+   don't clearly beat the current pipeline in the eval, stop and iterate
+   there before phase 3 — otherwise Cyclops is another autofill extension
+   with a chat tab.
+3. **Trust failure UX.** One confidently-wrong recalled "fact" in a submitted
+   application is catastrophic for retention; hence no low-confidence memory
+   in drafts, ever (§5.6), and visible provenance on everything.
+4. **MV3/extension drift:** phase 3 keeps the deterministic path primary, so
+   ATS UI changes degrade to today's behaviour, never below it.
+5. **Cost:** Sonnet on every draft is the main driver; critique on Haiku and
+   answer-bank reuse keep per-application cost in single-digit pennies.
+
+## 12. Execution model: specialist agents
+
+When implementation begins, work is executed by **specialist agents, each
+deeply versed in its field before writing code**. Every workstream agent
+follows the same contract: (1) study phase — read the relevant spec sections,
+current docs for its technology (e.g. `node_modules/next/dist/docs`, AI SDK 6
+docs, MV3 docs), and the existing code it touches; (2) produce a short
+written design for its slice; (3) implement with tests. The implementation
+plan (writing-plans) must assign work along these specialisms:
+
+- **Memory architect** — versed in memory-tool patterns, file-schema design,
+  supersession/confidence mechanics, the gardener (§5).
+- **Voice & prompt engineer** — versed in style transfer, few-shot exemplar
+  pipelines, critique-revise loops, AI-tells; owns voice.md design and the
+  writing engine (§6) and the eval harness.
+- **Agent-loop engineer** — versed in AI SDK 6 (`ToolLoopAgent`, `useChat`,
+  tool streaming); owns the brain service and tools (§4).
+- **Extension engineer** — versed in MV3 (service-worker lifecycle, content
+  scripts, Shadow DOM); owns panel redesign and write-back flows (§3.4).
+- **Data engineer** — versed in Prisma/Postgres/pgvector/Supabase; owns
+  migrations, embeddings, outcome ingestion (§5.1, §6.4).
+- **Product UX engineer** — owns `/chat`, `/memory`, onboarding additions,
+  confidence-chip language (§3, §7), consistent with the existing design
+  system.
