@@ -62,7 +62,10 @@ export async function streamCyclops(args: { userId: string; messages: UIMessage[
   const result = streamText({
     model: sonnet,
     system: buildSystemPrompt(core, pendingQuestions),
-    messages: await convertToModelMessages(args.messages),
+    // ignoreIncompleteToolCalls: an aborted tool call persisted mid-execution
+    // would otherwise emit a tool-call with no result and poison every
+    // subsequent request in this session.
+    messages: await convertToModelMessages(args.messages, { ignoreIncompleteToolCalls: true }),
     tools: buildTools(args.userId),
     stopWhen: stepCountIs(12),
     // Item 5: per-step budget recording (fire-and-forget)

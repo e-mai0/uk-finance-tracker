@@ -99,6 +99,7 @@ export async function runGardener(
   hooks: {
     saveQuestion: (userId: string, question: string) => Promise<void> | void;
     recordRun: (userId: string) => Promise<void> | void;
+    recordUsage?: (userId: string, tokens: number) => Promise<void> | void;
   },
   existingQuestions?: string[],
 ): Promise<{ applied: number; skipped: number; questions: string[] }> {
@@ -108,12 +109,15 @@ export async function runGardener(
 
   try {
     const prompt = await buildGardenerPrompt(userId, svc);
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model: haiku,
       schema: GardenerResult,
       prompt,
       maxOutputTokens: 8000,
     });
+    if (hooks.recordUsage) {
+      await hooks.recordUsage(userId, usage?.totalTokens ?? 0);
+    }
 
     for (const p of object.proposals) {
       try {
@@ -183,6 +187,12 @@ export async function runGardenerForUser(userId: string): Promise<void> {
       },
       recordRun: async (uid) => {
         await prisma.gardenerRun.create({ data: { userId: uid } });
+      },
+      recordUsage: async (uid, tokens) => {
+        if (tokens > 0) {
+          const { recordUsage } = await import("@/server/ai/budget");
+          await recordUsage(uid, tokens).catch(() => {});
+        }
       },
     },
     existingQuestions,

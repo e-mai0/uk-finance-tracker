@@ -1,6 +1,34 @@
 # Trackr — Project Status
 
-_Last updated: 2026-06-05_
+_Last updated: 2026-06-09_
+
+> **IN FLIGHT — Cyclops Phase 1 (branch `cyclopslevelup`, not yet merged).**
+> Trackr is being overhauled into **Cyclops**, an AI "application OS"
+> (spec: `docs/superpowers/specs/2026-06-09-cyclops-application-os-design.md`;
+> plan: `docs/superpowers/plans/2026-06-09-cyclops-phase-1-memory-chat.md`).
+> Phase 1 is fully implemented and reviewed on the branch: per-user markdown
+> memory tree with revisions + anti-rot gardener, AI SDK 6 agent brain behind
+> `POST /api/chat` (six tools, confidence/uncertainty discipline, per-user
+> daily token budget), `/chat` and `/memory` pages, onboarding voice/story
+> seeding, pgvector semantic recall (Voyage embeddings). 130 unit tests green;
+> `tsc` + `next build` clean. The deterministic extension autofill is untouched
+> and its API responses are byte-compatible.
+>
+> **Before merging `cyclopslevelup` to `main` (main auto-deploys prod!):**
+> 1. Apply the additive SQL to Supabase (SQL editor or `psql "$DIRECT_URL" -f …`),
+>    in order: `prisma/sql/2026-06-09-cyclops-memory.sql` then
+>    `prisma/sql/2026-06-09-pgvector.sql` (needs the `vector` extension).
+> 2. Set `VOYAGE_API_KEY` and `CYCLOPS_DAILY_TOKEN_BUDGET` in `.env` + Vercel
+>    (only after step 1). Optional backfill: `npx tsx scripts/backfill-embeddings.ts`.
+> 3. Smoke test on localhost: /chat ("remember X" → memory diff chip; Stop
+>    mid-tool-call then send again), /memory (edit/save/restore), one extension
+>    autofill + answer generation round.
+>
+> Known fast-follows (logged, not blocking): gardener cron schedule (only the
+> every-10-edits trigger exists), mobile rails for /chat + /memory, gardener
+> question "asked" detection is conservative, `npm run lint` has a pre-existing
+> config failure (`nextVitals is not iterable`), `gray-matter` dep unused until
+> frontmatter parsing lands in phase 2.
 
 A snapshot of where the project is, so any future session (human or agent) can pick
 up without re-deriving context. For product/setup detail see `README.md`; for the

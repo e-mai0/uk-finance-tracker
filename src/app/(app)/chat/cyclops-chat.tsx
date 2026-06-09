@@ -23,6 +23,17 @@ const TOOL_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 type HitChip = { kind: string; confidence: string };
 
+/** Server errors arrive as JSON bodies ({"error": "..."}); surface the text, not the blob. */
+function friendlyError(error: Error): string {
+  try {
+    const parsed = JSON.parse(error.message) as { error?: unknown };
+    if (typeof parsed.error === "string") return parsed.error;
+  } catch {
+    // not JSON — fall through
+  }
+  return error.message || "Something went wrong.";
+}
+
 // ---------------------------------------------------------------------------
 // MessagePart sub-component
 // ---------------------------------------------------------------------------
@@ -249,7 +260,7 @@ export function CyclopsChat({
             <span aria-hidden className="mr-1">
               ▲
             </span>
-            {error.message ?? "Something went wrong."}{" "}
+            {friendlyError(error)}{" "}
             <button
               type="button"
               className="underline hover:no-underline"
