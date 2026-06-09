@@ -1,4 +1,4 @@
--- Cyclops Phase 1: memory, chat, gardener, usage models
+﻿-- Cyclops Phase 1: memory, chat, gardener, usage models
 -- IMPORTANT: Apply to the shared Supabase DB in order: this file first, then
 -- 2026-06-09-pgvector.sql. Both must be applied BEFORE setting VOYAGE_API_KEY.
 
@@ -100,7 +100,7 @@ CREATE INDEX "ChatSession_userId_updatedAt_idx" ON "ChatSession"("userId", "upda
 CREATE INDEX "ChatMessage_sessionId_createdAt_idx" ON "ChatMessage"("sessionId", "createdAt");
 
 -- CreateUniqueIndex
-CREATE UNIQUE INDEX "ChatMessage_sessionId_clientId_key" ON "ChatMessage"("sessionId", "clientId") WHERE "clientId" IS NOT NULL;
+CREATE UNIQUE INDEX "ChatMessage_sessionId_clientId_key" ON "ChatMessage"("sessionId", "clientId");
 
 -- CreateIndex
 CREATE INDEX "GardenerQuestion_userId_status_idx" ON "GardenerQuestion"("userId", "status");

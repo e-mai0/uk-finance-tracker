@@ -33,9 +33,10 @@ const ChatBodySchema = z.object({
 async function loadSessionHistory(sessionId: string): Promise<UIMessage[]> {
   const rows = await prisma.chatMessage.findMany({
     where: { sessionId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
     take: 30,
   });
+  rows.reverse();
 
   return rows.map((row) => {
     let parts: UIMessage["parts"] = [];
