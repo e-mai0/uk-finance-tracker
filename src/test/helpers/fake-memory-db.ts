@@ -31,8 +31,9 @@ export function fakeDb(): MemoryDb {
     async createRevision(rev) {
       revisions.push({ ...rev, id: `r${++n}`, reason: rev.reason ?? null, createdAt: new Date() });
     },
-    async listRevisions(memoryFileId) {
-      return revisions.filter((r) => r.memoryFileId === memoryFileId).reverse();
+    async listRevisions(memoryFileId, limit) {
+      const all = revisions.filter((r) => r.memoryFileId === memoryFileId).reverse();
+      return limit !== undefined ? all.slice(0, limit) : all;
     },
     async findRevision(id) {
       return revisions.find((r) => r.id === id) ?? null;

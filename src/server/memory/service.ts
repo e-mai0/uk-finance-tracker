@@ -10,7 +10,7 @@ export interface MemoryDb {
   listFiles(userId: string): Promise<{ id: string; userId: string; path: string; content: string }[]>;
   upsertFile(userId: string, path: string, content: string): Promise<{ id: string; userId: string; path: string; content: string }>;
   createRevision(rev: { memoryFileId: string; before: string; after: string; author: MemoryAuthorKind; reason?: string | null }): Promise<void>;
-  listRevisions(memoryFileId: string): Promise<{ id: string; memoryFileId: string; before: string; after: string; author: MemoryAuthorKind; reason: string | null; createdAt: Date }[]>;
+  listRevisions(memoryFileId: string, limit?: number): Promise<{ id: string; memoryFileId: string; before: string; after: string; author: MemoryAuthorKind; reason: string | null; createdAt: Date }[]>;
   findRevision(id: string): Promise<{ id: string; memoryFileId: string; before: string; after: string } | null>;
   transact<T>(fn: (db: MemoryDb) => Promise<T>): Promise<T>;
 }
@@ -70,11 +70,11 @@ export function createMemoryService(db: MemoryDb) {
       });
     },
 
-    async revisions(userId: string, path: string) {
+    async revisions(userId: string, path: string, limit?: number) {
       path = normalizePath(path);
       const file = await db.findFile(userId, path);
       if (!file) return [];
-      return db.listRevisions(file.id);
+      return db.listRevisions(file.id, limit);
     },
 
     /**
@@ -111,10 +111,11 @@ function prismaMemoryDbFor(client: typeof prisma | PrismaTransactionClient): Omi
     createRevision: async (rev) => {
       await client.memoryRevision.create({ data: rev });
     },
-    listRevisions: (memoryFileId) =>
+    listRevisions: (memoryFileId, limit) =>
       client.memoryRevision.findMany({
         where: { memoryFileId },
         orderBy: { createdAt: "desc" },
+        ...(limit !== undefined ? { take: limit } : {}),
       }),
     findRevision: (id) =>
       client.memoryRevision.findUnique({ where: { id } }),

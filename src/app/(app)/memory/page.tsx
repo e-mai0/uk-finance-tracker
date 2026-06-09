@@ -72,9 +72,9 @@ export default async function MemoryPage({
 
   // Load revisions for the active file (capped at 20)
   const rawRevisions = activeFile
-    ? await memoryService.revisions(userId, activeFile.path)
+    ? await memoryService.revisions(userId, activeFile.path, 20)
     : [];
-  const revisions: MemoryRevision[] = rawRevisions.slice(0, 20).map((r) => ({
+  const revisions: MemoryRevision[] = rawRevisions.map((r) => ({
     id: r.id,
     author: r.author,
     reason: r.reason,

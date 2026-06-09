@@ -81,6 +81,23 @@ describe("memory service", () => {
     expect(profileFiles[0].content).toContain("new content");
   });
 
+  it("revisions respects the limit parameter", async () => {
+    const db = fakeDb();
+    const svc = createMemoryService(db);
+    await svc.list("u1"); // seed
+    // Write 5 revisions
+    for (let i = 1; i <= 5; i++) {
+      await svc.write("u1", "profile.md", `v${i}`, "CYCLOPS");
+    }
+    const all = await svc.revisions("u1", "profile.md");
+    expect(all.length).toBe(5);
+    const limited = await svc.revisions("u1", "profile.md", 3);
+    expect(limited.length).toBe(3);
+    // Should be the 3 most-recent (newest first)
+    expect(limited[0].after).toBe("v5");
+    expect(limited[2].after).toBe("v3");
+  });
+
   it("seeds missing canonical files even when tree is non-empty", async () => {
     const db = fakeDb();
     // Pre-populate with a non-canonical file so seed skips with the old logic

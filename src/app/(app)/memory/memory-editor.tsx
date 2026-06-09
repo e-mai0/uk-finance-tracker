@@ -33,9 +33,10 @@ export function MemoryEditor({ path, content, revisions }: Props) {
     setError(null);
     startTransition(async () => {
       try {
-        await saveMemoryFile(path, text);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Save failed.");
+        const res = await saveMemoryFile(path, text);
+        if (!res.ok) setError(res.error);
+      } catch {
+        setError("Save failed.");
       }
     });
   }
@@ -56,9 +57,10 @@ export function MemoryEditor({ path, content, revisions }: Props) {
     setError(null);
     startTransition(async () => {
       try {
-        await revertMemoryRevision(rev.id);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Restore failed.");
+        const res = await revertMemoryRevision(rev.id);
+        if (!res.ok) setError(res.error);
+      } catch {
+        setError("Restore failed.");
       }
     });
   }
@@ -159,6 +161,7 @@ export function MemoryEditor({ path, content, revisions }: Props) {
                   </div>
                   <button
                     type="button"
+                    aria-label={`Restore version before ${who}'s change at ${ts}`}
                     onClick={() => handleRestore(rev)}
                     disabled={isPending}
                     className={cn(
