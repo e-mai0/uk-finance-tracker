@@ -15,20 +15,24 @@ export interface MemoryDb {
   transact<T>(fn: (db: MemoryDb) => Promise<T>): Promise<T>;
 }
 
-const PATH_RE = /^(?!.*\.\.)[a-z0-9][a-z0-9\-_/.]*\.md$/i;
+const PATH_RE = /^(?!.*\.\.)[a-z0-9][a-z0-9\-_/.]*\.md$/;
 
-function assertPath(path: string): void {
-  if (!PATH_RE.test(path) || path.startsWith("/")) {
+/** Lowercases the path and throws if it is not valid. Returns the normalized path. */
+function normalizePath(path: string): string {
+  const p = path.toLowerCase();
+  if (!PATH_RE.test(p) || p.startsWith("/")) {
     throw new Error(`invalid memory path: ${path}`);
   }
+  return p;
 }
 
 export function createMemoryService(db: MemoryDb) {
   async function seed(userId: string): Promise<void> {
-    const existing = await db.listFiles(userId);
-    if (existing.length > 0) return;
     for (const [path, content] of Object.entries(CANONICAL_TEMPLATES)) {
-      await db.upsertFile(userId, path, content);
+      const existing = await db.findFile(userId, path);
+      if (!existing) {
+        await db.upsertFile(userId, path, content);
+      }
     }
   }
 
@@ -39,7 +43,7 @@ export function createMemoryService(db: MemoryDb) {
     },
 
     async read(userId: string, path: string) {
-      assertPath(path);
+      path = normalizePath(path);
       return db.findFile(userId, path);
     },
 
@@ -50,48 +54,79 @@ export function createMemoryService(db: MemoryDb) {
       author: MemoryAuthorKind,
       reason?: string,
     ): Promise<{ diff: string }> {
-      assertPath(path);
-      const existing = await db.findFile(userId, path);
-      const before = existing?.content ?? "";
-      const file = await db.upsertFile(userId, path, content);
-      await db.createRevision({ memoryFileId: file.id, before, after: content, author, reason: reason ?? null });
-      return { diff: createTwoFilesPatch(path, path, before, content) };
+      path = normalizePath(path);
+      return db.transact(async (txDb) => {
+        const existing = await txDb.findFile(userId, path);
+        const before = existing?.content ?? "";
+        const file = await txDb.upsertFile(userId, path, content);
+        await txDb.createRevision({
+          memoryFileId: file.id,
+          before,
+          after: content,
+          author,
+          reason: reason ?? null,
+        });
+        return { diff: createTwoFilesPatch(path, path, before, content) };
+      });
     },
 
     async revisions(userId: string, path: string) {
-      assertPath(path);
+      path = normalizePath(path);
       const file = await db.findFile(userId, path);
       if (!file) return [];
       return db.listRevisions(file.id);
     },
 
-    async revert(userId: string, revisionId: string): Promise<void> {
+    /**
+     * Restores a file to its state BEFORE the chosen revision ("restore this version").
+     * Uses findFileById for O(1) ownership check without loading the full tree.
+     * Returns { diff } from the inner write so the UI can display what changed.
+     */
+    async revert(userId: string, revisionId: string): Promise<{ diff: string }> {
       const rev = await db.findRevision(revisionId);
       if (!rev) throw new Error("revision not found");
-      const files = await db.listFiles(userId);
-      const file = files.find((f) => f.id === rev.memoryFileId);
-      if (!file) throw new Error("not your revision");
-      await this.write(userId, file.path, rev.before, "USER", "revert");
+      const file = await db.findFileById(rev.memoryFileId);
+      if (!file || file.userId !== userId) throw new Error("not your revision");
+      return this.write(userId, file.path, rev.before, "USER", "revert");
     },
   };
 }
 
+type PrismaTransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+function prismaMemoryDbFor(client: typeof prisma | PrismaTransactionClient): Omit<MemoryDb, "transact"> {
+  return {
+    findFile: (userId, path) =>
+      client.memoryFile.findUnique({ where: { userId_path: { userId, path } } }),
+    findFileById: (id) =>
+      client.memoryFile.findUnique({ where: { id } }),
+    listFiles: (userId) =>
+      client.memoryFile.findMany({ where: { userId } }),
+    upsertFile: (userId, path, content) =>
+      client.memoryFile.upsert({
+        where: { userId_path: { userId, path } },
+        create: { userId, path, content },
+        update: { content },
+      }),
+    createRevision: async (rev) => {
+      await client.memoryRevision.create({ data: rev });
+    },
+    listRevisions: (memoryFileId) =>
+      client.memoryRevision.findMany({
+        where: { memoryFileId },
+        orderBy: { createdAt: "desc" },
+      }),
+    findRevision: (id) =>
+      client.memoryRevision.findUnique({ where: { id } }),
+  };
+}
+
 export const prismaMemoryDb: MemoryDb = {
-  findFile: (userId, path) =>
-    prisma.memoryFile.findUnique({ where: { userId_path: { userId, path } } }),
-  listFiles: (userId) => prisma.memoryFile.findMany({ where: { userId } }),
-  upsertFile: (userId, path, content) =>
-    prisma.memoryFile.upsert({
-      where: { userId_path: { userId, path } },
-      create: { userId, path, content },
-      update: { content },
-    }),
-  createRevision: async (rev) => {
-    await prisma.memoryRevision.create({ data: rev });
-  },
-  listRevisions: (memoryFileId) =>
-    prisma.memoryRevision.findMany({ where: { memoryFileId }, orderBy: { createdAt: "desc" } }),
-  findRevision: (id) => prisma.memoryRevision.findUnique({ where: { id } }),
+  ...prismaMemoryDbFor(prisma),
+  transact: <T>(fn: (db: MemoryDb) => Promise<T>) =>
+    prisma.$transaction((tx) =>
+      fn({ ...prismaMemoryDbFor(tx), transact: prismaMemoryDb.transact }),
+    ),
 };
 
 export const memoryService = createMemoryService(prismaMemoryDb);
