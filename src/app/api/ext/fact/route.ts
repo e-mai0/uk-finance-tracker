@@ -5,9 +5,48 @@ import { routeAskedAnswer } from "../../../../lib/form-plan";
 import { normalizeQuestion } from "../../../../lib/answers";
 import { extFactSchema } from "../../../../lib/validation";
 import { json, unauthorized, preflight } from "../../../../server/ext-http";
+import { memoryService } from "../../../../server/memory/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+async function writeFactToMemory(userId: string, label: string, value: string): Promise<void> {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    // Ensure the canonical tree exists for this user.
+    let file = await memoryService.read(userId, "profile.md");
+    if (!file) {
+      await memoryService.list(userId);
+      file = await memoryService.read(userId, "profile.md");
+    }
+    if (!file) return;
+    const line = `- ${label}: ${value} (confidence: high, confirmed: ${today})`;
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!file.content.includes(`- ${label}:`)) {
+      await memoryService.write(
+        userId,
+        "profile.md",
+        `${file.content.trimEnd()}\n${line}\n`,
+        "CYCLOPS",
+        "fact from application form",
+      );
+    } else {
+      const replaced = file.content.replace(
+        new RegExp(`^- ${escapedLabel}:.*$`, "m"),
+        line,
+      );
+      await memoryService.write(
+        userId,
+        "profile.md",
+        replaced,
+        "CYCLOPS",
+        "fact updated from application form",
+      );
+    }
+  } catch (err) {
+    console.error("[fact route] memory write-back failed:", err);
+  }
+}
 
 export function OPTIONS() {
   return preflight();
@@ -40,6 +79,7 @@ export async function POST(req: Request) {
       create: { userId, [route.column]: route.value } as Prisma.ApplyProfileUncheckedCreateInput,
       update: { [route.column]: route.value } as Prisma.ApplyProfileUncheckedUpdateInput,
     });
+    await writeFactToMemory(userId, questionText, answer);
     return json({ saved: "profile", column: route.column });
   }
 
@@ -63,5 +103,6 @@ export async function POST(req: Request) {
       },
     });
   }
+  await writeFactToMemory(userId, questionText, answer);
   return json({ saved: "bank" });
 }
