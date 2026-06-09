@@ -426,11 +426,14 @@ model ChatSession {
 model ChatMessage {
   id        String      @id @default(cuid())
   sessionId String
+  clientId  String?
   role      String // "user" | "assistant"
   parts     String      @db.Text // JSON-serialised UIMessage parts
+  aborted   Boolean     @default(false)
   createdAt DateTime    @default(now())
   session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
+  @@unique([sessionId, clientId])
   @@index([sessionId, createdAt])
 }
 

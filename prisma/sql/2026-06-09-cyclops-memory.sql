@@ -45,8 +45,10 @@ CREATE TABLE "ChatSession" (
 CREATE TABLE "ChatMessage" (
     "id" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
+    "clientId" TEXT,
     "role" TEXT NOT NULL,
     "parts" TEXT NOT NULL,
+    "aborted" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ChatMessage_pkey" PRIMARY KEY ("id")
@@ -96,6 +98,9 @@ CREATE INDEX "ChatSession_userId_updatedAt_idx" ON "ChatSession"("userId", "upda
 
 -- CreateIndex
 CREATE INDEX "ChatMessage_sessionId_createdAt_idx" ON "ChatMessage"("sessionId", "createdAt");
+
+-- CreateUniqueIndex
+CREATE UNIQUE INDEX "ChatMessage_sessionId_clientId_key" ON "ChatMessage"("sessionId", "clientId") WHERE "clientId" IS NOT NULL;
 
 -- CreateIndex
 CREATE INDEX "GardenerQuestion_userId_status_idx" ON "GardenerQuestion"("userId", "status");
