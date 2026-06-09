@@ -6,11 +6,13 @@ export type MemoryAuthorKind = "USER" | "CYCLOPS";
 
 export interface MemoryDb {
   findFile(userId: string, path: string): Promise<{ id: string; userId: string; path: string; content: string } | null>;
+  findFileById(id: string): Promise<{ id: string; userId: string; path: string; content: string } | null>;
   listFiles(userId: string): Promise<{ id: string; userId: string; path: string; content: string }[]>;
   upsertFile(userId: string, path: string, content: string): Promise<{ id: string; userId: string; path: string; content: string }>;
   createRevision(rev: { memoryFileId: string; before: string; after: string; author: MemoryAuthorKind; reason?: string | null }): Promise<void>;
   listRevisions(memoryFileId: string): Promise<{ id: string; memoryFileId: string; before: string; after: string; author: MemoryAuthorKind; reason: string | null; createdAt: Date }[]>;
   findRevision(id: string): Promise<{ id: string; memoryFileId: string; before: string; after: string } | null>;
+  transact<T>(fn: (db: MemoryDb) => Promise<T>): Promise<T>;
 }
 
 const PATH_RE = /^(?!.*\.\.)[a-z0-9][a-z0-9\-_/.]*\.md$/i;

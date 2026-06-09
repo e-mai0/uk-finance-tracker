@@ -7,9 +7,16 @@ export function fakeDb(): MemoryDb {
     author: "USER" | "CYCLOPS"; reason: string | null; createdAt: Date;
   }[] = [];
   let n = 0;
-  return {
+
+  const self: MemoryDb = {
     async findFile(userId, path) {
       return files.get(`${userId}:${path}`) ?? null;
+    },
+    async findFileById(id) {
+      for (const f of files.values()) {
+        if (f.id === id) return f;
+      }
+      return null;
     },
     async listFiles(userId) {
       return [...files.values()].filter((f) => f.userId === userId);
@@ -30,5 +37,9 @@ export function fakeDb(): MemoryDb {
     async findRevision(id) {
       return revisions.find((r) => r.id === id) ?? null;
     },
+    transact<T>(fn: (db: MemoryDb) => Promise<T>): Promise<T> {
+      return fn(self);
+    },
   };
+  return self;
 }
