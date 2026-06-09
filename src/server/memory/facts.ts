@@ -33,3 +33,39 @@ export function effectiveConfidence(f: Fact, v: Volatility, now: Date): Confiden
 export function volatilityFor(path: string): Volatility {
   return path === "strategy.md" ? "volatile" : "stable";
 }
+
+/**
+ * Pure helper: given the current content of profile.md, a label/value pair,
+ * and today's date string (YYYY-MM-DD), returns the updated content.
+ *
+ * - Collapses all whitespace in label and value to single spaces (injection guard).
+ * - Strips any `(confidence:` substring from value (defense-in-depth).
+ * - Uses a line-anchored regex so mid-line occurrences never trigger supersession.
+ * - Returns `content` unchanged when the resulting line already exists verbatim (no-op).
+ */
+export function applyFact(
+  content: string,
+  label: string,
+  value: string,
+  today: string,
+): string {
+  // --- sanitize inputs ---
+  const cleanLabel = label.replace(/\s+/g, " ").trim();
+  const cleanValue = value
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\(confidence:/gi, "(c:");
+
+  const line = `- ${cleanLabel}: ${cleanValue} (confidence: high, confirmed: ${today})`;
+
+  // No-op if line already exists verbatim
+  if (content.includes(line)) return content;
+
+  const escapedLabel = cleanLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`^- ${escapedLabel}:.*$`, "m");
+
+  if (re.test(content)) {
+    return content.replace(re, line);
+  }
+  return `${content.trimEnd()}\n${line}\n`;
+}
