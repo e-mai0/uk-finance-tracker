@@ -47,6 +47,8 @@ export function StoriesStep({ onContinue, onSkip }: StoriesStepProps) {
         setSoftError(
           "Couldn't process right now — you can add this later in chat.",
         );
+        // Stop here; the user can continue via the "Continue anyway" button
+        return;
       }
       onContinue();
     });
@@ -109,9 +111,13 @@ export function StoriesStep({ onContinue, onSkip }: StoriesStepProps) {
         >
           Skip for now
         </button>
-        <Button onClick={handleSave} disabled={allEmpty || isPending}>
-          {isPending ? "Structuring your stories…" : "Save & continue"}
-        </Button>
+        {softError ? (
+          <Button onClick={onContinue}>Continue anyway</Button>
+        ) : (
+          <Button onClick={handleSave} disabled={allEmpty || isPending}>
+            {isPending ? "Structuring your stories…" : "Save & continue"}
+          </Button>
+        )}
       </div>
     </div>
   );

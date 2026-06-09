@@ -80,6 +80,10 @@ const STEPS = [
   "Your stories",
 ] as const;
 
+const REVIEW_STEP = 5;
+const WRITING_STEP = 6;
+const STORIES_STEP = 7;
+
 const SKILL_SUGGESTIONS = [
   "Excel",
   "Valuation",
@@ -246,6 +250,12 @@ export function OnboardingWizard({
       <Stepper step={step} />
 
       <div className="mt-8 rounded-[var(--radius-card)] border border-border bg-surface p-6 sm:p-8">
+        {submitError && step >= REVIEW_STEP && (
+          <div className="mb-6 rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
+            {submitError}
+          </div>
+        )}
+
         {step === 0 && (
           <StepShell
             title={`Welcome, ${firstName}`}
@@ -516,7 +526,7 @@ export function OnboardingWizard({
           </StepShell>
         )}
 
-        {step === 5 && (
+        {step === REVIEW_STEP && (
           <StepShell
             title="Review & finish"
             subtitle="Confirm everything looks right. We'll build your matches instantly."
@@ -556,20 +566,14 @@ export function OnboardingWizard({
                 value={state.targetEmployers.join(", ") || "None specified"}
               />
             </dl>
-
-            {submitError && (
-              <div className="mt-4 rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
-                {submitError}
-              </div>
-            )}
           </StepShell>
         )}
 
-        {step === 6 && (
+        {step === WRITING_STEP && (
           <WritingStep onContinue={next} onSkip={next} />
         )}
 
-        {step === 7 && (
+        {step === STORIES_STEP && (
           <StoriesStep onContinue={finish} onSkip={finish} />
         )}
 
@@ -582,18 +586,18 @@ export function OnboardingWizard({
           >
             Back
           </Button>
-          {/* Steps 0–5 use the shared bottom navigation */}
-          {step < 5 && (
+          {/* Steps 0–(REVIEW_STEP-1) use the shared bottom navigation */}
+          {step < REVIEW_STEP && (
             <Button onClick={next}>
               {step === 0 ? "Get started" : "Continue"}
             </Button>
           )}
-          {step === 5 && (
+          {step === REVIEW_STEP && (
             <Button onClick={next} disabled={isPending}>
               Continue
             </Button>
           )}
-          {/* Steps 6–7 manage their own primary CTA and skip link internally */}
+          {/* Steps WRITING_STEP–STORIES_STEP manage their own primary CTA and skip link internally */}
         </div>
       </div>
     </div>

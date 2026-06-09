@@ -47,6 +47,8 @@ export function WritingStep({ onContinue, onSkip }: WritingStepProps) {
         setSoftError(
           "Couldn't process right now — you can add this later in chat.",
         );
+        // Stop here; the user can continue via the "Continue anyway" button
+        return;
       }
       onContinue();
     });
@@ -71,8 +73,7 @@ export function WritingStep({ onContinue, onSkip }: WritingStepProps) {
         {samples.map((value, i) => (
           <div key={i}>
             <label className="mb-1.5 block text-sm font-medium text-ink">
-              Sample {i + 1}
-              {i === 0 ? "" : " (optional)"}
+              Sample {i + 1} (optional)
             </label>
             <textarea
               className={cn(
@@ -110,9 +111,13 @@ export function WritingStep({ onContinue, onSkip }: WritingStepProps) {
         >
           Skip for now
         </button>
-        <Button onClick={handleSave} disabled={allEmpty || isPending}>
-          {isPending ? "Analysing your voice…" : "Save & continue"}
-        </Button>
+        {softError ? (
+          <Button onClick={onContinue}>Continue anyway</Button>
+        ) : (
+          <Button onClick={handleSave} disabled={allEmpty || isPending}>
+            {isPending ? "Analysing your voice…" : "Save & continue"}
+          </Button>
+        )}
       </div>
     </div>
   );
