@@ -9,7 +9,8 @@ export function isOverBudget(spent: number, limit: number): boolean {
 }
 
 export function dailyLimit(): number {
-  return Number(process.env.CYCLOPS_DAILY_TOKEN_BUDGET ?? 2_000_000);
+  const n = Number(process.env.CYCLOPS_DAILY_TOKEN_BUDGET ?? 2_000_000);
+  return Number.isFinite(n) ? n : 2_000_000;
 }
 
 export async function checkBudget(userId: string): Promise<{ ok: boolean; spent: number }> {
