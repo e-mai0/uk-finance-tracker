@@ -25,6 +25,8 @@ import {
   eligibilitySchema,
 } from "@/lib/validation";
 import { completeOnboarding } from "@/server/actions/onboarding";
+import { WritingStep } from "@/components/onboarding/writing-step";
+import { StoriesStep } from "@/components/onboarding/stories-step";
 
 type Errors = Record<string, string[] | undefined>;
 
@@ -74,6 +76,8 @@ const STEPS = [
   "Eligibility",
   "Targets",
   "Review",
+  "Your writing",
+  "Your stories",
 ] as const;
 
 const SKILL_SUGGESTIONS = [
@@ -561,6 +565,14 @@ export function OnboardingWizard({
           </StepShell>
         )}
 
+        {step === 6 && (
+          <WritingStep onContinue={next} onSkip={next} />
+        )}
+
+        {step === 7 && (
+          <StoriesStep onContinue={finish} onSkip={finish} />
+        )}
+
         <div className="mt-8 flex items-center justify-between">
           <Button
             variant="ghost"
@@ -570,15 +582,18 @@ export function OnboardingWizard({
           >
             Back
           </Button>
-          {step < STEPS.length - 1 ? (
+          {/* Steps 0–5 use the shared bottom navigation */}
+          {step < 5 && (
             <Button onClick={next}>
               {step === 0 ? "Get started" : "Continue"}
             </Button>
-          ) : (
-            <Button onClick={finish} disabled={isPending}>
-              {isPending ? "Building your tracker…" : "Finish & see matches"}
+          )}
+          {step === 5 && (
+            <Button onClick={next} disabled={isPending}>
+              Continue
             </Button>
           )}
+          {/* Steps 6–7 manage their own primary CTA and skip link internally */}
         </div>
       </div>
     </div>
