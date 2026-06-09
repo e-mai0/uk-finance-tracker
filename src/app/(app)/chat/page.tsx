@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
-import type { UIMessage } from "ai";
 import { CyclopsChat } from "./cyclops-chat";
 import { createThread } from "./actions";
+import { rowToUIMessage } from "@/server/chat/messages";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cyclops — Trackr" };
@@ -18,6 +19,8 @@ export default async function ChatPage({
   const userId = session.user.id;
 
   const sp = await searchParams;
+  // item 6: coerce string | string[] → string | undefined
+  const tParam = Array.isArray(sp.t) ? sp.t[0] : sp.t;
 
   // Load up to 50 threads, newest first
   const threads = await prisma.chatSession.findMany({
@@ -35,13 +38,13 @@ export default async function ChatPage({
   }
 
   // No `t` param → redirect to newest thread
-  if (!sp.t) {
+  if (!tParam) {
     redirect(`/chat?t=${threads[0]!.id}`);
   }
 
   // Load the active thread (ownership-scoped)
   const activeThread = await prisma.chatSession.findFirst({
-    where: { id: sp.t, userId },
+    where: { id: tParam, userId },
     include: {
       messages: {
         orderBy: { createdAt: "asc" },
@@ -54,20 +57,8 @@ export default async function ChatPage({
     redirect(`/chat?t=${threads[0]!.id}`);
   }
 
-  // Map stored messages to UIMessages
-  const initialMessages: UIMessage[] = activeThread.messages.map((row) => {
-    let parts: UIMessage["parts"] = [];
-    try {
-      parts = JSON.parse(row.parts) as UIMessage["parts"];
-    } catch {
-      parts = [{ type: "text", text: "" }];
-    }
-    return {
-      id: row.clientId ?? row.id,
-      role: row.role as UIMessage["role"],
-      parts,
-    };
-  });
+  // Map stored messages to UIMessages (shared helper — item 11)
+  const initialMessages = activeThread.messages.map(rowToUIMessage);
 
   return (
     <div className="animate-rise flex h-[calc(100vh-2.75rem)] overflow-hidden">
@@ -93,9 +84,10 @@ export default async function ChatPage({
           {threads.map((t) => {
             const isActive = t.id === activeThread.id;
             return (
-              <a
+              <Link
                 key={t.id}
                 href={`/chat?t=${t.id}`}
+                aria-current={isActive ? "page" : undefined}
                 className={
                   isActive
                     ? "block border-l-2 border-accent bg-accent-tint px-3 py-2"
@@ -111,7 +103,7 @@ export default async function ChatPage({
                     month: "short",
                   })}
                 </span>
-              </a>
+              </Link>
             );
           })}
         </nav>
@@ -146,6 +138,7 @@ export default async function ChatPage({
         {/* Chat client component */}
         <div className="flex-1 overflow-hidden">
           <CyclopsChat
+            key={activeThread.id}
             sessionId={activeThread.id}
             initialMessages={initialMessages}
           />

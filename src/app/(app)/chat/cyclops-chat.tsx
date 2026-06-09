@@ -87,7 +87,7 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
           </span>
           {label}
           {(state === "input-streaming" || state === "input-available") && (
-            <span className="caret text-amber">▌</span>
+            <span className="caret text-accent">▌</span>
           )}
         </span>
 
@@ -143,20 +143,31 @@ export function CyclopsChat({
 }) {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, regenerate, stop, status, error } = useChat({
+    id: sessionId,
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: { sessionId },
+      // item 2: send only the last user message to avoid tool-part validation failures
+      prepareSendMessagesRequest: ({ messages: msgs, body }) => ({
+        body: { ...body, messages: msgs.slice(-1) },
+      }),
     }),
     messages: initialMessages,
   });
 
   const isStreaming = status === "submitted" || status === "streaming";
 
-  // Auto-scroll on new messages / streaming updates
+  // item 7: auto-scroll only when pinned near the bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const { scrollHeight, scrollTop, clientHeight } = container;
+    if (scrollHeight - scrollTop - clientHeight < 80) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   function handleSubmit(e?: FormEvent) {
@@ -170,14 +181,14 @@ export function CyclopsChat({
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      if (!isStreaming) handleSubmit();
     }
   }
 
   return (
     <div className="flex h-full flex-col">
       {/* Message feed */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && !isStreaming && (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <p className="label text-[0.6rem] text-subtle">Cyclops</p>
@@ -216,19 +227,25 @@ export function CyclopsChat({
           ))}
         </div>
 
-        {/* Streaming indicator */}
+        {/* Streaming indicator — item 9: aria-live */}
         {isStreaming && (
-          <div className="mt-3 flex items-center gap-1.5">
-            <span className="caret text-[0.9rem] text-amber">▌</span>
+          <div
+            aria-live="polite"
+            className="mt-3 flex items-center gap-1.5"
+          >
+            <span className="caret text-[0.9rem] text-accent">▌</span>
             <span className="font-mono text-[0.62rem] text-subtle">
               Cyclops is thinking…
             </span>
           </div>
         )}
 
-        {/* Error state */}
+        {/* Error state — item 9: aria-live; item 3: regenerate */}
         {status === "error" && error && (
-          <div className="mt-3 border border-danger-soft bg-danger-soft px-3 py-2 font-mono text-[0.62rem] text-danger">
+          <div
+            aria-live="polite"
+            className="mt-3 border border-danger-soft bg-danger-soft px-3 py-2 font-mono text-[0.62rem] text-danger"
+          >
             <span aria-hidden className="mr-1">
               ▲
             </span>
@@ -236,7 +253,7 @@ export function CyclopsChat({
             <button
               type="button"
               className="underline hover:no-underline"
-              onClick={() => sendMessage({ text: input || "retry" })}
+              onClick={() => regenerate()}
             >
               retry
             </button>
@@ -257,27 +274,40 @@ export function CyclopsChat({
             value={input}
             onChange={(e) => setInput(e.target.value.slice(0, 8000))}
             onKeyDown={handleKeyDown}
-            disabled={isStreaming}
             placeholder="Ask Cyclops…"
             maxLength={8000}
             className={cn(
               "flex-1 border border-border bg-canvas px-2.5 py-1.5 font-mono text-[0.8rem] text-ink placeholder:text-faint",
               "focus:border-accent focus:outline-none",
-              "disabled:opacity-50",
             )}
             aria-label="Chat input"
           />
-          <button
-            type="submit"
-            disabled={isStreaming || !input.trim()}
-            className={cn(
-              "label border border-border bg-surface px-3 py-1.5 text-[0.62rem] text-accent transition-colors",
-              "hover:border-accent hover:bg-accent-tint",
-              "disabled:cursor-not-allowed disabled:opacity-40",
-            )}
-          >
-            Send
-          </button>
+          {/* item 8: stop button while streaming */}
+          {isStreaming ? (
+            <button
+              type="button"
+              onClick={() => void stop()}
+              className={cn(
+                "label border border-border bg-surface px-3 py-1.5 text-[0.62rem] text-danger transition-colors",
+                "hover:border-danger hover:bg-danger-soft",
+              )}
+              aria-label="Stop generation"
+            >
+              Stop
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className={cn(
+                "label border border-border bg-surface px-3 py-1.5 text-[0.62rem] text-accent transition-colors",
+                "hover:border-accent hover:bg-accent-tint",
+                "disabled:cursor-not-allowed disabled:opacity-40",
+              )}
+            >
+              Send
+            </button>
+          )}
         </form>
         {input.length > 7500 && (
           <p className="mt-1 font-mono text-[0.58rem] text-warning">

@@ -6,6 +6,7 @@ import { streamCyclops } from "@/server/ai/brain";
 import { checkBudget } from "@/server/ai/budget";
 import { gardenerDue, runGardenerForUser } from "@/server/memory/gardener";
 import type { UIMessage } from "ai";
+import { rowToUIMessage } from "@/server/chat/messages";
 
 export const maxDuration = 120;
 
@@ -37,20 +38,7 @@ async function loadSessionHistory(sessionId: string): Promise<UIMessage[]> {
     take: 30,
   });
   rows.reverse();
-
-  return rows.map((row) => {
-    let parts: UIMessage["parts"] = [];
-    try {
-      parts = JSON.parse(row.parts) as UIMessage["parts"];
-    } catch {
-      parts = [{ type: "text", text: "" }];
-    }
-    return {
-      id: row.clientId ?? row.id,
-      role: row.role as UIMessage["role"],
-      parts,
-    };
-  });
+  return rows.map(rowToUIMessage);
 }
 
 // ---------------------------------------------------------------------------
