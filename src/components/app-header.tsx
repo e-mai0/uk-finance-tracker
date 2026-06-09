@@ -10,6 +10,8 @@ const NAV = [
   { href: "/dashboard", label: "Tracker" },
   { href: "/saved", label: "Saved" },
   { href: "/applications", label: "Apps" },
+  { href: "/chat", label: "Chat" },
+  { href: "/memory", label: "Memory" },
   { href: "/settings", label: "Settings" },
 ];
 
