@@ -169,7 +169,7 @@ export async function runGardenerForUser(userId: string): Promise<void> {
 
   // Item 7: Load pending gardener questions so duplicates can be filtered.
   const pendingRows = await prisma.gardenerQuestion.findMany({
-    where: { userId, status: "pending" },
+    where: { userId, status: { in: ["pending", "asked"] } },
     select: { question: true },
   });
   const existingQuestions = pendingRows.map((r) => r.question);
