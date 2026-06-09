@@ -147,6 +147,7 @@ model Employer {
   website       String?
   logoHint      String? // short label for an avatar/monogram in the UI
   opportunities Opportunity[]
+  research      EmployerResearch?
 }
 
 model Opportunity {
@@ -355,6 +356,7 @@ model GeneratedDraft {
   context       Json? // prompt context (question, employer, role, char limit)
   content       String
   model         String?
+  provenance    String?      @db.Text // JSON Provenance
   createdAt     DateTime     @default(now())
 
   @@index([userId])
@@ -482,4 +484,29 @@ model ContentEmbedding {
   @@unique([kind, sourceId])
   @@index([userId, kind])
   @@map("content_embeddings")
+}
+
+// ---------------------------------------------------------------------------
+// Cyclops Phase 2 — writing engine (draft editing, employer research)
+// ---------------------------------------------------------------------------
+
+model DraftEdit {
+  id        String   @id @default(cuid())
+  userId    String
+  draftId   String // GeneratedDraft id
+  original  String   @db.Text
+  edited    String   @db.Text
+  distilled Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, distilled])
+}
+
+model EmployerResearch {
+  id          String   @id @default(cuid())
+  employerId  String   @unique
+  content     String   @db.Text // markdown: divisions, culture signals, recent news, common questions
+  model       String
+  refreshedAt DateTime
+  employer    Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
 }
