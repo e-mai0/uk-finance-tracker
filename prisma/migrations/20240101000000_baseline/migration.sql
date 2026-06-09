@@ -1,5 +1,0 @@
--- Baseline migration: no-op.
--- The schema was already applied to the database via `prisma db push`
--- before migration history was introduced. This file is intentionally
--- empty so that `prisma migrate deploy` can mark it applied without
--- re-creating any existing objects.
