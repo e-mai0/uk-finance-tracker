@@ -7,6 +7,9 @@ import { isAllowedMemoryPath, stripDecayAnnotations, normalizeReasons } from "@/
 import { semanticSearch } from "@/server/ai/embed";
 import { prisma } from "@/server/db";
 import { OpportunityStatus } from "@prisma/client";
+import { ensureEmployerResearch } from "@/server/engine/research";
+import { gatherSubstance } from "@/server/engine/substance";
+import { draftText } from "@/server/engine/draft";
 
 const MAX_FILE_COUNT = 100;
 
@@ -180,6 +183,85 @@ export function buildTools(userId: string) {
           score: matchScore?.score ?? null,
           reasons,
         };
+      },
+    }),
+
+    research_employer: tool({
+      description:
+        "Get shared research on an employer (divisions, culture, recent news, common questions). " +
+        "Generates fresh research if the cache is stale (>14 days). Contains no user data.",
+      inputSchema: z.object({
+        employerName: z.string().describe("The employer name to research."),
+      }),
+      execute: async ({ employerName }) => {
+        const employer = await prisma.employer.findFirst({
+          where: { name: { contains: employerName, mode: "insensitive" } },
+        });
+        if (!employer) return { error: `No employer named "${employerName}" in the catalog.` };
+        const content = await ensureEmployerResearch(employer.id, userId);
+        return content
+          ? { employer: employer.name, research: content }
+          : { error: "research unavailable" };
+      },
+    }),
+
+    draft_text: tool({
+      description:
+        "Draft an application answer or cover letter in the user's own voice, grounded in their stories and employer research. " +
+        "Returns the draft plus provenance (which stories/research were used). " +
+        "Use this whenever the user asks for help writing application text.",
+      inputSchema: z.object({
+        kind: z.enum(["ANSWER", "COVER_LETTER"]),
+        question: z.string().describe("The application question, or a synthetic question for cover letters."),
+        employerName: z.string().optional().describe("The employer name."),
+        roleTitle: z.string().optional().describe("The role title."),
+        charLimit: z.number().int().positive().optional().describe("Hard character limit for the answer."),
+      }),
+      execute: async (input) => {
+        const ctx = await gatherSubstance(userId, input);
+        const result = await draftText(userId, ctx, input);
+        await prisma.generatedDraft.create({
+          data: {
+            userId,
+            kind: input.kind === "COVER_LETTER" ? "COVER_LETTER" : "ANSWER",
+            context: { question: input.question, employer: input.employerName ?? null },
+            content: result.text,
+            model: "claude-sonnet-4-6",
+            provenance: JSON.stringify(result.provenance),
+          },
+        });
+        return { draft: result.text, provenance: result.provenance };
+      },
+    }),
+
+    update_application_status: tool({
+      description:
+        "Record the outcome/status of one of the user's applications " +
+        "(e.g. they got an interview, an offer, or a rejection). " +
+        "Statuses: DRAFT, AUTOFILLED, SUBMITTED, INTERVIEWING, OFFER, REJECTED, WITHDRAWN.",
+      inputSchema: z.object({
+        employerName: z.string().describe("The employer name for the application to update."),
+        roleTitle: z.string().optional().describe("Optional role title to narrow the search."),
+        status: z
+          .enum(["DRAFT", "AUTOFILLED", "SUBMITTED", "INTERVIEWING", "OFFER", "REJECTED", "WITHDRAWN"])
+          .describe("The new status to set."),
+      }),
+      execute: async ({ employerName, roleTitle, status }) => {
+        const app = await prisma.application.findFirst({
+          where: {
+            userId,
+            employerName: { contains: employerName, mode: "insensitive" },
+            ...(roleTitle ? { roleTitle: { contains: roleTitle, mode: "insensitive" } } : {}),
+          },
+          orderBy: { updatedAt: "desc" },
+        });
+        if (!app) {
+          return {
+            error: `No tracked application matching "${employerName}". Ask the user to check the Applications page.`,
+          };
+        }
+        await prisma.application.update({ where: { id: app.id }, data: { status } });
+        return { updated: true, employer: app.employerName, role: app.roleTitle, status };
       },
     }),
   };

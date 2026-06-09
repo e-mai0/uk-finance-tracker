@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { auth } from "../auth";
 import { prisma } from "../db";
+import { ensureEmployerResearch } from "@/server/engine/research";
 
 export async function toggleSave(
   opportunityId: string,
@@ -16,12 +18,34 @@ export async function toggleSave(
   });
 
   let saved: boolean;
+  let employerIdForResearch: string | null = null;
   if (existing) {
     await prisma.savedOpportunity.delete({ where: { id: existing.id } });
     saved = false;
   } else {
-    await prisma.savedOpportunity.create({ data: { userId, opportunityId } });
+    const opportunity = await prisma.savedOpportunity
+      .create({ data: { userId, opportunityId } })
+      .then(() =>
+        prisma.opportunity.findUnique({
+          where: { id: opportunityId },
+          select: { employerId: true },
+        }),
+      );
+    employerIdForResearch = opportunity?.employerId ?? null;
     saved = true;
+  }
+
+  // Trigger employer research warmup after a successful save (fire-and-forget via after())
+  if (employerIdForResearch) {
+    const capturedEmployerId = employerIdForResearch;
+    const capturedUserId = userId;
+    after(async () => {
+      try {
+        await ensureEmployerResearch(capturedEmployerId, capturedUserId);
+      } catch (err) {
+        console.error("research trigger failed", err);
+      }
+    });
   }
 
   revalidatePath("/dashboard");
