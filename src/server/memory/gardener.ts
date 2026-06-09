@@ -44,7 +44,7 @@ function extractAllRawNotesSections(content: string): string[] {
  * Returns true when the proposal is safe (no raw-notes sections, or all present).
  * Returns false when the proposal would clobber at least one raw-notes section.
  */
-function rawNotesGuardPasses(existingContent: string, proposedContent: string): boolean {
+export function rawNotesGuardPasses(existingContent: string, proposedContent: string): boolean {
   const sections = extractAllRawNotesSections(existingContent);
   if (sections.length === 0) return true;
 

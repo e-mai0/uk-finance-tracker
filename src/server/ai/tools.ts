@@ -1,9 +1,14 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { memoryService } from "@/server/memory/service";
-import { parseFactLine, effectiveConfidence, volatilityFor } from "@/server/memory/facts";
+import { annotateDecay } from "@/server/memory/facts";
+import { rawNotesGuardPasses } from "@/server/memory/gardener";
+import { isAllowedMemoryPath, stripDecayAnnotations, normalizeReasons } from "@/server/ai/tool-guards";
 import { semanticSearch } from "@/server/ai/embed";
 import { prisma } from "@/server/db";
+import { OpportunityStatus } from "@prisma/client";
+
+const MAX_FILE_COUNT = 100;
 
 export function buildTools(userId: string) {
   return {
@@ -29,19 +34,10 @@ export function buildTools(userId: string) {
         const file = await memoryService.read(userId, path);
         if (!file) return { error: "not found" };
 
-        const now = new Date();
-        const volatility = volatilityFor(path);
-        const annotatedLines = file.content.split("\n").map((line) => {
-          const fact = parseFactLine(line);
-          if (!fact) return line;
-          const effective = effectiveConfidence(fact, volatility, now);
-          if (effective !== fact.confidence) {
-            return `${line}  [decayed to: ${effective}]`;
-          }
-          return line;
-        });
-
-        return { path: file.path, content: annotatedLines.join("\n") };
+        // Use file.path (the normalized path) so volatilityFor always gets the
+        // canonical form — never the raw input arg (item 9).
+        const annotated = annotateDecay(file.path, file.content, new Date());
+        return { path: file.path, content: annotated };
       },
     }),
 
@@ -50,6 +46,7 @@ export function buildTools(userId: string) {
         "Replace the full content of a memory file. " +
         "SUPERSEDE, don't append: contradicted facts move to the History section with their dates. " +
         "Never rewrite 'Raw notes' sections. " +
+        "Never include [decayed to: ...] annotations in content. " +
         "Provide a short reason describing what changed and why.",
       inputSchema: z.object({
         path: z.string().describe("The path of the memory file to write (e.g. 'profile.md')."),
@@ -57,7 +54,32 @@ export function buildTools(userId: string) {
         reason: z.string().describe("Short reason for the edit (e.g. 'user confirmed degree is economics')."),
       }),
       execute: async ({ path, content, reason }) => {
-        const { diff } = await memoryService.write(userId, path, content, "CYCLOPS", reason);
+        // Item 3a: restrict allowed paths
+        if (!isAllowedMemoryPath(path)) {
+          return { error: "path not allowed" };
+        }
+
+        // Item 3b: strip any decay annotations before writing
+        const cleanContent = stripDecayAnnotations(content);
+
+        // Item 3c: raw-notes guard
+        const existing = await memoryService.read(userId, path);
+        if (existing && !rawNotesGuardPasses(existing.content, cleanContent)) {
+          return {
+            error:
+              "Raw notes sections must be preserved verbatim. Re-send with the original Raw notes content intact.",
+          };
+        }
+
+        // Item 3d: file ceiling (only for new files, not edits of existing ones)
+        if (!existing) {
+          const allFiles = await memoryService.list(userId);
+          if (allFiles.length >= MAX_FILE_COUNT) {
+            return { error: "Memory file limit reached (100 files). Cannot create new files." };
+          }
+        }
+
+        const { diff } = await memoryService.write(userId, path, cleanContent, "CYCLOPS", reason);
         return { saved: true, diff };
       },
     }),
@@ -100,19 +122,21 @@ export function buildTools(userId: string) {
     search_opportunities: tool({
       description:
         "Search the public opportunity catalog by title or employer name. " +
-        "Returns up to 10 matching opportunities with id, employer, title, location, deadlineAt, and status.",
+        "Returns up to 10 matching non-closed opportunities ordered by deadline (soonest first).",
       inputSchema: z.object({
         query: z.string().describe("Search term — matched against opportunity title and employer name."),
       }),
       execute: async ({ query }) => {
         const opps = await prisma.opportunity.findMany({
           where: {
+            status: { not: OpportunityStatus.CLOSED },
             OR: [
               { title: { contains: query, mode: "insensitive" } },
               { employer: { name: { contains: query, mode: "insensitive" } } },
             ],
           },
           include: { employer: { select: { name: true } } },
+          orderBy: { deadlineAt: { sort: "asc", nulls: "last" } },
           take: 10,
         });
         return opps.map((o) => ({
@@ -146,20 +170,8 @@ export function buildTools(userId: string) {
 
         if (!opportunity) return { error: "opportunity not found" };
 
-        // reasons is stored as Json (string[]) in the schema
-        let reasons: string[] = [];
-        if (matchScore?.reasons) {
-          const raw = matchScore.reasons;
-          if (Array.isArray(raw)) {
-            reasons = raw as string[];
-          } else if (typeof raw === "string") {
-            try {
-              reasons = JSON.parse(raw) as string[];
-            } catch {
-              reasons = [raw];
-            }
-          }
-        }
+        // Item 13: use normalizeReasons pure helper
+        const reasons = normalizeReasons(matchScore?.reasons ?? null);
 
         return {
           employer: opportunity.employer.name,
