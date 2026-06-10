@@ -5,16 +5,13 @@ some gate others. Check them off as you go.
 
 ## Gate A — required before /chat and /memory work at all
 
-- [ ] **Apply the additive SQL to Supabase** (Supabase SQL editor, or
-  `! npx prisma db execute --file <file>` one at a time), in this order:
+- [x] **Apply the additive SQL to Supabase** — applied via MCP 2026-06-10:
   1. `prisma/sql/2026-06-09-cyclops-memory.sql`
-  2. `prisma/sql/2026-06-09-pgvector.sql` (needs the `vector` extension enabled)
-  3. `prisma/sql/2026-06-10-cyclops-phase2.sql` (created in phase 2)
-  All files are CREATE-only; nothing existing is altered.
-- [ ] **Set env vars** in `.env` AND Vercel (after the SQL):
-  `VOYAGE_API_KEY=<from voyageai.com>` and `CYCLOPS_DAILY_TOKEN_BUDGET=2000000`.
-- [ ] **Set `CRON_SECRET`** in `.env` AND Vercel: a random string, at least
-  32 chars (phase 4 cron auth; both cron routes 401 without it).
+  2. `prisma/sql/2026-06-09-pgvector.sql`
+  3. `prisma/sql/2026-06-10-cyclops-phase2.sql`
+- [x] **Set env vars** in `.env` AND Vercel — done 2026-06-10:
+  `VOYAGE_API_KEY`, `CYCLOPS_DAILY_TOKEN_BUDGET=2000000`.
+- [x] **Set `CRON_SECRET`** in `.env` AND Vercel — done 2026-06-10.
 
 ## Gate B — before merging `cyclopslevelup` to main (main auto-deploys prod)
 

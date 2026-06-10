@@ -17,6 +17,26 @@ export const GLOBAL_TELLS = [
   "leverage my",
   "in today's fast-paced",
   "it's not just",
+  // Style-guide additions (see engine/style.ts): formulaic openers/closers
+  "I am writing to express",
+  "I am writing to apply",
+  "thank you for considering my application",
+  "I look forward to hearing from you",
+  // AI-tell phrases recruiters screen for
+  "fast-paced environment",
+  "aligns perfectly",
+  "resonates with me",
+  "honed my",
+  "spearheaded",
+  "testament to",
+  "unique blend",
+  "well-positioned to",
+  "hit the ground running",
+  "valuable asset",
+  "esteemed",
+  "cutting-edge",
+  "ever-evolving",
+  "make a meaningful",
 ];
 
 const NON_LITERAL_TELLS = new Set(["em dashes", "symmetric three-item lists"]);

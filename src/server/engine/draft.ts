@@ -3,6 +3,7 @@ import { sonnet } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 import { classifyQuestion, selectStories, employerSlugOf } from "@/server/engine/stories";
 import { critiqueAndRevise, GLOBAL_TELLS, checkTells } from "@/server/engine/critique";
+import { STYLE_GUIDE } from "@/server/engine/style";
 import type { DraftArgs, DraftContext, DraftResult } from "@/server/engine/types";
 
 /**
@@ -57,12 +58,16 @@ export function trimToLimit(text: string, limit?: number): string {
 function buildSystem(ctx: DraftContext): string {
   return `You ghost-write job-application text in the applicant's own voice. UK finance context, British English.
 
-Hard rules:
+Hard rules (override everything below):
 - never invent facts, names, numbers, dates, or events. Every specific claim (a number, an outcome, an anecdote detail) must appear in the reference material or the question. If you lack a real detail, write naturally around it in general terms instead of inventing one. An honest general sentence beats a fabricated specific, always.
-- no em dashes; contractions are fine; vary sentence length
+- never upgrade claims: "member" does not become "leader"; "assisted with" does not become "managed"; coursework does not become "experience in".
+- no claims the applicant couldn't defend in interview; downgrade implied expertise to what the material supports.
+- no em dashes; contractions are fine
 - one concrete detail per paragraph minimum; no generic filler
 - never use: ${GLOBAL_TELLS.join(", ")}
 ${ctx.voice.bannedTells.length ? `- this writer also never uses: ${ctx.voice.bannedTells.join(", ")}` : ""}
+
+${STYLE_GUIDE}
 ${ctx.voice.traits.length ? `\nWriter's observed traits:\n${ctx.voice.traits.join("\n")}` : ""}
 ${ctx.voice.exemplars ? `\nExamples of the writer's real writing (match the register, do NOT copy phrases):\n${ctx.voice.exemplars.slice(0, 1500)}` : ""}
 

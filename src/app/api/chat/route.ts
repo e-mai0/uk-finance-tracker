@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { consumeStream } from "ai";
 import { z } from "zod";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
@@ -103,6 +104,25 @@ export async function POST(req: Request) {
   const storedHistory = await loadSessionHistory(chatSession.id);
   const serverMessages: UIMessage[] = [...storedHistory, incomingMessage as UIMessage];
 
+  // Persist the user message up front so it survives aborts/disconnects;
+  // the onFinish createMany below skipDuplicates this row via (sessionId, clientId).
+  try {
+    await prisma.chatMessage.createMany({
+      data: [
+        {
+          sessionId: chatSession.id,
+          clientId: incomingMessage.id ?? null,
+          role: incomingMessage.role,
+          parts: JSON.stringify(incomingMessage.parts),
+          aborted: false,
+        },
+      ],
+      skipDuplicates: true,
+    });
+  } catch (err) {
+    console.error("[chat] failed to persist user message", { sessionId: chatSession.id, err });
+  }
+
   // --- Stream ---
   const { result, pendingQuestions } = await streamCyclops({ userId, messages: serverMessages });
 
@@ -117,9 +137,17 @@ export async function POST(req: Request) {
     }
   });
 
+  // Run the LLM stream to completion server-side even if the client disconnects
+  // (e.g. user navigates to another page mid-stream), so onFinish still fires
+  // and the assistant message is persisted for the next page load.
+  result.consumeStream(); // no await
+
   return result.toUIMessageStreamResponse({
     // originalMessages is the server-rebuilt array (item 1)
     originalMessages: serverMessages,
+    // Ensures onFinish fires (with isAborted) when the response stream is
+    // aborted via the Stop button, so the partial message is persisted.
+    consumeSseStream: consumeStream,
     onFinish: async ({ responseMessage, isAborted }) => {
       const lastUserMsg = incomingMessage as UIMessage;
       const toSave = [lastUserMsg, responseMessage];

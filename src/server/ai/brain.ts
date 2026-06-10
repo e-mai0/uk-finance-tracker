@@ -1,4 +1,10 @@
-import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  stepCountIs,
+  streamText,
+  type ModelMessage,
+  type UIMessage,
+} from "ai";
 import { sonnet } from "@/server/ai/models";
 import { buildTools } from "@/server/ai/tools";
 import { memoryService } from "@/server/memory/service";
@@ -80,13 +86,30 @@ export async function streamCyclops(args: { userId: string; messages: UIMessage[
     select: { employerName: true, roleTitle: true, submittedAt: true },
   });
 
+  // ignoreIncompleteToolCalls: an aborted tool call persisted mid-execution
+  // would otherwise emit a tool-call with no result and poison every
+  // subsequent request in this session.
+  const history = await convertToModelMessages(args.messages, { ignoreIncompleteToolCalls: true });
+
+  // Anthropic prompt caching: a breakpoint on the system message caches
+  // tools + system; one on the last message caches the conversation history.
+  // Cached reads cost ~10% and do NOT count toward the input-tokens-per-minute
+  // rate limit, which matters because every tool-use step (up to 12 per turn)
+  // re-sends the full prefix.
+  const cacheBreakpoint = { anthropic: { cacheControl: { type: "ephemeral" as const } } };
+  const systemMessage: ModelMessage = {
+    role: "system",
+    content: buildSystemPrompt(core, pendingQuestions, staleApps),
+    providerOptions: cacheBreakpoint,
+  };
+  const lastMessage = history[history.length - 1];
+  if (lastMessage) {
+    lastMessage.providerOptions = { ...lastMessage.providerOptions, ...cacheBreakpoint };
+  }
+
   const result = streamText({
     model: sonnet,
-    system: buildSystemPrompt(core, pendingQuestions, staleApps),
-    // ignoreIncompleteToolCalls: an aborted tool call persisted mid-execution
-    // would otherwise emit a tool-call with no result and poison every
-    // subsequent request in this session.
-    messages: await convertToModelMessages(args.messages, { ignoreIncompleteToolCalls: true }),
+    messages: [systemMessage, ...history],
     tools: buildTools(args.userId),
     stopWhen: stepCountIs(12),
     // Item 5: per-step budget recording (fire-and-forget)

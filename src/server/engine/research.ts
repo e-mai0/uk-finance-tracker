@@ -42,7 +42,7 @@ export async function ensureEmployerResearch(
       const { text, usage } = await generateText({
         model: sonnet,
         tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: 4 }) },
-        prompt: `Research ${employer.name} (UK finance employer, ${employer.sector ?? "financial services"}) for a student preparing internship/graduate applications. Produce concise markdown with these sections:
+        prompt: `Research ${employer.name}${employer.sector ? ` (UK employer, ${employer.sector})` : " (employer with UK presence; determine the sector yourself)"} for a student preparing internship/graduate applications. Produce concise markdown with these sections:
 ## Divisions & what they do
 ## Culture signals
 ## Recent news (last 6 months, with dates)

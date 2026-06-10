@@ -12,6 +12,7 @@ import { gatherSubstance } from "@/server/engine/substance";
 import { draftText } from "@/server/engine/draft";
 import { distillOutcomesForUser } from "@/server/engine/outcomes";
 import { SONNET_ID } from "@/server/ai/models";
+import { slugify } from "@/ingestion/import";
 
 const MAX_FILE_COUNT = 100;
 
@@ -190,23 +191,42 @@ export function buildTools(userId: string) {
 
     research_employer: tool({
       description:
-        "Get shared research on an employer (divisions, culture, recent news, common questions). " +
+        "Get shared research on any company by name (divisions, culture, recent news, common questions). " +
+        "Works for companies not yet in the catalog: they are added and researched live via web search. " +
         "Generates fresh research if the cache is stale (>14 days). Contains no user data.",
       inputSchema: z.object({
-        employerName: z.string().describe("The employer name to research."),
+        employerName: z.string().describe("The company name to research, e.g. 'Barclays' or 'Jane Street'."),
       }),
       execute: async ({ employerName }) => {
+        const name = employerName.trim();
+        if (!name) return { error: "empty employer name" };
+
         // Exact-match first (case-insensitive), fall back to contains with deterministic ordering
         const exactMatch = await prisma.employer.findFirst({
-          where: { name: { equals: employerName, mode: "insensitive" } },
+          where: { name: { equals: name, mode: "insensitive" } },
         });
-        const employer =
+        let employer =
           exactMatch ??
           (await prisma.employer.findFirst({
-            where: { name: { contains: employerName, mode: "insensitive" } },
+            where: { name: { contains: name, mode: "insensitive" } },
             orderBy: { name: "asc" },
           }));
-        if (!employer) return { error: `No employer named "${employerName}" in the catalog.` };
+
+        // Unknown company: add it to the catalog so research can be cached and
+        // shared. Handles the create/create race via the unique constraint.
+        if (!employer) {
+          const slug = slugify(name);
+          if (!slug) return { error: `"${name}" is not a usable company name.` };
+          try {
+            employer = await prisma.employer.create({ data: { name, slug } });
+          } catch {
+            employer = await prisma.employer.findFirst({
+              where: { OR: [{ name: { equals: name, mode: "insensitive" } }, { slug }] },
+            });
+            if (!employer) return { error: "could not add employer to the catalog" };
+          }
+        }
+
         const content = await ensureEmployerResearch(employer.id, userId);
         return content
           ? { employer: employer.name, research: content }
