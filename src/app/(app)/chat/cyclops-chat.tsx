@@ -151,11 +151,15 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
 export function CyclopsChat({
   sessionId,
   initialMessages,
+  prefill,
 }: {
   sessionId: string;
   initialMessages: UIMessage[];
+  /** Deep-link prefill: seeds the input only, never auto-sent. */
+  prefill?: string;
 }) {
-  const [input, setInput] = useState("");
+  // Component is keyed by thread id, so useState init is sufficient.
+  const [input, setInput] = useState(prefill ?? "");
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 

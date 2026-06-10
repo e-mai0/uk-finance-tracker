@@ -3,13 +3,14 @@ import type { TrackerItem } from "@/lib/filters";
 import { StatusBadge } from "./status-badge";
 import { FitPill } from "./fit-pill";
 import { SaveButton } from "./save-button";
+import { AskCyclopsButton } from "./ask-cyclops-button";
 import { ROLE_FAMILY_SHORT } from "@/lib/constants";
 import { cn, formatShortDate, daysUntil, ticker, locCode } from "@/lib/utils";
 import { DaysLeft, Dash } from "./signals";
 
-// # · CODE · FIRM/ROLE · DIV · LOC · DEADLINE · DAYS · FIT(+bar) · STATUS · SAVE
+// # · CODE · FIRM/ROLE · DIV · LOC · DEADLINE · DAYS · FIT(+bar) · STATUS · ASK · SAVE
 const GRID =
-  "grid-cols-[2.25rem_3.75rem_minmax(0,1fr)_3.5rem_3rem_5rem_2.75rem_3.25rem_4.5rem_2.25rem]";
+  "grid-cols-[2.25rem_3.75rem_minmax(0,1fr)_3.5rem_3rem_5rem_2.75rem_3.25rem_4.5rem_2.25rem_2.25rem]";
 
 // Faint vertical cell rules give the true terminal grid; first cell has none.
 const CELL = "px-2.5 border-l border-border/55 [&:first-child]:border-l-0";
@@ -37,6 +38,7 @@ export function OpportunityTable({ items }: { items: TrackerItem[] }) {
         <span className={cn(CELL, "py-2 text-right")}>Days</span>
         <span className={cn(CELL, "py-2")}>Fit</span>
         <span className={cn(CELL, "py-2 text-right")}>Status</span>
+        <span className={cn(CELL, "py-2 sr-only")}>Ask Cyclops</span>
         <span className={cn(CELL, "py-2 sr-only")}>Save</span>
       </div>
 
@@ -114,6 +116,10 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
 
         <span className={cn(CELL, "flex items-center justify-end py-2")}>
           <StatusBadge status={item.status} />
+        </span>
+
+        <span className={cn(CELL, "flex items-center justify-end py-1")}>
+          <AskCyclopsButton opportunityId={item.id} />
         </span>
 
         <span className={cn(CELL, "flex items-center justify-end py-1")}>

@@ -9,10 +9,23 @@ import { rowToUIMessage } from "@/server/chat/messages";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cyclops — Trackr" };
 
+/** Deep-link prefill: strip control chars, collapse whitespace, cap at 200. */
+function sanitizePrefill(raw: string): string {
+  return raw
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
 export default async function ChatPage({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string }>;
+  searchParams: Promise<{
+    t?: string | string[];
+    prefill?: string | string[];
+    opportunity?: string | string[];
+  }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -21,6 +34,31 @@ export default async function ChatPage({
   const sp = await searchParams;
   // item 6: coerce string | string[] → string | undefined
   const tParam = Array.isArray(sp.t) ? sp.t[0] : sp.t;
+  const prefillParam = Array.isArray(sp.prefill) ? sp.prefill[0] : sp.prefill;
+  const opportunityParam = Array.isArray(sp.opportunity)
+    ? sp.opportunity[0]
+    : sp.opportunity;
+
+  // Explicit ?prefill= wins; otherwise derive one from ?opportunity=<id>
+  let prefill: string | undefined = prefillParam;
+  if (!prefill && opportunityParam) {
+    const opp = await prisma.opportunity.findUnique({
+      where: { id: opportunityParam },
+      include: { employer: true },
+    });
+    // Unknown id → ignore silently
+    if (opp) prefill = `Let's talk about ${opp.employer.name} - ${opp.title}.`;
+  }
+  if (prefill) prefill = sanitizePrefill(prefill);
+  if (!prefill) prefill = undefined;
+
+  // Arriving with a prefill but no thread → land the context in a fresh thread
+  if (prefill && !tParam) {
+    const created = await prisma.chatSession.create({
+      data: { userId },
+    });
+    redirect(`/chat?t=${created.id}&prefill=${encodeURIComponent(prefill)}`);
+  }
 
   // Load up to 50 threads, newest first
   const threads = await prisma.chatSession.findMany({
@@ -141,6 +179,7 @@ export default async function ChatPage({
             key={activeThread.id}
             sessionId={activeThread.id}
             initialMessages={initialMessages}
+            prefill={prefill}
           />
         </div>
       </div>
