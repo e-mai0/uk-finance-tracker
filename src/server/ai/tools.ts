@@ -269,10 +269,11 @@ export function buildTools(userId: string) {
             error: `No tracked application matching "${employerName}". Ask the user to check the Applications page.`,
           };
         }
-        // Disambiguation: if two results came back and no roleTitle was provided, ask the user to clarify
-        if (matches.length === 2 && !roleTitle) {
+        // Disambiguation: never update when the match is ambiguous, even if a
+        // (partial) roleTitle was provided - it may still hit several rows.
+        if (matches.length > 1) {
           return {
-            error: `Found multiple applications for "${employerName}". Please specify the role title to disambiguate.`,
+            error: `Found multiple applications matching "${employerName}". Please specify the exact role title to disambiguate.`,
             candidates: matches.map((m) => ({ employer: m.employerName, role: m.roleTitle })),
           };
         }
