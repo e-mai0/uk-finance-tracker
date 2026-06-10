@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/overnight", "schedule": "30 5 * * *" },
+    { "path": "/api/cron/gardener", "schedule": "0 6 * * *" }
+  ]
+}
