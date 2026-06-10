@@ -53,6 +53,14 @@ describe("validateActions", () => {
     expect(out[0]!.value).toHaveLength(2000);
   });
 
+  it("caps reason length at 300", () => {
+    const out = validateActions(
+      [{ fieldId: "f0", value: "ok", reason: "r".repeat(500), confidence: "medium" }],
+      FIELDS,
+    );
+    expect(out[0]!.reason).toHaveLength(300);
+  });
+
   it("drops actions targeting fields with disallowed kinds", () => {
     const fields: AgentField[] = [
       { fieldId: "up", type: "file", options: undefined },
@@ -143,6 +151,14 @@ describe("filterUnresolved", () => {
     const out = filterUnresolved(unresolved, fields);
     expect(out).toHaveLength(20);
     expect(out[0]!.fieldId).toBe("u0");
+  });
+
+  it("caps question length at 300", () => {
+    const out = filterUnresolved(
+      [{ fieldId: "f0", question: "q".repeat(500) }],
+      FIELDS,
+    );
+    expect(out[0]!.question).toHaveLength(300);
   });
 
   it("returns empty for empty input", () => {

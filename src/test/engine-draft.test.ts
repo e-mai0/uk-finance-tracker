@@ -404,6 +404,13 @@ describe("escapeReference", () => {
     expect(result).toBe("first</ reference>second</ reference>third");
   });
 
+  it("escapes mixed-case and whitespace-padded closing tags", () => {
+    const input = "a</REFERENCE>b</Reference>c</ reference>d";
+    const result = escapeReference(input);
+    expect(result).toBe("a</ REFERENCE>b</ Reference>c</  reference>d");
+    expect(result.toLowerCase()).not.toContain("</reference");
+  });
+
   it("rendered prompt cannot contain literal </reference><instructions> after escaping", async () => {
     mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
     const injectedCtx: DraftContext = {

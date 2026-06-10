@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireToken } from "../../../../server/ext-auth";
 import { buildFieldMap } from "../../../../server/ext-profile";
 import { memoryService } from "../../../../server/memory/service";
+import { prisma } from "../../../../server/db";
+import { suggestForLabels } from "../../../../lib/suggest";
 import { extAgentRequestSchema } from "../../../../lib/validation";
 import { json, unauthorized, preflight } from "../../../../server/ext-http";
 import { checkBudget, recordUsage } from "../../../../server/ai/budget";
@@ -83,10 +85,18 @@ export async function POST(req: Request) {
     return json({ error: "AI generation isn't configured on the server." }, 503);
   }
 
-  // Grounding: the deterministic profile field map + profile.md fact lines.
-  const [fieldMap, profileFile] = await Promise.all([
+  // Grounding: the deterministic profile field map + profile.md fact lines
+  // + top answer-bank matches. All failure-isolated except the field map.
+  const [fieldMap, profileFile, bankItems] = await Promise.all([
     buildFieldMap(userId),
     memoryService.read(userId, "profile.md").catch(() => null),
+    prisma.answerBankItem
+      .findMany({
+        where: { userId },
+        select: { questionText: true, answer: true },
+        take: 100,
+      })
+      .catch(() => [] as { questionText: string; answer: string }[]),
   ]);
 
   const parts: string[] = [];
@@ -94,19 +104,39 @@ export async function POST(req: Request) {
     `<reference name="known-profile-fields">\n${escapeReference(JSON.stringify(fieldMap.fields))}\n</reference>`,
   );
   if (profileFile?.content) {
+    let content = profileFile.content;
+    if (content.length > 6000) {
+      const cut = content.lastIndexOf("\n", 6000);
+      content = content.slice(0, cut > 0 ? cut : 6000) + "\n[truncated]";
+    }
     parts.push(
-      `<reference name="profile-facts">\n${escapeReference(profileFile.content.slice(0, 6000))}\n</reference>`,
+      `<reference name="profile-facts">\n${escapeReference(content)}\n</reference>`,
+    );
+  }
+  // Answer-bank grounding: match submitted field labels against memory facts
+  // and stored answers (same pattern as /api/ext/plan).
+  const profileFactLines = profileFile ? profileFile.content.split("\n") : [];
+  const labels = d.fields.map((f) => f.label || f.fieldId);
+  const suggestions = suggestForLabels(labels, profileFactLines, bankItems);
+  if (suggestions.length > 0) {
+    parts.push(
+      `<reference name="answer-bank">\nPreviously confirmed answers matched to this page's field labels:\n${escapeReference(JSON.stringify(suggestions)).slice(0, 6000)}\n</reference>`,
     );
   }
   parts.push(
     `<reference name="page-fields">\n${escapeReference(JSON.stringify(d.fields))}\n</reference>`,
   );
-  const ctxBits: string[] = [];
-  if (d.context.employer) ctxBits.push(`Employer: ${escapeReference(d.context.employer)}.`);
-  if (d.context.role) ctxBits.push(`Role: ${escapeReference(d.context.role)}.`);
-  ctxBits.push(`Round ${d.round} of 3.`);
-  ctxBits.push("Propose values only for fields whose currentValue is empty.");
-  parts.push(ctxBits.join(" "));
+  const pageCtx: string[] = [];
+  if (d.context.employer) pageCtx.push(`Employer: ${d.context.employer}`);
+  if (d.context.role) pageCtx.push(`Role: ${d.context.role}`);
+  if (pageCtx.length > 0) {
+    parts.push(
+      `<reference name="page-context">\n${escapeReference(pageCtx.join("\n"))}\n</reference>`,
+    );
+  }
+  parts.push(
+    `Round ${d.round} of 3. Propose values only for fields whose currentValue is empty.`,
+  );
 
   let result: z.infer<typeof agentResultSchema>;
   try {

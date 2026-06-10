@@ -9,9 +9,10 @@ import type { DraftArgs, DraftContext, DraftResult } from "@/server/engine/types
  * Escape user-supplied content so it cannot prematurely close a <reference> XML tag.
  * Replaces `</reference` with `</ reference` (adds a space) so the closing tag
  * pattern is broken and cannot be used to inject instructions outside the reference block.
+ * Case-insensitive, and tolerates whitespace after `</`.
  */
 export function escapeReference(s: string): string {
-  return s.replaceAll("</reference", "</ reference");
+  return s.replace(/<\/(\s*reference)/gi, "</ $1");
 }
 
 /**

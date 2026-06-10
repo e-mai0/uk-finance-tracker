@@ -19,17 +19,22 @@ export interface AgentUnresolved {
 }
 
 const UNRESOLVED_CAP = 20;
+const TEXT_CAP = 300;
 
 /**
  * Fail-closed filter for model-reported unresolved fields: keep only items
- * whose fieldId was actually submitted by the page, capped at 20.
+ * whose fieldId was actually submitted by the page, capped at 20. Questions
+ * are bounded at 300 chars.
  */
 export function filterUnresolved(
   unresolved: AgentUnresolved[],
   fields: AgentField[],
 ): AgentUnresolved[] {
   const ids = new Set(fields.map((f) => f.fieldId));
-  return unresolved.filter((u) => ids.has(u.fieldId)).slice(0, UNRESOLVED_CAP);
+  return unresolved
+    .filter((u) => ids.has(u.fieldId))
+    .slice(0, UNRESOLVED_CAP)
+    .map((u) => ({ ...u, question: u.question.slice(0, TEXT_CAP) }));
 }
 
 const VALUE_CAP = 2000;
@@ -42,7 +47,8 @@ const ALLOWED_KINDS = new Set([
 /**
  * Fail-closed validation of model-proposed actions against the page fields
  * the extension actually submitted. Unknown fields, disallowed kinds,
- * non-option values, and duplicates are dropped, never "fixed".
+ * non-option values, and duplicates are dropped, never "fixed". Values are
+ * bounded at 2000 chars and reasons at 300.
  */
 export function validateActions(
   actions: AgentAction[],
@@ -68,7 +74,7 @@ export function validateActions(
       continue;
     }
     seen.add(a.fieldId);
-    out.push({ ...a, value });
+    out.push({ ...a, value, reason: a.reason.slice(0, TEXT_CAP) });
   }
   return out;
 }
