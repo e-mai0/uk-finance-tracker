@@ -100,6 +100,7 @@ export async function POST(req: Request) {
       kind: "ANSWER" as const,
       question: d.questionText,
       employerName: d.employer ?? undefined,
+      roleTitle: d.role ?? undefined,
       charLimit: d.charLimit ?? undefined,
     };
     const ctx = await gatherSubstance(userId, draftArgs);

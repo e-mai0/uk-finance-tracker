@@ -22,7 +22,6 @@ export async function draftCoverLetter(opportunityId: string): Promise<DraftResu
     where: { id: opportunityId },
     select: {
       title: true,
-      descriptionSummary: true,
       employer: { select: { name: true } },
     },
   });
