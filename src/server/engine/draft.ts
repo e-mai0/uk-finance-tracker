@@ -14,7 +14,28 @@ export function escapeReference(s: string): string {
   return s.replaceAll("</reference", "</ reference");
 }
 
-/** Trim to charLimit at a sentence boundary (falls back to word boundary). */
+/**
+ * Return true when the character sequence immediately before a period match looks
+ * like an abbreviation that should NOT be treated as a sentence end.
+ * Covers single uppercase initials (e.g. "J.P."), e.g., i.e., No., vs., etc.
+ */
+function isAbbreviationPeriod(text: string, matchIndex: number): boolean {
+  // text[matchIndex] is the '.' (or '?' or '!')
+  // Only '.' can be an abbreviation — '?' and '!' never are
+  if (text[matchIndex] !== ".") return false;
+  // Grab up to 10 chars before the period for pattern testing
+  const before = text.slice(Math.max(0, matchIndex - 10), matchIndex);
+  // Single uppercase letter: e.g. "J.P", "A", "B" just before the period
+  if (/(?:^|[\s(])[A-Z]$/.test(before)) return true;
+  // Another period two chars back (e.g. middle of "J.P.") — char at matchIndex-2 is '.'
+  if (matchIndex >= 2 && text[matchIndex - 2] === ".") return true;
+  // Common abbreviations ending before this period
+  if (/\b(?:e\.g|i\.e|No|vs|etc)$/.test(before)) return true;
+  return false;
+}
+
+/** Trim to charLimit at a sentence boundary (falls back to word boundary).
+ *  Skips abbreviation periods (J.P., e.g., i.e., No., vs.) when locating sentence ends. */
 export function trimToLimit(text: string, limit?: number): string {
   if (!limit || text.length <= limit) return text;
   const slice = text.slice(0, limit);
@@ -23,7 +44,9 @@ export function trimToLimit(text: string, limit?: number): string {
   const sentenceRe = /[.?!](?=\s|$)/g;
   let m: RegExpExecArray | null;
   while ((m = sentenceRe.exec(slice)) !== null) {
-    lastSentence = m.index;
+    if (!isAbbreviationPeriod(slice, m.index)) {
+      lastSentence = m.index;
+    }
   }
   if (lastSentence > limit * 0.5) return slice.slice(0, lastSentence + 1).trim();
   const lastWord = slice.lastIndexOf(" ");
@@ -34,7 +57,7 @@ function buildSystem(ctx: DraftContext): string {
   return `You ghost-write job-application text in the applicant's own voice. UK finance context, British English.
 
 Hard rules:
-- never invent facts, names, numbers, or experiences; only use what is provided
+- never invent facts, names, numbers, dates, or events. Every specific claim (a number, an outcome, an anecdote detail) must appear in the reference material or the question. If you lack a real detail, write naturally around it in general terms instead of inventing one. An honest general sentence beats a fabricated specific, always.
 - no em dashes; contractions are fine; vary sentence length
 - one concrete detail per paragraph minimum; no generic filler
 - never use: ${GLOBAL_TELLS.join(", ")}
@@ -85,7 +108,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
   }
   for (const s of stories) {
     const body = escapeReference((s.finalVersions || s.rawNotes).slice(0, 2000));
-    parts.push(`<reference name="story:${s.slug}">\nReal story to ground the answer in ("${s.title}"):\n${body}\n</reference>`);
+    parts.push(`<reference name="story:${s.slug}">\nReal story to ground the answer in ("${s.title}"):\nUse ONLY the details actually present in this story; do not embellish:\n${body}\n</reference>`);
   }
   if (ctx.companyNotes) {
     parts.push(`<reference name="company-notes">\nApplicant's own notes on this employer:\n${escapeReference(ctx.companyNotes.slice(0, 2000))}\n</reference>`);
@@ -116,6 +139,11 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
   // Item 3: Honest provenance — re-check tells on the final text
   const residualTells = checkTells(final, ctx.voice.bannedTells);
 
+  // Thin grounding: story-backed question with no stories selected, or commercial question with no research
+  const thinGrounding =
+    (themes.length > 0 && stories.length === 0) ||
+    (questionKind === "commercial" && ctx.research === null);
+
   return {
     text: final,
     provenance: {
@@ -126,6 +154,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
       revised: critiqued.revised,
       questionKind,
       residualTells,
+      thinGrounding,
     },
   };
 }

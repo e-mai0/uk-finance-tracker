@@ -230,6 +230,60 @@ describe("draftText", () => {
     expect(prompt).toContain("Q: teamwork q");
     expect(prompt).toContain("A: old answer");
   });
+
+  // Anti-fabrication: system prompt hardening
+  it("system prompt contains 'must appear in the reference material'", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?" });
+    const system = mocks.generateText.mock.calls.at(-1)![0].system as string;
+    expect(system).toContain("must appear in the reference material");
+  });
+
+  // Anti-fabrication: story reference block preface
+  it("story reference block contains 'Use ONLY the details actually present in this story'", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Tell us about a time you led under pressure",
+      employerName: "Barclays",
+    });
+    const prompt = mocks.generateText.mock.calls.at(-1)![0].prompt as string;
+    expect(prompt).toContain("Use ONLY the details actually present in this story; do not embellish:");
+  });
+
+  // thinGrounding: story-backed question with no stories selected
+  it("sets thinGrounding=true when question has themes but no matching stories", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const ctxNoStories: DraftContext = { ...CTX, stories: [] };
+    const out = await draftText("u1", ctxNoStories, {
+      kind: "ANSWER",
+      question: "Tell us about a time you led under pressure",
+    });
+    expect(out.provenance.thinGrounding).toBe(true);
+  });
+
+  // thinGrounding: commercial question with no research
+  it("sets thinGrounding=true when kind is commercial and research is null", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const ctxNoResearch: DraftContext = { ...CTX, research: null };
+    // Use a question that triggers the 'commercial' kind (contains "market", "trend", "deal" etc.)
+    const out = await draftText("u1", ctxNoResearch, {
+      kind: "ANSWER",
+      question: "What market trend or deal interests you most right now?",
+    });
+    expect(out.provenance.questionKind).toBe("commercial");
+    expect(out.provenance.thinGrounding).toBe(true);
+  });
+
+  // thinGrounding: false when stories are present for a story-backed question
+  it("sets thinGrounding=false when story-backed question has matching stories", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Tell us about a time you led under pressure",
+    });
+    expect(out.provenance.thinGrounding).toBe(false);
+  });
 });
 
 describe("trimToLimit", () => {
@@ -287,6 +341,35 @@ describe("trimToLimit", () => {
     expect(result.length).toBeLessThanOrEqual(5);
     // "First" is word-trimmed (no space inside "First")
     expect(result).toBe("First");
+  });
+
+  // Abbreviation guard tests
+  it("does not cut at J.P. in 'J.P. Morgan analysts' — cuts at real sentence end", () => {
+    // Limit lands mid-second-sentence; should cut after "analysts." not after "J.P."
+    const text = "I spoke to J.P. Morgan analysts. Then I applied.";
+    // limit=35 puts boundary inside second sentence "Then I applied."
+    const result = trimToLimit(text, 35);
+    expect(result).toBe("I spoke to J.P. Morgan analysts.");
+  });
+
+  it("does not cut at 'e.g.' in 'e.g. markets' — cuts at real sentence end", () => {
+    const text = "Consider e.g. markets. Done.";
+    // limit=25 puts boundary inside "Done."
+    const result = trimToLimit(text, 25);
+    expect(result).toBe("Consider e.g. markets.");
+  });
+
+  it("does not cut at 'i.e.' abbreviation", () => {
+    const text = "The result, i.e. the outcome, was positive. Next point follows.";
+    // limit cuts into the second sentence
+    const result = trimToLimit(text, 45);
+    expect(result).toBe("The result, i.e. the outcome, was positive.");
+  });
+
+  it("does not cut at 'vs.' abbreviation", () => {
+    const text = "Old vs. new approaches differ. We chose new.";
+    const result = trimToLimit(text, 35);
+    expect(result).toBe("Old vs. new approaches differ.");
   });
 });
 

@@ -53,6 +53,9 @@ export type Provenance = {
   revised: boolean;
   questionKind: string;
   residualTells: string[]; // tells remaining in the final text
+  /** True when grounding is thin: story-backed question with no stories selected,
+   *  or commercial question with no research. Signals elevated fabrication risk. */
+  thinGrounding: boolean;
 };
 
 export type DraftResult = { text: string; provenance: Provenance };
