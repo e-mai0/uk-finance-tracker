@@ -10,11 +10,13 @@ import type { PlanSuggestion, DraftProvenance } from "../shared/types";
 export interface AskItem { fieldId: string; label: string; profileKey?: string; options?: string[]; suggestion?: PlanSuggestion; }
 export interface DraftItem { fieldId: string; label: string; charLimit?: number; }
 export interface GeneratedDraft { text: string; draftId?: string; provenance?: DraftProvenance; }
+/** Generation failure carrying a server-provided reason (e.g. daily budget reached). */
+export interface GenerateFailure { error: string }
 
 export interface PanelHandlers {
   onEngage: () => void;                                                // user asked to plan this form
   onAnswerAsk: (fieldId: string, value: string) => Promise<boolean>;   // fill + write-back
-  onGenerate: (fieldId: string, excludeStories?: string[]) => Promise<GeneratedDraft | null>;
+  onGenerate: (fieldId: string, excludeStories?: string[]) => Promise<GeneratedDraft | GenerateFailure | null>;
   onInsert: (fieldId: string, text: string) => void;
   onSaveDraft: (fieldId: string, label: string, text: string, original?: string, draftId?: string) => Promise<boolean>;
 }
@@ -24,6 +26,8 @@ interface DraftCardControls {
   setPending: () => void;
   applyResult: (r: GeneratedDraft) => void;
   setFailed: () => void;
+  isDirty: () => boolean;
+  hasResult: () => boolean;
 }
 
 const STYLE = `
@@ -152,6 +156,16 @@ export class Panel {
 
   setDraftFailed(fieldId: string) {
     this.draftCards.get(fieldId)?.setFailed();
+  }
+
+  /** True when the user has typed into the card's textarea (diverged from the last generated text). */
+  isDraftDirty(fieldId: string): boolean {
+    return this.draftCards.get(fieldId)?.isDirty() ?? false;
+  }
+
+  /** True when the card already holds a generated result. */
+  hasDraftResult(fieldId: string): boolean {
+    return this.draftCards.get(fieldId)?.hasResult() ?? false;
   }
 
   private clearBody() {
@@ -357,10 +371,25 @@ export class Panel {
     let generatedDraftId: string | undefined;
     let usedStories: string[] = [];
 
+    // Dirty when the textarea diverges from the last generated text - set on
+    // user input, cleared when the user explicitly regenerates (Draft /
+    // "Different story") or types the textarea back to its generated/empty
+    // state. Pre-staged results never overwrite a dirty textarea.
+    let dirty = false;
+    ta.addEventListener("input", () => {
+      dirty = ta.value !== (generatedText ?? "");
+    });
+
     // Apply a generation result: textarea, edit-learning state, provenance
     // line, thin-grounding warning, and "Different story" visibility. Shared
     // by the Draft click path and the pre-stage path (panel.setDraftResult).
     const applyResult = (result: GeneratedDraft) => {
+      if (dirty) {
+        // The user typed while this generation was in flight (pre-stage path);
+        // silently drop the result and restore the card's idle state.
+        setFailed();
+        return;
+      }
       draft.disabled = false;
       different.disabled = false;
       draft.textContent = "Redraft";
@@ -400,11 +429,16 @@ export class Panel {
     };
 
     const runGenerate = async (excludeStories?: string[]) => {
+      // Explicit user intent (Draft / "Different story") may overwrite typed text.
+      dirty = false;
       setPending();
       const result = await this.handlers.onGenerate(d.fieldId, excludeStories);
-      if (result == null) {
+      if (result == null || "error" in result) {
         setFailed();
-        msg.textContent = "Couldn’t generate - check the popup is connected.";
+        msg.textContent =
+          result && "error" in result && result.error
+            ? result.error
+            : "Couldn’t generate - check the popup is connected.";
         msg.style.display = "block";
       } else {
         applyResult(result);
@@ -428,7 +462,13 @@ export class Panel {
       }, 1500);
     });
 
-    this.draftCards.set(d.fieldId, { setPending, applyResult, setFailed });
+    this.draftCards.set(d.fieldId, {
+      setPending,
+      applyResult,
+      setFailed,
+      isDirty: () => dirty,
+      hasResult: () => generatedText !== undefined,
+    });
 
     actions.append(draft, different, insert, save);
     card.append(label, ta, prov, warn, actions, msg);

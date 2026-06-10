@@ -1,7 +1,7 @@
 import { pickAdapter } from "./adapters";
 import { serializeForm, type SerializedForm } from "./serialize";
 import { applyPlan, insertIntoField, setFieldValue, type PlanQuestion } from "./autofill";
-import { Panel, type GeneratedDraft } from "./panel";
+import { Panel, type GeneratedDraft, type GenerateFailure } from "./panel";
 import { send } from "./messaging";
 import { looksLikeApplication, mountCue } from "./detect";
 import type { DraftProvenance, FieldSchema, FillPlanItem } from "../shared/types";
@@ -22,9 +22,15 @@ let draftIndex = new Map<string, PlanQuestion>();
 // Bumped on every engage; pre-staging loops abort when it moves on or the
 // panel is closed, so a stale loop never writes into a re-planned panel.
 let engageSeq = 0;
+// Per-field in-flight guard shared by the manual Draft path and the pre-stage
+// loop, so the same field is never generated twice concurrently.
+const inFlight = new Set<string>();
 
 /** Call /api/ext/answer for a draft field; provenance/draftId are optional on older servers. */
-async function generateDraft(fieldId: string, excludeStories?: string[]): Promise<GeneratedDraft | null> {
+async function generateDraft(
+  fieldId: string,
+  excludeStories?: string[],
+): Promise<GeneratedDraft | GenerateFailure | null> {
   const q = draftIndex.get(fieldId);
   if (!q) return null;
   const { employer, role } = adapter.employerRole();
@@ -38,8 +44,24 @@ async function generateDraft(fieldId: string, excludeStories?: string[]): Promis
         : {}),
     },
   });
-  if (!res.ok || !res.data?.answer) return null;
+  // Surface the server's reason (e.g. "Daily AI budget reached") to the panel.
+  if (!res.ok) return res.error ? { error: res.error } : null;
+  if (!res.data?.answer) return null;
   return { text: res.data.answer, draftId: res.data.draftId, provenance: res.data.provenance };
+}
+
+/** In-flight-guarded wrapper around generateDraft - the only generation entry point. */
+async function generateDraftGuarded(
+  fieldId: string,
+  excludeStories?: string[],
+): Promise<GeneratedDraft | GenerateFailure | null> {
+  if (inFlight.has(fieldId)) return { error: "A draft is already in progress for this question." };
+  inFlight.add(fieldId);
+  try {
+    return await generateDraft(fieldId, excludeStories);
+  } finally {
+    inFlight.delete(fieldId);
+  }
 }
 
 const panel = new Panel({
@@ -54,7 +76,7 @@ const panel = new Panel({
     });
     return res.ok;
   },
-  onGenerate: (fieldId, excludeStories) => generateDraft(fieldId, excludeStories),
+  onGenerate: (fieldId, excludeStories) => generateDraftGuarded(fieldId, excludeStories),
   onInsert: (fieldId, text) => {
     const q = draftIndex.get(fieldId);
     // Drafts are always textareas, but PlanQuestion.el is the wider FillableEl.
@@ -93,6 +115,8 @@ async function engage() {
     payload: { fields: serialized.fields as FieldSchema[], employer, role, url: location.href.split("#")[0] },
   });
   if (!res.ok || !res.data?.plan) { panel.showError(res.error || "Couldn’t plan this form."); return; }
+  // A newer engage superseded this one while we awaited the plan - don't double-apply.
+  if (seq !== engageSeq) return;
 
   const applied = applyPlan(res.data.plan, serialized.elements, schemaById);
   askIndex = new Map(applied.asks.map((q) => [q.fieldId, q]));
@@ -127,17 +151,26 @@ async function engage() {
   // Pre-stage drafts for the first three draft fields, sequentially (kind to
   // the generation budget). Abort between calls if the panel was closed or a
   // new engage superseded this one; one field failing never blocks the next.
+  // Skip fields that are already generating (manual Draft click), already have
+  // a result, or where the user typed while waiting - pre-staging must never
+  // clobber user text or duplicate work.
   for (const q of applied.drafts.slice(0, 3)) {
     if (seq !== engageSeq || !panel.isOpen()) break;
+    if (inFlight.has(q.fieldId) || panel.isDraftDirty(q.fieldId) || panel.hasDraftResult(q.fieldId)) {
+      continue;
+    }
+    inFlight.add(q.fieldId);
     panel.setDraftPending(q.fieldId);
     try {
       const result = await generateDraft(q.fieldId);
       if (seq !== engageSeq || !panel.isOpen()) break;
-      if (result) panel.setDraftResult(q.fieldId, result);
+      if (result && !("error" in result)) panel.setDraftResult(q.fieldId, result);
       else panel.setDraftFailed(q.fieldId);
     } catch {
       if (seq !== engageSeq || !panel.isOpen()) break;
       panel.setDraftFailed(q.fieldId);
+    } finally {
+      inFlight.delete(q.fieldId);
     }
   }
 }

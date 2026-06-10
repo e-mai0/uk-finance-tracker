@@ -10,6 +10,7 @@ import { indexContent } from "../../../../server/ai/embed";
 import { normalizeQuestion, bestAnswerMatch } from "../../../../lib/answers";
 import { extAnswerSchema } from "../../../../lib/validation";
 import { json, unauthorized, preflight } from "../../../../server/ext-http";
+import { checkBudget } from "../../../../server/ai/budget";
 import { SONNET_ID } from "../../../../server/ai/models";
 
 export const runtime = "nodejs";
@@ -81,21 +82,31 @@ export async function POST(req: Request) {
   }
 
   // 1. Try the answer bank first — reuse near-identical questions verbatim.
-  const bank = await prisma.answerBankItem.findMany({
-    where: { userId },
-    select: { id: true, questionText: true, answer: true },
-  });
-  // The panel always shows a reused answer for review before insert, so a
-  // moderately loose threshold is safe and far more useful than exact-match.
-  const match = bestAnswerMatch(bank, d.questionText, 0.6);
-  if (match) {
-    prisma.answerBankItem
-      .update({ where: { id: match.item.id }, data: { usageCount: { increment: 1 } } })
-      .catch(() => {});
-    return json({ answer: match.item.answer, source: "bank", score: match.score });
+  //    Skipped entirely when the client sent excludeStories: an exclusion
+  //    request ("Different story") is by definition a fresh-generation request,
+  //    and the bank would otherwise echo back the answer just saved to it.
+  if (!d.excludeStories?.length) {
+    const bank = await prisma.answerBankItem.findMany({
+      where: { userId },
+      select: { id: true, questionText: true, answer: true },
+    });
+    // The panel always shows a reused answer for review before insert, so a
+    // moderately loose threshold is safe and far more useful than exact-match.
+    const match = bestAnswerMatch(bank, d.questionText, 0.6);
+    if (match) {
+      prisma.answerBankItem
+        .update({ where: { id: match.item.id }, data: { usageCount: { increment: 1 } } })
+        .catch(() => {});
+      return json({ answer: match.item.answer, source: "bank", score: match.score });
+    }
   }
 
   // 2. Generate with the LLM, grounded in the user's profile + CV + voice + stories.
+  //    Budget gate applies to the generation path only — bank reuse above is free.
+  const budget = await checkBudget(userId);
+  if (!budget.ok) {
+    return json({ error: "Daily AI budget reached. Try again tomorrow." }, 429);
+  }
   if (!aiConfigured()) {
     return json({ error: "AI generation isn't configured on the server." }, 503);
   }
