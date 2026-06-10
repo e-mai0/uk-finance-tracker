@@ -250,3 +250,30 @@ export const extFactSchema = z.object({
 });
 
 export type ExtFactInput = z.infer<typeof extFactSchema>;
+
+// ---------------------------------------------------------------------------
+// Agent fallback — bounded request/response rounds (/api/ext/agent)
+// ---------------------------------------------------------------------------
+
+export const extAgentFieldSchema = z.object({
+  fieldId: z.string().trim().min(1).max(100),
+  label: z.string().trim().max(300),
+  type: z.string().trim().max(30),
+  options: z.array(z.string().trim().max(200)).max(40).optional(),
+  currentValue: z.string().max(2000).optional(),
+  required: z.boolean().optional(),
+});
+
+export const extAgentRequestSchema = z.object({
+  fields: z.array(extAgentFieldSchema).min(1).max(60),
+  context: z
+    .object({
+      employer: optStr(200),
+      role: optStr(200),
+      url: optStr(2000),
+    })
+    .default({}),
+  round: z.number().int().min(1).max(3),
+});
+
+export type ExtAgentRequest = z.infer<typeof extAgentRequestSchema>;

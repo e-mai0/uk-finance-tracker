@@ -13,6 +13,25 @@ export interface AgentAction {
   confidence: AgentConfidence;
 }
 
+export interface AgentUnresolved {
+  fieldId: string;
+  question: string;
+}
+
+const UNRESOLVED_CAP = 20;
+
+/**
+ * Fail-closed filter for model-reported unresolved fields: keep only items
+ * whose fieldId was actually submitted by the page, capped at 20.
+ */
+export function filterUnresolved(
+  unresolved: AgentUnresolved[],
+  fields: AgentField[],
+): AgentUnresolved[] {
+  const ids = new Set(fields.map((f) => f.fieldId));
+  return unresolved.filter((u) => ids.has(u.fieldId)).slice(0, UNRESOLVED_CAP);
+}
+
 const VALUE_CAP = 2000;
 const OPTION_KINDS = new Set(["select", "radio"]);
 const ALLOWED_KINDS = new Set([

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { validateActions, type AgentField } from "@/server/agent/validate";
+import {
+  validateActions,
+  filterUnresolved,
+  type AgentField,
+} from "@/server/agent/validate";
 
 const FIELDS: AgentField[] = [
   { fieldId: "f0", type: "text", options: undefined },
@@ -109,5 +113,39 @@ describe("validateActions", () => {
     );
     expect(ok).toHaveLength(1);
     expect(bad).toEqual([]);
+  });
+});
+
+describe("filterUnresolved", () => {
+  it("drops unresolved items for fieldIds the page did not submit", () => {
+    const out = filterUnresolved(
+      [
+        { fieldId: "f0", question: "What is your notice period?" },
+        { fieldId: "ghost", question: "Invented field?" },
+      ],
+      FIELDS,
+    );
+    expect(out).toEqual([
+      { fieldId: "f0", question: "What is your notice period?" },
+    ]);
+  });
+
+  it("caps unresolved items at 20", () => {
+    const fields: AgentField[] = Array.from({ length: 30 }, (_, i) => ({
+      fieldId: `u${i}`,
+      type: "text",
+      options: undefined,
+    }));
+    const unresolved = fields.map((f) => ({
+      fieldId: f.fieldId,
+      question: `Question for ${f.fieldId}?`,
+    }));
+    const out = filterUnresolved(unresolved, fields);
+    expect(out).toHaveLength(20);
+    expect(out[0]!.fieldId).toBe("u0");
+  });
+
+  it("returns empty for empty input", () => {
+    expect(filterUnresolved([], FIELDS)).toEqual([]);
   });
 });
