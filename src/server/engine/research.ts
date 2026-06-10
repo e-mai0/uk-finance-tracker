@@ -4,7 +4,8 @@ import { sonnet, SONNET_ID } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 import { prisma } from "@/server/db";
 
-const STALE_MS = 14 * 24 * 60 * 60 * 1000;
+/** Research older than this is considered stale and will be refreshed. */
+export const STALE_MS = 14 * 24 * 60 * 60 * 1000;
 
 /**
  * In-process inflight guard: prevents stampede when multiple concurrent requests

@@ -1,7 +1,7 @@
 import { cronAuthorized } from "@/server/cron";
 import { prisma } from "@/server/db";
 import { checkBudget } from "@/server/ai/budget";
-import { ensureEmployerResearch } from "@/server/engine/research";
+import { ensureEmployerResearch, STALE_MS } from "@/server/engine/research";
 import { composeBrief, type BriefData } from "@/server/brief/compose";
 
 export const runtime = "nodejs";
@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// Mirrors STALE_MS in src/server/engine/research.ts (not exported there):
-// research older than 14 days will actually be refreshed by ensureEmployerResearch.
-const RESEARCH_STALE_MS = 14 * DAY_MS;
+
+// Global per-invocation cap on actual research refreshes (stale/missing cache),
+// so one run can't burn unbounded LLM spend. Cache-fresh employers don't count.
+const MAX_REFRESHES = 25;
 
 // Statuses meaning "already applied or decided" - a deadline reminder is
 // pointless for these (see ApplicationStatus in prisma/schema.prisma).
@@ -26,6 +27,7 @@ const APPLIED_OR_DECIDED = [
 export async function GET(req: Request) {
   if (!cronAuthorized(req)) return new Response("unauthorized", { status: 401 });
 
+  const start = Date.now();
   const now = new Date();
   const weekOut = new Date(now.getTime() + 7 * DAY_MS);
   const today = now.toISOString().slice(0, 10);
@@ -40,8 +42,12 @@ export async function GET(req: Request) {
   });
 
   let briefs = 0;
+  let refreshCount = 0;
 
   for (const u of users) {
+    // Time guard: stop before the 300s function limit; idempotent brief
+    // titles mean the next run fills in the remaining users.
+    if (Date.now() - start > 240_000) break;
     try {
       // (a) Deadline candidates: saved or tracked (open application)
       // opportunities due within 7 days, excluding ones already applied/decided.
@@ -79,9 +85,9 @@ export async function GET(req: Request) {
         }));
 
       // (b) Research warmup for the distinct employers of those candidates,
-      // budget-gated per user. ensureEmployerResearch does not report whether
-      // it refreshed or served cache, so check freshness first: only employers
-      // whose research is missing or older than 14 days will be refreshed.
+      // budget-gated per user. Check freshness first: only employers whose
+      // research is missing or older than STALE_MS need a refresh, and only
+      // those consume the global per-invocation cap.
       const refreshed: string[] = [];
       if (candidates.length > 0) {
         const { ok } = await checkBudget(u.id);
@@ -94,9 +100,22 @@ export async function GET(req: Request) {
           const freshAt = new Map(existing.map((r) => [r.employerId, r.refreshedAt]));
           for (const [employerId, name] of byEmployer) {
             const at = freshAt.get(employerId);
-            const willRefresh = !at || now.getTime() - at.getTime() >= RESEARCH_STALE_MS;
-            const content = await ensureEmployerResearch(employerId, u.id);
-            if (willRefresh && content !== null) refreshed.push(name);
+            const willRefresh = !at || now.getTime() - at.getTime() >= STALE_MS;
+            if (!willRefresh) continue; // cache fresh - nothing to do, doesn't consume the cap
+            // Refresh cap: once exhausted, skip further research entirely;
+            // briefs still compose from whatever data already exists.
+            if (refreshCount >= MAX_REFRESHES) break;
+            refreshCount += 1;
+            await ensureEmployerResearch(employerId, u.id);
+            // ensureEmployerResearch returns stale cache content on generation
+            // failure, so verify the refresh actually landed before reporting it.
+            const after = await prisma.employerResearch.findUnique({
+              where: { employerId },
+              select: { refreshedAt: true },
+            });
+            if (after && Date.now() - after.refreshedAt.getTime() < STALE_MS) {
+              refreshed.push(name);
+            }
           }
         }
       }
