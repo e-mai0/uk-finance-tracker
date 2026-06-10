@@ -70,7 +70,7 @@ const STRENGTH_ORDER: Record<string, number> = { high: 3, medium: 2, low: 1 };
 
 export function selectStories(
   stories: Story[],
-  opts: { themes: string[]; employerSlug?: string; max: number },
+  opts: { themes: string[]; employerSlug?: string; max: number; excludeSlugs?: string[] },
 ): Story[] {
   if (!opts.themes.length) return [];
   return stories
@@ -80,6 +80,7 @@ export function selectStories(
         !opts.employerSlug ||
         !s.employersUsed.some((u) => employerSlugOf(u.employer) === opts.employerSlug),
     )
+    .filter((s) => !opts.excludeSlugs?.includes(s.slug))
     .sort((a, b) => {
       const diff =
         (STRENGTH_ORDER[b.strengthSignal ?? ""] ?? 2) - (STRENGTH_ORDER[a.strengthSignal ?? ""] ?? 2);

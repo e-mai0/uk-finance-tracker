@@ -174,6 +174,8 @@ export const extAnswerSchema = z.object({
   // pair is captured as a DraftEdit for later voice distillation.
   original: z.string().max(8000).optional(),
   draftId: z.string().optional(),
+  // Story slugs to exclude from selection (e.g. user clicked "Different story").
+  excludeStories: z.array(z.string()).max(10).optional(),
 });
 
 export type ExtAnswerInput = z.infer<typeof extAnswerSchema>;

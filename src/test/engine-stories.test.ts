@@ -125,4 +125,24 @@ describe("selectStories", () => {
     );
     expect(out.map((s) => s.slug)).toEqual(["alpha", "middle", "zebra"]);
   });
+
+  it("excludes stories whose slug is in excludeSlugs even if best theme match", () => {
+    const out = selectStories(
+      [
+        mk("rowing", ["leadership", "pressure"], [], "high"),
+        mk("debate", ["leadership"], [], "medium"),
+      ],
+      { themes: ["leadership"], employerSlug: undefined, max: 2, excludeSlugs: ["rowing"] },
+    );
+    expect(out.map((s) => s.slug)).not.toContain("rowing");
+    expect(out.map((s) => s.slug)).toContain("debate");
+  });
+
+  it("returns empty when all matching stories are excluded via excludeSlugs", () => {
+    const out = selectStories(
+      [mk("rowing", ["leadership"], [], "high")],
+      { themes: ["leadership"], employerSlug: undefined, max: 2, excludeSlugs: ["rowing"] },
+    );
+    expect(out).toEqual([]);
+  });
 });

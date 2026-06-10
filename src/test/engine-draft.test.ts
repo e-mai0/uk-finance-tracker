@@ -284,6 +284,18 @@ describe("draftText", () => {
     });
     expect(out.provenance.thinGrounding).toBe(false);
   });
+
+  it("excludeStories prevents the named story slug from appearing in the prompt", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "answer without rowing", usage: {} });
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Tell us about a time you led under pressure",
+      excludeStories: ["rowing"],
+    });
+    const prompt = mocks.generateText.mock.calls.at(-1)![0].prompt as string;
+    expect(prompt).not.toContain("story:rowing");
+    expect(out.provenance.storiesUsed).not.toContain("rowing");
+  });
 });
 
 describe("trimToLimit", () => {

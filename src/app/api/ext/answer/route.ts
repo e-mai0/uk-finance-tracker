@@ -102,6 +102,7 @@ export async function POST(req: Request) {
 
   let answer: string;
   let draftId: string | undefined;
+  let provenance: import("../../../../server/engine/types").Provenance | undefined;
   try {
     const draftArgs = {
       kind: "ANSWER" as const,
@@ -109,10 +110,12 @@ export async function POST(req: Request) {
       employerName: d.employer ?? undefined,
       roleTitle: d.role ?? undefined,
       charLimit: d.charLimit ?? undefined,
+      excludeStories: d.excludeStories ?? undefined,
     };
     const ctx = await gatherSubstance(userId, draftArgs);
     const result = await draftText(userId, ctx, draftArgs);
     answer = result.text;
+    provenance = result.provenance;
 
     // 3. Optionally save to the bank for reuse.
     if (d.save && answer) {
@@ -147,5 +150,5 @@ export async function POST(req: Request) {
     return json({ error: e instanceof Error ? e.message : "Generation failed." }, 502);
   }
 
-  return json({ answer, source: "generated", draftId });
+  return json({ answer, source: "generated", draftId, provenance });
 }

@@ -7,6 +7,8 @@ export type DraftArgs = {
   employerSlug?: string;
   roleTitle?: string;
   charLimit?: number;
+  /** Story slugs to exclude from selection (e.g. user clicked "Different story"). */
+  excludeStories?: string[];
 };
 
 export type Story = {

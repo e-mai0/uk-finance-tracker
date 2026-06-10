@@ -86,7 +86,12 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
 
   // Item 2: Employer-slug dedup — derive slug from name if not provided
   const slug = args.employerSlug ?? (args.employerName ? employerSlugOf(args.employerName) : undefined);
-  const stories = selectStories(ctx.stories, { themes, employerSlug: slug, max: 2 });
+  const stories = selectStories(ctx.stories, {
+    themes,
+    employerSlug: slug,
+    max: 2,
+    excludeSlugs: args.excludeStories,
+  });
 
   const parts: string[] = [];
   if (args.kind === "COVER_LETTER") {
