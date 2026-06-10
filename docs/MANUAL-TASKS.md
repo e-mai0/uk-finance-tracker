@@ -46,7 +46,26 @@ some gate others. Check them off as you go.
   `npm run build`, then chrome://extensions → Reload). Extension icons still
   needed before any Web Store submission.
 
+## Paused mid-phase-3 (2026-06-10): Claude monthly spend limit hit
+
+Implemented and committed so far: **all of phases 1–2** (fully reviewed) and
+**phase 3 Tasks 1–2** (suggestions for ask fields; story exclusion + provenance
+in answer responses — implemented, 214 tests green, inline-reviewed only).
+Remaining when work resumes (plan: `docs/superpowers/plans/2026-06-10-cyclops-phase-3-apply-v2.md`):
+
+- [ ] Phase 3 Task 3 — outcome distillation (story signals + strategy observations)
+- [ ] Phase 3 Task 4 — chat deep links (`?opportunity=`/`?prefill=`) + tracker "Ask Cyclops"
+- [ ] Phase 3 Task 5 — extension panel v2 (render suggestions, provenance + story
+  choice, pre-staged drafts, Discuss link)
+- [ ] Phase 3 Task 6 — verification sweep
+- [ ] Phase 4 — mini-spec first, then plan + execute (agent page-driving
+  fallback, overnight queue, gardener cron)
+- [ ] Raise/await the spend limit: claude.ai/settings/usage
+
 ## Done
 
 - [x] 2026-06-09 — Phase 1 (memory core + chat) implemented and reviewed on
   `cyclopslevelup`.
+- [x] 2026-06-10 — Phase 2 (writing engine, employer research, draft-edit
+  learning, outcome tools, eval harness run twice) implemented and reviewed.
+- [x] 2026-06-10 — Phase 3 Tasks 1–2 implemented (214 tests green).
