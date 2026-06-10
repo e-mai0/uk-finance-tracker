@@ -1,8 +1,7 @@
 import Link from "next/link";
 import type { TrackerItem } from "@/lib/filters";
-import { daysUntil, locCode, ticker } from "@/lib/utils";
-
-const FRESH_WINDOW_DAYS = 7;
+import { locCode, ticker } from "@/lib/utils";
+import { isFreshListing } from "./signals";
 
 /** Fresh finds — listings first seen in the last week, newest first. This is
  *  where live-source discoveries (cron syncs + Firm Scout) surface, so new
@@ -10,10 +9,7 @@ const FRESH_WINDOW_DAYS = 7;
 export function FreshFinds({ items }: { items: TrackerItem[] }) {
   const now = new Date();
   const fresh = items
-    .filter((i) => {
-      const age = daysUntil(i.firstSeenAt, now); // ≤ 0 when in the past
-      return age !== null && age <= 0 && age >= -FRESH_WINDOW_DAYS;
-    })
+    .filter((i) => isFreshListing(i.firstSeenAt, now))
     .sort(
       (a, b) =>
         new Date(b.firstSeenAt).getTime() - new Date(a.firstSeenAt).getTime(),
@@ -26,9 +22,7 @@ export function FreshFinds({ items }: { items: TrackerItem[] }) {
         <span className="label text-[0.62rem] text-ink">
           <span className="text-success">✚</span> Fresh finds
         </span>
-        <span className="label text-[0.62rem] text-subtle">
-          Last {FRESH_WINDOW_DAYS}d
-        </span>
+        <span className="label text-[0.62rem] text-subtle">Last 7d</span>
       </div>
       {fresh.length === 0 ? (
         <p className="px-3 py-4 text-[0.78rem] text-muted">

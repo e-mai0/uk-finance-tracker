@@ -5,7 +5,7 @@ import { FitPill } from "./fit-pill";
 import { SaveButton } from "./save-button";
 import { ROLE_FAMILY_SHORT } from "@/lib/constants";
 import { cn, formatShortDate, daysUntil, ticker, locCode } from "@/lib/utils";
-import { DaysLeft, Dash } from "./signals";
+import { DaysLeft, Dash, NewFlag } from "./signals";
 
 // # · CODE · FIRM/ROLE · DIV · LOC · DEADLINE · DAYS · FIT(+bar) · STATUS · SAVE
 const GRID =
@@ -84,6 +84,7 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
           <span className="truncate text-[0.8rem] text-muted">
             {item.title}
           </span>
+          <NewFlag firstSeenAt={item.firstSeenAt} />
         </span>
 
         <span className={cn(CELL, "flex items-center py-2")}>
@@ -129,8 +130,11 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
               {ticker(item.employerName)}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[0.92rem] font-semibold text-ink">
-                {item.employerName}
+              <span className="flex items-baseline gap-2">
+                <span className="truncate text-[0.92rem] font-semibold text-ink">
+                  {item.employerName}
+                </span>
+                <NewFlag firstSeenAt={item.firstSeenAt} />
               </span>
               <span className="block truncate text-[0.8rem] text-muted">
                 {item.title}
