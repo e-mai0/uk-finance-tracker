@@ -66,6 +66,34 @@ export function serializeForm(root: ParentNode): SerializedForm {
   return { fields, elements };
 }
 
+/**
+ * Current user-visible value of a field, for agent-assist rounds (the server
+ * needs to know what is already filled). Radio groups report the checked
+ * radio's label; checkboxes report "true"/"false"; selects report the chosen
+ * option's text (empty when only the placeholder is selected).
+ */
+export function currentFieldValue(el: FillableEl): string {
+  if (el instanceof HTMLSelectElement) {
+    const opt = el.selectedOptions[0];
+    return opt && opt.value ? opt.text.trim() : "";
+  }
+  if (el instanceof HTMLInputElement && el.type === "radio") {
+    const group = el.name
+      ? Array.from(
+          document.querySelectorAll<HTMLInputElement>(
+            `input[type="radio"][name="${CSS.escape(el.name)}"]`,
+          ),
+        )
+      : [el];
+    const checked = group.find((r) => r.checked);
+    return checked ? getLabelText(checked) : "";
+  }
+  if (el instanceof HTMLInputElement && el.type === "checkbox") {
+    return el.checked ? "true" : "false";
+  }
+  return el.value ?? "";
+}
+
 function radioOptions(root: ParentNode, name: string): string[] | undefined {
   const radios = Array.from(
     root.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${CSS.escape(name)}"]`),

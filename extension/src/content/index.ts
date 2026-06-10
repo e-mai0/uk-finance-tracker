@@ -1,10 +1,21 @@
 import { pickAdapter } from "./adapters";
-import { serializeForm, type SerializedForm } from "./serialize";
+import { serializeForm, currentFieldValue, type SerializedForm } from "./serialize";
 import { applyPlan, insertIntoField, setFieldValue, type PlanQuestion } from "./autofill";
-import { Panel, type GeneratedDraft, type GenerateFailure } from "./panel";
+import {
+  Panel,
+  type AgentReviewAction,
+  type AgentUnresolvedItem,
+  type GeneratedDraft,
+  type GenerateFailure,
+} from "./panel";
 import { send } from "./messaging";
 import { looksLikeApplication, mountCue } from "./detect";
-import type { DraftProvenance, FieldSchema, FillPlanItem } from "../shared/types";
+import type {
+  AgentResultPayload,
+  DraftProvenance,
+  FieldSchema,
+  FillPlanItem,
+} from "../shared/types";
 
 /**
  * Content-script entry point, injected on all pages (except Trackr's own — see
@@ -25,6 +36,94 @@ let engageSeq = 0;
 // Per-field in-flight guard shared by the manual Draft path and the pre-stage
 // loop, so the same field is never generated twice concurrently.
 const inFlight = new Set<string>();
+// Agent assist (phase 4): per-engage round counter (hard cap 3, also enforced
+// server-side), the snapshot the last round was built from (the ONLY field set
+// agent writes may target), and the question text per unresolved field.
+let agentRound = 0;
+let agentBusy = false;
+let agentForm: SerializedForm | null = null;
+let agentQuestions = new Map<string, string>();
+
+/**
+ * One confirmation-gated agent round: re-serialize the page with current
+ * values, POST /api/ext/agent, and render the proposals for review. Strictly
+ * user-initiated (footer button / Continue) - never auto-fires.
+ */
+async function runAgentRound() {
+  if (agentBusy || agentRound >= 3) return;
+  const seq = engageSeq;
+  const container = formContainer();
+  if (!container) {
+    panel.showAgentError("No application form found on this page.");
+    return;
+  }
+  agentBusy = true;
+  panel.setAgentBusy(true);
+  try {
+    const round = agentRound + 1;
+    const form = serializeForm(container);
+    if (!form.fields.length) {
+      panel.showAgentError("No fillable fields found on this page.");
+      return;
+    }
+    agentForm = form;
+    const fields = form.fields.slice(0, 60).map((f) => {
+      const fieldEl = form.elements.get(f.id);
+      const cur = fieldEl ? currentFieldValue(fieldEl).trim() : "";
+      return cur ? { ...f, currentValue: cur } : { ...f };
+    });
+    const { employer, role } = adapter.employerRole();
+    const res = await send<AgentResultPayload>({
+      type: "agent",
+      payload: { fields, employer, role, url: location.href.split("#")[0], round },
+    });
+    // A newer engage (or a closed panel) supersedes this round - drop it.
+    if (seq !== engageSeq || !panel.isOpen()) return;
+    if (!res.ok || !res.data || !Array.isArray(res.data.actions)) {
+      panel.showAgentError(res.error || "Agent assist failed - try again.");
+      return;
+    }
+    agentRound = round;
+    const data = res.data;
+    const labelOf = (fid: string) =>
+      form.fields.find((f) => f.id === fid)?.label || fid;
+
+    // Belt-and-braces client mirror of the server's fail-closed validation:
+    // only fields present in THIS round's serialized set can be proposed.
+    const actions: AgentReviewAction[] = data.actions
+      .filter((a) => a && form.elements.has(a.fieldId) && typeof a.value === "string")
+      .map((a) => ({
+        fieldId: a.fieldId,
+        label: labelOf(a.fieldId),
+        value: a.value,
+        reason: typeof a.reason === "string" ? a.reason : "",
+        confidence:
+          a.confidence === "high" || a.confidence === "medium" ? a.confidence : "low",
+      }));
+    const unresolved: AgentUnresolvedItem[] = (Array.isArray(data.unresolved) ? data.unresolved : [])
+      .filter(
+        (u) =>
+          u && typeof u.fieldId === "string" && typeof u.question === "string" &&
+          u.question.trim().length > 0 && form.elements.has(u.fieldId),
+      )
+      .map((u) => ({
+        fieldId: u.fieldId,
+        question: u.question,
+        options: form.fields.find((f) => f.id === u.fieldId)?.options,
+      }));
+    agentQuestions = new Map(unresolved.map((u) => [u.fieldId, u.question]));
+
+    const done = data.done === true;
+    panel.showAgentReview(actions, unresolved, {
+      canContinue: !done && round < 3,
+      handBack: !done && round >= 3,
+      done,
+    });
+  } finally {
+    agentBusy = false;
+    panel.setAgentBusy(false);
+  }
+}
 
 /** Call /api/ext/answer for a draft field; provenance/draftId are optional on older servers. */
 async function generateDraft(
@@ -92,6 +191,31 @@ const panel = new Panel({
     });
     return res.ok;
   },
+  onAgentAssist: () => void runAgentRound(),
+  // Confirmation-gated write: only runs on explicit apply, and only against
+  // elements from the agent's own serialized snapshot.
+  onAgentApply: (fieldId, value) => {
+    const fieldEl = agentForm?.elements.get(fieldId);
+    if (!fieldEl) return false;
+    return setFieldValue(fieldEl, value);
+  },
+  // Unresolved agent question: fill the field + persist the fact, mirroring
+  // the plan ask flow (agent field ids resolve against the agent snapshot).
+  onAgentAnswer: async (fieldId, value) => {
+    const form = agentForm;
+    const fieldEl = form?.elements.get(fieldId);
+    if (!form || !fieldEl) return false;
+    setFieldValue(fieldEl, value);
+    const questionText =
+      agentQuestions.get(fieldId) ||
+      form.fields.find((f) => f.id === fieldId)?.label ||
+      "Application question";
+    const res = await send({
+      type: "saveFact",
+      payload: { questionText: questionText.slice(0, 600), answer: value },
+    });
+    return res.ok;
+  },
 });
 
 function formContainer(): ParentNode | null {
@@ -100,6 +224,11 @@ function formContainer(): ParentNode | null {
 
 async function engage() {
   const seq = ++engageSeq;
+  // Fresh agent session per engage: round counter back to 1, stale snapshot
+  // and question index dropped (a stale in-flight round is dropped by seq).
+  agentRound = 0;
+  agentForm = null;
+  agentQuestions = new Map();
   const container = formContainer();
   if (!container) { panel.showError("No application form found on this page."); return; }
 
@@ -130,6 +259,12 @@ async function engage() {
     })),
     applied.drafts.map((q) => ({ fieldId: q.fieldId, label: q.label, charLimit: q.charLimit })),
   );
+
+  // Agent assist affordance: offered when the plan left asks for the user or
+  // matched nothing at all (unknown ATS). Click-to-start only.
+  const planMatchedNothing =
+    applied.filled === 0 && applied.asks.length === 0 && applied.drafts.length === 0;
+  panel.setAgentAffordance(applied.asks.length > 0 || planMatchedNothing);
 
   // Footer link into the web app's chat, prefilled with this application.
   const apiBase = status.data.apiBase?.replace(/\/+$/, "");

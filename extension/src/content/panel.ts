@@ -13,12 +13,37 @@ export interface GeneratedDraft { text: string; draftId?: string; provenance?: D
 /** Generation failure carrying a server-provided reason (e.g. daily budget reached). */
 export interface GenerateFailure { error: string }
 
+/** One proposed write from the agent, pending explicit user approval. */
+export interface AgentReviewAction {
+  fieldId: string;
+  label: string;
+  value: string;
+  reason: string;
+  confidence: "high" | "medium" | "low";
+}
+
+/** A field the agent could not ground - rendered as an ask-style row. */
+export interface AgentUnresolvedItem {
+  fieldId: string;
+  question: string;
+  options?: string[];
+}
+
+export interface AgentReviewState {
+  canContinue: boolean; // another round is available (done=false, round < 3)
+  handBack: boolean;    // round cap reached with work remaining
+  done: boolean;        // server says every field is proposed or unresolved
+}
+
 export interface PanelHandlers {
   onEngage: () => void;                                                // user asked to plan this form
   onAnswerAsk: (fieldId: string, value: string) => Promise<boolean>;   // fill + write-back
   onGenerate: (fieldId: string, excludeStories?: string[]) => Promise<GeneratedDraft | GenerateFailure | null>;
   onInsert: (fieldId: string, text: string) => void;
   onSaveDraft: (fieldId: string, label: string, text: string, original?: string, draftId?: string) => Promise<boolean>;
+  onAgentAssist: () => void;                                           // start / continue an agent round
+  onAgentApply: (fieldId: string, value: string) => boolean;           // write one approved value to the page
+  onAgentAnswer: (fieldId: string, value: string) => Promise<boolean>; // fill + save for an unresolved question
 }
 
 /** Per-card hooks so the content script can drive pre-staged drafting. */
@@ -73,6 +98,8 @@ textarea {
 .prov .chip { font-weight: 700; font-size: 9.5px; letter-spacing: .05em; border: 1px solid #d6cfbd; border-radius: 4px; padding: 0 4px; }
 .warn { font-size: 10.5px; color: #b1431f; margin: 3px 0 0; }
 .hint { font-size: 11px; color: #1b1714; background: #f6f2e7; border: 1px dashed #d6cfbd; border-radius: 6px; padding: 5px 7px; margin: 6px 0 0; }
+.agent-val { font-size: 12px; color: #1b1714; background: #f6f2e7; border-radius: 6px; padding: 5px 7px; margin: 0; white-space: pre-wrap; word-break: break-word; }
+.foot .btn { margin-top: 6px; height: 30px; font-size: 12px; }
 `;
 
 export class Panel {
@@ -83,6 +110,11 @@ export class Panel {
   private handlers: PanelHandlers;
   private discussLink: HTMLAnchorElement;
   private draftCards = new Map<string, DraftCardControls>();
+  private agentBtn: HTMLButtonElement;
+  private agentSection: HTMLDivElement | null = null;
+  private agentContinueBtn: HTMLButtonElement | null = null;
+  private agentErrorEl: HTMLParagraphElement | null = null;
+  private agentBusy = false;
 
   constructor(handlers: PanelHandlers) {
     this.handlers = handlers;
@@ -114,7 +146,14 @@ export class Panel {
     this.discussLink.rel = "noopener";
     this.discussLink.textContent = "Discuss in Cyclops ↗";
     this.discussLink.style.display = "none";
-    foot.append(footText, this.discussLink);
+    // Agent assist: strictly click-to-start fallback for unresolved fields.
+    this.agentBtn = el<HTMLButtonElement>("button", "btn sec");
+    this.agentBtn.textContent = "Agent assist ▸";
+    this.agentBtn.style.display = "none";
+    this.agentBtn.addEventListener("click", () => {
+      if (!this.agentBusy) this.handlers.onAgentAssist();
+    });
+    foot.append(footText, this.discussLink, this.agentBtn);
 
     wrap.append(head, this.body, foot);
     this.root.appendChild(wrap);
@@ -171,6 +210,175 @@ export class Panel {
   private clearBody() {
     this.body.innerHTML = "";
     this.draftCards.clear();
+    this.agentSection = null;
+    this.agentContinueBtn = null;
+    this.agentErrorEl = null;
+    this.setAgentAffordance(false);
+  }
+
+  /** Show or hide the footer "Agent assist ▸" affordance. */
+  setAgentAffordance(visible: boolean) {
+    this.agentBtn.style.display = visible ? "" : "none";
+  }
+
+  /** Reflect an in-flight agent round: affordances disabled, "thinking...". */
+  setAgentBusy(busy: boolean) {
+    this.agentBusy = busy;
+    this.agentBtn.disabled = busy;
+    this.agentBtn.textContent = busy ? "thinking..." : "Agent assist ▸";
+    if (this.agentContinueBtn?.isConnected) {
+      this.agentContinueBtn.disabled = busy;
+      this.agentContinueBtn.textContent = busy ? "thinking..." : "Continue ▸";
+    }
+  }
+
+  private ensureAgentSection(): HTMLDivElement {
+    if (!this.agentSection || !this.agentSection.isConnected) {
+      this.agentSection = el<HTMLDivElement>("div");
+      this.body.append(this.agentSection);
+    }
+    return this.agentSection;
+  }
+
+  /** Standard failure line for agent rounds (budget 429, old server 404, ...). */
+  showAgentError(text: string) {
+    const sec = this.ensureAgentSection();
+    this.agentErrorEl?.remove();
+    const e = el<HTMLParagraphElement>("p", "err");
+    e.textContent = text;
+    this.agentErrorEl = e;
+    sec.append(e);
+  }
+
+  /**
+   * Confirmation checkpoint: the agent's proposed actions as a review list.
+   * NOTHING is written to the page until the user clicks apply / Apply all.
+   */
+  showAgentReview(
+    actions: AgentReviewAction[],
+    unresolved: AgentUnresolvedItem[],
+    state: AgentReviewState,
+  ) {
+    this.setAgentAffordance(false); // the review section owns the flow now
+    const sec = this.ensureAgentSection();
+    sec.innerHTML = "";
+    this.agentErrorEl = null;
+    this.agentContinueBtn = null;
+
+    const h = el("p", "muted");
+    h.style.marginTop = "12px";
+    h.textContent = actions.length
+      ? `Agent proposals (${actions.length}) · nothing is written until you apply`
+      : "Agent assist found no confident proposals.";
+    sec.append(h);
+
+    const rows: { applyIfPending: () => void }[] = [];
+    const onApplied = () => {
+      // The first apply unlocks Continue (when another round is available).
+      if (this.agentContinueBtn) this.agentContinueBtn.style.display = "";
+    };
+
+    if (actions.length > 1) {
+      const all = el<HTMLButtonElement>("button", "btn row");
+      all.textContent = "Apply all";
+      all.addEventListener("click", () => {
+        all.disabled = true;
+        rows.forEach((r) => r.applyIfPending());
+      });
+      sec.append(all);
+    }
+
+    for (const a of actions) {
+      const row = this.agentActionRow(a, onApplied);
+      rows.push({ applyIfPending: row.applyIfPending });
+      sec.append(row.card);
+    }
+
+    if (unresolved.length) {
+      const uh = el("p", "muted");
+      uh.style.marginTop = "12px";
+      uh.textContent = `Still needs you (${unresolved.length})`;
+      sec.append(uh);
+      for (const u of unresolved) {
+        sec.append(
+          this.askCard(
+            { fieldId: u.fieldId, label: u.question, options: u.options },
+            this.handlers.onAgentAnswer,
+          ),
+        );
+      }
+    }
+
+    if (state.handBack) {
+      const hb = el("p", "muted");
+      hb.style.marginTop = "10px";
+      hb.textContent = unresolved.length
+        ? "Handing back to you - the questions above still need your answer."
+        : "Handing back to you - review the form before submitting.";
+      sec.append(hb);
+    } else if (state.done) {
+      const dn = el("p", "muted");
+      dn.style.marginTop = "10px";
+      dn.textContent = "Agent assist is done. Review before submitting.";
+      sec.append(dn);
+    } else if (state.canContinue) {
+      const cont = el<HTMLButtonElement>("button", "btn sec");
+      cont.textContent = "Continue ▸";
+      cont.style.display = "none"; // appears after the first apply
+      cont.style.marginTop = "10px";
+      cont.addEventListener("click", () => {
+        if (!this.agentBusy) this.handlers.onAgentAssist();
+      });
+      this.agentContinueBtn = cont;
+      sec.append(cont);
+    }
+  }
+
+  /** One proposed action: label, truncated value, reason + confidence chip, apply/skip. */
+  private agentActionRow(
+    a: AgentReviewAction,
+    onApplied: () => void,
+  ): { card: HTMLElement; applyIfPending: () => void } {
+    const card = el("div", "q");
+    const label = el("p", "q-label");
+    label.textContent = a.label;
+    const val = el("p", "agent-val");
+    val.textContent = a.value.length > 160 ? a.value.slice(0, 160) + "…" : a.value;
+    const provLine = el("p", "prov");
+    if (a.reason) provLine.append(`${a.reason} · `);
+    const chip = el("span", "chip");
+    chip.textContent = a.confidence.toUpperCase();
+    provLine.append(chip);
+
+    const actions = el("div", "q-actions");
+    const apply = el<HTMLButtonElement>("button", "btn row");
+    apply.textContent = "apply";
+    const skip = el<HTMLButtonElement>("button", "btn sec row");
+    skip.textContent = "skip";
+
+    let settled = false;
+    const applyIfPending = () => {
+      if (settled) return;
+      settled = true;
+      const ok = this.handlers.onAgentApply(a.fieldId, a.value);
+      apply.disabled = true;
+      skip.disabled = true;
+      apply.textContent = ok ? "applied ✓" : "failed";
+      if (ok) onApplied();
+    };
+    apply.addEventListener("click", applyIfPending);
+    skip.addEventListener("click", () => {
+      if (settled) return;
+      settled = true;
+      apply.disabled = true;
+      skip.disabled = true;
+      skip.textContent = "skipped";
+      card.style.opacity = ".6";
+    });
+
+    actions.append(apply, skip);
+    card.append(label, val, provLine, actions);
+    return { card, applyIfPending };
   }
 
   showConnectPrompt() {
@@ -225,7 +433,10 @@ export class Panel {
     }
   }
 
-  private askCard(a: AskItem): HTMLElement {
+  private askCard(
+    a: AskItem,
+    answer: (fieldId: string, value: string) => Promise<boolean> = this.handlers.onAnswerAsk,
+  ): HTMLElement {
     const card = el("div", "q");
     const label = el("p", "q-label");
     label.textContent = a.label;
@@ -293,7 +504,7 @@ export class Panel {
       const value = readValue();
       if (!value) return;
       fill.disabled = true;
-      const ok = await this.handlers.onAnswerAsk(a.fieldId, value);
+      const ok = await answer(a.fieldId, value);
       fill.textContent = ok ? "Saved ✓" : "Failed";
       if (!ok) {
         msg.textContent = "Couldn’t save — is the extension connected?";

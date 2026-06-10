@@ -88,6 +88,32 @@ chrome.runtime.onMessage.addListener(
             }),
           );
           break;
+        case "agent": {
+          // Map the panel payload onto the server wire shape, clamping to the
+          // endpoint's zod bounds so an oversized page can't 400 the round.
+          const p = msg.payload;
+          const body = {
+            fields: p.fields.slice(0, 60).map((f) => ({
+              fieldId: f.id,
+              label: f.label.slice(0, 300),
+              type: f.type,
+              options: f.options?.slice(0, 40).map((o) => o.slice(0, 200)),
+              currentValue: f.currentValue
+                ? f.currentValue.slice(0, 2000)
+                : undefined,
+              required: f.required,
+            })),
+            context: { employer: p.employer, role: p.role, url: p.url },
+            round: p.round,
+          };
+          sendResponse(
+            await apiFetch("/api/ext/agent", {
+              method: "POST",
+              body: JSON.stringify(body),
+            }),
+          );
+          break;
+        }
         case "saveFact":
           sendResponse(
             await apiFetch("/api/ext/fact", {

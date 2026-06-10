@@ -84,6 +84,31 @@ export interface PlanPayload {
   url?: string;
 }
 
+// Agent assist (phase 4): bounded, confirmation-gated fallback rounds against
+// POST /api/ext/agent. The background worker maps this onto the server's wire
+// shape ({ fields: [{fieldId,...}], context, round }).
+export interface AgentPayload {
+  fields: (FieldSchema & { currentValue?: string })[];
+  employer?: string;
+  role?: string;
+  url?: string;
+  round: number;
+}
+
+export interface AgentProposedAction {
+  fieldId: string;
+  value: string;
+  reason: string;
+  confidence: "high" | "medium" | "low";
+}
+
+export interface AgentResultPayload {
+  actions: AgentProposedAction[];
+  unresolved: { fieldId: string; question: string }[];
+  done: boolean;
+  round: number;
+}
+
 export interface FactPayload {
   profileKey?: string;
   questionText: string;
@@ -99,6 +124,7 @@ export type BgRequest =
   | { type: "answer"; payload: AnswerPayload }
   | { type: "trackApplication"; payload: TrackPayload }
   | { type: "plan"; payload: PlanPayload }
+  | { type: "agent"; payload: AgentPayload }
   | { type: "saveFact"; payload: FactPayload };
 
 export interface BgResponse<T = unknown> {
