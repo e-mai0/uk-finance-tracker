@@ -1,34 +1,43 @@
 # Trackr — Project Status
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-06-10_
 
-> **IN FLIGHT — Cyclops Phase 1 (branch `cyclopslevelup`, not yet merged).**
+> **IN FLIGHT — Cyclops Phases 1 & 2 (branch `cyclopslevelup`, not yet merged).**
 > Trackr is being overhauled into **Cyclops**, an AI "application OS"
-> (spec: `docs/superpowers/specs/2026-06-09-cyclops-application-os-design.md`;
-> plan: `docs/superpowers/plans/2026-06-09-cyclops-phase-1-memory-chat.md`).
-> Phase 1 is fully implemented and reviewed on the branch: per-user markdown
-> memory tree with revisions + anti-rot gardener, AI SDK 6 agent brain behind
-> `POST /api/chat` (six tools, confidence/uncertainty discipline, per-user
-> daily token budget), `/chat` and `/memory` pages, onboarding voice/story
-> seeding, pgvector semantic recall (Voyage embeddings). 130 unit tests green;
-> `tsc` + `next build` clean. The deterministic extension autofill is untouched
-> and its API responses are byte-compatible.
+> (spec: `docs/superpowers/specs/2026-06-09-cyclops-application-os-design.md`).
+> Phase 1 AND phase 2 are fully implemented and reviewed on the branch:
+> **Phase 1** — per-user markdown memory tree with revisions + anti-rot gardener,
+> AI SDK 6 agent brain behind `POST /api/chat` (six tools, confidence/uncertainty
+> discipline, per-user daily token budget), `/chat` and `/memory` pages, onboarding
+> voice/story seeding, pgvector semantic recall (Voyage embeddings).
+> **Phase 2** — writing engine (draft-voice critique + revision), employer research
+> tool, draft-edit learning (distill to voice.md), outcome tools
+> (update_application_status), story usage write-back (employers_used), eval harness.
+> 200 unit tests green; `tsc` + `next build` clean.
+> The deterministic extension autofill is untouched and its API responses are
+> byte-compatible.
+>
+> **Eval pre-judge (Haiku, faithfulness pre-check):** new engine 20/0/0 wins vs old;
+> new engine: 45 invented specifics vs old: 62 invented specifics. USER judgment
+> pending (Gate B) — see `src/eval/REPORT.md` after running the eval harness.
 >
 > **Before merging `cyclopslevelup` to `main` (main auto-deploys prod!):**
 > 1. Apply the additive SQL to Supabase (SQL editor or `psql "$DIRECT_URL" -f …`),
 >    in order: `prisma/sql/2026-06-09-cyclops-memory.sql` then
->    `prisma/sql/2026-06-09-pgvector.sql` (needs the `vector` extension).
+>    `prisma/sql/2026-06-09-pgvector.sql` (needs the `vector` extension), then
+>    `prisma/sql/2026-06-10-cyclops-phase2.sql` (phase 2 schema additions).
 > 2. Set `VOYAGE_API_KEY` and `CYCLOPS_DAILY_TOKEN_BUDGET` in `.env` + Vercel
 >    (only after step 1). Optional backfill: `npx tsx scripts/backfill-embeddings.ts`.
-> 3. Smoke test on localhost: /chat ("remember X" → memory diff chip; Stop
+> 3. Complete Gate B (USER judgment of writing eval) and Gate C checklist items
+>    in `docs/MANUAL-TASKS.md`.
+> 4. Smoke test on localhost: /chat ("remember X" → memory diff chip; Stop
 >    mid-tool-call then send again), /memory (edit/save/restore), one extension
 >    autofill + answer generation round.
 >
 > Known fast-follows (logged, not blocking): gardener cron schedule (only the
 > every-10-edits trigger exists), mobile rails for /chat + /memory, gardener
 > question "asked" detection is conservative, `npm run lint` has a pre-existing
-> config failure (`nextVitals is not iterable`), `gray-matter` dep unused until
-> frontmatter parsing lands in phase 2.
+> config failure (`nextVitals is not iterable`).
 
 A snapshot of where the project is, so any future session (human or agent) can pick
 up without re-deriving context. For product/setup detail see `README.md`; for the

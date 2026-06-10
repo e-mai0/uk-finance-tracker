@@ -42,7 +42,7 @@ some gate others. Check them off as you go.
   key were pasted in chat once. Regenerate; update `.env` + Vercel.
 - [ ] **Vercel cron** (phase 4): after merging, confirm the cron entries in
   `vercel.json` appear under Vercel → Settings → Cron Jobs.
-- [ ] **Reload the unpacked extension** after phases 3–4 (`extension/`:
+- [ ] **Reload the unpacked extension** after phases 2–4 (`extension/`:
   `npm run build`, then chrome://extensions → Reload). Extension icons still
   needed before any Web Store submission.
 
