@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { auth } from "../auth";
 import { prisma } from "../db";
-import { distillOutcomes } from "@/server/engine/outcomes";
+import { distillOutcomesForUser } from "@/server/engine/outcomes";
 
 const STATUSES = [
   "DRAFT",
@@ -34,7 +34,7 @@ export async function updateApplicationStatus(
   });
   // Distill outcomes into story signals + strategy observations after the response.
   const userId = session.user.id;
-  after(() => distillOutcomes(userId));
+  after(() => distillOutcomesForUser(userId));
   revalidatePath("/applications");
   return { ok: true };
 }

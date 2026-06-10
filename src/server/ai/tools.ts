@@ -10,7 +10,7 @@ import { OpportunityStatus } from "@prisma/client";
 import { ensureEmployerResearch } from "@/server/engine/research";
 import { gatherSubstance } from "@/server/engine/substance";
 import { draftText } from "@/server/engine/draft";
-import { distillOutcomes } from "@/server/engine/outcomes";
+import { distillOutcomesForUser } from "@/server/engine/outcomes";
 import { SONNET_ID } from "@/server/ai/models";
 
 const MAX_FILE_COUNT = 100;
@@ -286,8 +286,14 @@ export function buildTools(userId: string) {
             ...(status === "SUBMITTED" ? { submittedAt: new Date() } : {}),
           },
         });
-        // Detached: distill outcomes into story signals + strategy observations.
-        void distillOutcomes(userId).catch(() => {});
+        // Detached on purpose: buildTools has no access to the chat route's
+        // request-scoped after(), so this promise is not awaited. On serverless
+        // the runtime may freeze before it settles and the distillation is then
+        // lost - acceptable, because it is recomputed from scratch on the next
+        // status change (self-healing). distillOutcomesForUser catches all
+        // errors internally; the .catch is cheap insurance against future
+        // signature changes that might reject before that try block.
+        void distillOutcomesForUser(userId).catch(() => {});
         return { updated: true, employer: app.employerName, role: app.roleTitle, status };
       },
     }),

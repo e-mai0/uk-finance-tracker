@@ -1,5 +1,6 @@
 import matter from "gray-matter";
 import { employerSlugOf } from "@/server/engine/stories";
+import { normalizeFrontmatterData } from "@/server/engine/frontmatter";
 
 // ---------------------------------------------------------------------------
 // Pure logic (exported for tests)
@@ -25,7 +26,10 @@ export function appendUsage(storyContent: string, entry: UsageEntry): string {
     return storyContent;
   }
 
-  const data = parsed.data as Record<string, unknown>;
+  // Normalize YAML-parsed Date values (e.g. an unquoted employers_used[].date)
+  // back to YYYY-MM-DD strings so re-stringifying does not drift them into
+  // ISO timestamps.
+  const data = normalizeFrontmatterData(parsed.data as Record<string, unknown>);
   const existing: UsageEntry[] = Array.isArray(data.employers_used)
     ? (data.employers_used as Record<string, string>[]).map((e) => ({
         employer: String(e.employer ?? ""),
