@@ -2,10 +2,10 @@
 
 _Last updated: 2026-06-10_
 
-> **IN FLIGHT — Cyclops Phases 1 & 2 (branch `cyclopslevelup`, not yet merged).**
+> **IN FLIGHT — Cyclops Phases 1–3 (branch `cyclopslevelup`, not yet merged).**
 > Trackr is being overhauled into **Cyclops**, an AI "application OS"
 > (spec: `docs/superpowers/specs/2026-06-09-cyclops-application-os-design.md`).
-> Phase 1 AND phase 2 are fully implemented and reviewed on the branch:
+> Phases 1, 2 AND 3 are fully implemented and reviewed on the branch:
 > **Phase 1** — per-user markdown memory tree with revisions + anti-rot gardener,
 > AI SDK 6 agent brain behind `POST /api/chat` (six tools, confidence/uncertainty
 > discipline, per-user daily token budget), `/chat` and `/memory` pages, onboarding
@@ -13,7 +13,17 @@ _Last updated: 2026-06-10_
 > **Phase 2** — writing engine (draft-voice critique + revision), employer research
 > tool, draft-edit learning (distill to voice.md), outcome tools
 > (update_application_status), story usage write-back (employers_used), eval harness.
-> 200 unit tests green; `tsc` + `next build` clean.
+> **Phase 3 (shipped 2026-06-10)** — one-button apply v2: memory-backed suggestions
+> on ask fields (plan endpoint + panel), story exclusion + provenance in answer
+> responses with a "Different story" regeneration affordance, outcome distillation
+> (story strength/failure signals + a superseding strategy.md observation line,
+> triggered by status changes), chat deep links (`/chat?opportunity=` and
+> `?prefill=` with empty-thread reuse + seeded titles) + tracker "Ask Cyclops"
+> affordance, extension panel v2 (suggestion provenance chips, thin-grounding
+> warning, sequential prestaged drafts max 3 with dirty-text + in-flight guards,
+> Discuss in Cyclops link), and server hardening (budget gate on
+> `/api/ext/answer`, exclusion-aware bank skip).
+> 229 unit tests green; `tsc` + `next build` clean (web + extension).
 > The deterministic extension autofill is untouched and its API responses are
 > byte-compatible.
 >
@@ -33,6 +43,9 @@ _Last updated: 2026-06-10_
 > 4. Smoke test on localhost: /chat ("remember X" → memory diff chip; Stop
 >    mid-tool-call then send again), /memory (edit/save/restore), one extension
 >    autofill + answer generation round.
+>
+> **Phase 4** (agent page-driving fallback, overnight queue, gardener cron)
+> remains — mini-spec first, then plan + execute.
 >
 > Known fast-follows (logged, not blocking): gardener cron schedule (only the
 > every-10-edits trigger exists), mobile rails for /chat + /memory, gardener

@@ -102,7 +102,7 @@ export async function POST(req: Request) {
   }
 
   // 2. Generate with the LLM, grounded in the user's profile + CV + voice + stories.
-  //    Budget gate applies to the generation path only — bank reuse above is free.
+  //    Budget gate applies to the generation path only - bank reuse above is free.
   const budget = await checkBudget(userId);
   if (!budget.ok) {
     return json({ error: "Daily AI budget reached. Try again tomorrow." }, 429);

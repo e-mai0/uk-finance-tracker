@@ -23,6 +23,11 @@ some gate others. Check them off as you go.
   - `/memory`: edit profile.md → Save → Restore a version.
   - Extension: one autofill + one generated answer on a Greenhouse test page
     (responses should look unchanged from before).
+- [ ] **Reload the unpacked extension** (extension/: `npm run build`, then
+  chrome://extensions -> Reload), then smoke the panel v2 flow on a Greenhouse
+  test page: suggestions on ask fields (provenance + confidence chip), prestaged
+  drafts (max 3, sequential), draft provenance line, Different story button,
+  thin-grounding warning, Discuss in Cyclops link.
 - [ ] **Judge the writing eval** (phase 2): open `src/eval/REPORT.md` after the
   eval run, score old vs new drafts against the rubric. **This is the spec's
   kill-gate** — if the new drafts don't clearly sound more like you, we iterate
@@ -46,21 +51,15 @@ some gate others. Check them off as you go.
   `npm run build`, then chrome://extensions → Reload). Extension icons still
   needed before any Web Store submission.
 
-## Paused mid-phase-3 (2026-06-10): Claude monthly spend limit hit
+## Phase 3 resumed and completed (2026-06-10)
 
-Implemented and committed so far: **all of phases 1–2** (fully reviewed) and
-**phase 3 Tasks 1–2** (suggestions for ask fields; story exclusion + provenance
-in answer responses — implemented, 214 tests green, inline-reviewed only).
-Remaining when work resumes (plan: `docs/superpowers/plans/2026-06-10-cyclops-phase-3-apply-v2.md`):
+The pause was temporary: the Claude monthly spend limit was raised and phase 3
+resumed and completed the same day
+(plan: `docs/superpowers/plans/2026-06-10-cyclops-phase-3-apply-v2.md`).
+Tasks 3-6 are done and logged in the Done section below. Remaining:
 
-- [ ] Phase 3 Task 3 — outcome distillation (story signals + strategy observations)
-- [ ] Phase 3 Task 4 — chat deep links (`?opportunity=`/`?prefill=`) + tracker "Ask Cyclops"
-- [ ] Phase 3 Task 5 — extension panel v2 (render suggestions, provenance + story
-  choice, pre-staged drafts, Discuss link)
-- [ ] Phase 3 Task 6 — verification sweep
-- [ ] Phase 4 — mini-spec first, then plan + execute (agent page-driving
+- [ ] Phase 4 - mini-spec first, then plan + execute (agent page-driving
   fallback, overnight queue, gardener cron)
-- [ ] Raise/await the spend limit: claude.ai/settings/usage
 
 ## Done
 
@@ -69,3 +68,12 @@ Remaining when work resumes (plan: `docs/superpowers/plans/2026-06-10-cyclops-ph
 - [x] 2026-06-10 — Phase 2 (writing engine, employer research, draft-edit
   learning, outcome tools, eval harness run twice) implemented and reviewed.
 - [x] 2026-06-10 — Phase 3 Tasks 1–2 implemented (214 tests green).
+- [x] 2026-06-10 - Phase 3 Task 3 - outcome distillation: story strength/failure
+  signals + a superseding strategy.md observation line, triggered by status changes.
+- [x] 2026-06-10 - Phase 3 Task 4 - chat deep links (/chat?opportunity= and
+  ?prefill= with empty-thread reuse + seeded titles) + tracker "Ask Cyclops" affordance.
+- [x] 2026-06-10 - Phase 3 Task 5 - extension panel v2: suggestion provenance
+  chips, thin-grounding warning, sequential prestaged drafts (max 3) with
+  dirty-text + in-flight guards, Different story button, Discuss in Cyclops link.
+- [x] 2026-06-10 - Phase 3 Task 6 - verification sweep: 229 tests green; tsc +
+  builds clean (web + extension).
