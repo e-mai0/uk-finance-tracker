@@ -16,6 +16,9 @@ const TOOL_LABELS: Record<string, string> = {
   search_applications: "searching your applications",
   search_opportunities: "searching listings",
   fit_check: "running fit check",
+  draft_text: "drafting in your voice",
+  research_employer: "researching the employer",
+  update_application_status: "updating application status",
 };
 
 // ---------------------------------------------------------------------------

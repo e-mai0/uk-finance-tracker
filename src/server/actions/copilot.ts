@@ -5,6 +5,7 @@ import { prisma } from "../db";
 import { aiConfigured } from "../ai/generate";
 import { gatherSubstance } from "../engine/substance";
 import { draftText } from "../engine/draft";
+import { SONNET_ID } from "../ai/models";
 
 export interface DraftResult {
   ok?: boolean;
@@ -45,6 +46,7 @@ export async function draftCoverLetter(opportunityId: string): Promise<DraftResu
           userId,
           opportunityId,
           kind: "COVER_LETTER",
+          model: SONNET_ID,
           content,
           context: { employer: opp.employer.name, role: opp.title },
           provenance: JSON.stringify(result.provenance),

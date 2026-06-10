@@ -5,10 +5,12 @@ import { aiConfigured } from "../../../../server/ai/generate";
 import { gatherSubstance } from "../../../../server/engine/substance";
 import { draftText } from "../../../../server/engine/draft";
 import { maybeDistill } from "../../../../server/engine/distill";
+import { recordStoryUsage } from "../../../../server/engine/story-usage";
 import { indexContent } from "../../../../server/ai/embed";
 import { normalizeQuestion, bestAnswerMatch } from "../../../../lib/answers";
 import { extAnswerSchema } from "../../../../lib/validation";
 import { json, unauthorized, preflight } from "../../../../server/ext-http";
+import { SONNET_ID } from "../../../../server/ai/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,6 +72,11 @@ export async function POST(req: Request) {
       after(() => maybeDistill(userId));
     }
 
+    // Write-back story usage when the user kept a generated draft.
+    if (d.draftId) {
+      after(() => recordStoryUsage(userId, d.draftId!));
+    }
+
     return json({ answer: d.answer, source: "saved" });
   }
 
@@ -126,6 +133,7 @@ export async function POST(req: Request) {
       data: {
         userId,
         kind: "ANSWER",
+        model: SONNET_ID,
         content: answer,
         context: { question: d.questionText, employer: d.employer, role: d.role },
         provenance: JSON.stringify(result.provenance),
