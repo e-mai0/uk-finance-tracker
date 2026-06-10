@@ -1,5 +1,5 @@
 export interface BriefData {
-  deadlines: { employer: string; title: string; deadlineAt: string }[]; // ISO dates
+  deadlines: { employer: string; title: string; deadlineAt: string }[]; // ISO dates or full ISO datetimes (e.g. Prisma toISOString())
   refreshed: string[]; // employer names whose research was warmed tonight
   gardenerQuestions: string[]; // pending question texts
   staleApps: { employer: string; role: string; status: string; daysSince: number }[];
@@ -8,8 +8,14 @@ export interface BriefData {
 /** Deterministic markdown brief; null when there is nothing worth saying. */
 export function composeBrief(data: BriefData, today: string): string | null {
   const t = new Date(`${today}T00:00:00Z`).getTime();
-  const days = (iso: string) =>
-    Math.ceil((new Date(iso).getTime() - t) / 86_400_000);
+  // Calendar-day distance: compare DATE parts only so full ISO datetimes
+  // (e.g. "2026-06-13T23:00:00Z") bucket by calendar day, not elapsed hours.
+  const days = (iso: string) => {
+    const dateOnly = iso.slice(0, 10);
+    return Math.round(
+      (new Date(`${dateOnly}T00:00:00Z`).getTime() - t) / 86_400_000,
+    );
+  };
   const urgent = data.deadlines.filter((d) => days(d.deadlineAt) <= 3);
   const week = data.deadlines.filter((d) => {
     const n = days(d.deadlineAt);

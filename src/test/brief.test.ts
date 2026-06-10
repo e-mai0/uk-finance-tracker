@@ -58,6 +58,49 @@ describe("composeBrief", () => {
     expect(out).not.toContain("## Deadlines in the next 3 days");
   });
 
+  it("buckets a full ISO datetime exactly 3 calendar days out as urgent", () => {
+    const out = composeBrief(
+      {
+        ...EMPTY,
+        deadlines: [
+          { employer: "Acme", title: "Grad scheme", deadlineAt: "2026-06-13T23:00:00Z" },
+        ],
+      },
+      TODAY,
+    );
+    expect(out).toContain("## Deadlines in the next 3 days");
+    expect(out).toContain("- Acme - Grad scheme (due 2026-06-13)");
+    expect(out).not.toContain("## Later this week");
+  });
+
+  it("buckets a full ISO datetime exactly 7 calendar days out under Later this week", () => {
+    const out = composeBrief(
+      {
+        ...EMPTY,
+        deadlines: [
+          { employer: "Globex", title: "Analyst", deadlineAt: "2026-06-17T23:00:00Z" },
+        ],
+      },
+      TODAY,
+    );
+    expect(out).toContain("## Later this week");
+    expect(out).toContain("- Globex - Analyst (due 2026-06-17)");
+    expect(out).not.toContain("## Deadlines in the next 3 days");
+  });
+
+  it("omits a deadline 8 calendar days out from both deadline sections", () => {
+    const out = composeBrief(
+      {
+        ...EMPTY,
+        deadlines: [
+          { employer: "Initech", title: "Intern", deadlineAt: "2026-06-18T23:00:00Z" },
+        ],
+      },
+      TODAY,
+    );
+    expect(out).toBeNull();
+  });
+
   it("lists refreshed employer names under Research warmed overnight", () => {
     const out = composeBrief(
       { ...EMPTY, refreshed: ["Acme", "Globex"] },

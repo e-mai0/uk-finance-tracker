@@ -49,6 +49,55 @@ describe("validateActions", () => {
     expect(out[0]!.value).toHaveLength(2000);
   });
 
+  it("drops actions targeting fields with disallowed kinds", () => {
+    const fields: AgentField[] = [
+      { fieldId: "up", type: "file", options: undefined },
+      { fieldId: "go", type: "submit", options: undefined },
+    ];
+    const out = validateActions(
+      [
+        { fieldId: "up", value: "cv.pdf", reason: "", confidence: "high" },
+        { fieldId: "go", value: "true", reason: "", confidence: "high" },
+      ],
+      fields,
+    );
+    expect(out).toEqual([]);
+  });
+
+  it("drops all values for a radio field with an empty options array", () => {
+    const fields: AgentField[] = [
+      { fieldId: "r0", type: "radio", options: [] },
+    ];
+    const out = validateActions(
+      [
+        { fieldId: "r0", value: "yes", reason: "", confidence: "high" },
+        { fieldId: "r0", value: "", reason: "", confidence: "low" },
+      ],
+      fields,
+    );
+    expect(out).toEqual([]);
+  });
+
+  it("keeps later fields' first valid actions despite a flood of duplicates for one field", () => {
+    const flood = Array.from({ length: 10 }, (_, i) => ({
+      fieldId: "f0",
+      value: `dupe-${i}`,
+      reason: "",
+      confidence: "high" as const,
+    }));
+    const out = validateActions(
+      [
+        ...flood,
+        { fieldId: "f1", value: "Three months", reason: "", confidence: "high" },
+      ],
+      FIELDS,
+    );
+    expect(out).toEqual([
+      { fieldId: "f0", value: "dupe-0", reason: "", confidence: "high" },
+      { fieldId: "f1", value: "Three months", reason: "", confidence: "high" },
+    ]);
+  });
+
   it("restricts checkbox values to true/false", () => {
     const ok = validateActions(
       [{ fieldId: "f2", value: "true", reason: "", confidence: "high" }],
