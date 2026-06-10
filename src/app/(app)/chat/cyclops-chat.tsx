@@ -159,7 +159,11 @@ export function CyclopsChat({
   prefill?: string;
 }) {
   // Component is keyed by thread id, so useState init is sufficient.
-  const [input, setInput] = useState(prefill ?? "");
+  // Only seed from prefill on a fresh thread — after a send/refresh the
+  // thread has messages and a stale ?prefill= must not repopulate the input.
+  const [input, setInput] = useState(
+    initialMessages.length === 0 ? prefill ?? "" : "",
+  );
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 

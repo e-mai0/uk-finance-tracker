@@ -9,10 +9,10 @@ import { rowToUIMessage } from "@/server/chat/messages";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cyclops — Trackr" };
 
-/** Deep-link prefill: strip control chars, collapse whitespace, cap at 200. */
+/** Deep-link prefill: strip control/C1/zero-width/bidi chars, collapse whitespace, cap at 200. */
 function sanitizePrefill(raw: string): string {
   return raw
-    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 200);
@@ -41,23 +41,49 @@ export default async function ChatPage({
 
   // Explicit ?prefill= wins; otherwise derive one from ?opportunity=<id>
   let prefill: string | undefined = prefillParam;
-  if (!prefill && opportunityParam) {
+  // Opportunity deep links also seed the thread title so abandoned threads
+  // are distinguishable in the rail. Cap matches the auto-title slice(0, 60)
+  // in /api/chat; that logic only overwrites the default "New conversation",
+  // so a seeded title sticks.
+  let seededTitle: string | undefined;
+  if (opportunityParam) {
     const opp = await prisma.opportunity.findUnique({
       where: { id: opportunityParam },
       include: { employer: true },
     });
     // Unknown id → ignore silently
-    if (opp) prefill = `Let's talk about ${opp.employer.name} - ${opp.title}.`;
+    if (opp) {
+      seededTitle = `${opp.employer.name} - ${opp.title}`.slice(0, 60);
+      if (!prefill) prefill = `Let's talk about ${opp.employer.name} - ${opp.title}.`;
+    }
   }
   if (prefill) prefill = sanitizePrefill(prefill);
   if (!prefill) prefill = undefined;
 
-  // Arriving with a prefill but no thread → land the context in a fresh thread
+  // Arriving with a prefill but no thread → land the context in a thread.
+  // Reuse the newest empty thread (userId-scoped) so repeated deep-link
+  // visits don't pile up blank sessions.
   if (prefill && !tParam) {
-    const created = await prisma.chatSession.create({
-      data: { userId },
+    const empty = await prisma.chatSession.findFirst({
+      where: { userId, messages: { none: {} } },
+      orderBy: { updatedAt: "desc" },
     });
-    redirect(`/chat?t=${created.id}&prefill=${encodeURIComponent(prefill)}`);
+    let threadId: string;
+    if (empty) {
+      if (seededTitle && empty.title !== seededTitle) {
+        await prisma.chatSession.update({
+          where: { id: empty.id },
+          data: { title: seededTitle },
+        });
+      }
+      threadId = empty.id;
+    } else {
+      const created = await prisma.chatSession.create({
+        data: { userId, ...(seededTitle ? { title: seededTitle } : {}) },
+      });
+      threadId = created.id;
+    }
+    redirect(`/chat?t=${threadId}&prefill=${encodeURIComponent(prefill)}`);
   }
 
   // Load up to 50 threads, newest first
@@ -90,9 +116,11 @@ export default async function ChatPage({
     },
   });
 
-  // Thread not found or doesn't belong to user → redirect to newest
+  // Thread not found or doesn't belong to user → redirect to newest,
+  // preserving any prefill so the deep-link context isn't dropped.
   if (!activeThread) {
-    redirect(`/chat?t=${threads[0]!.id}`);
+    const suffix = prefill ? `&prefill=${encodeURIComponent(prefill)}` : "";
+    redirect(`/chat?t=${threads[0]!.id}${suffix}`);
   }
 
   // Map stored messages to UIMessages (shared helper — item 11)
