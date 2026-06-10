@@ -7,7 +7,7 @@
  *   npx tsx scripts/eval-writing.ts [--limit N]
  *
  * Output: src/eval/REPORT.md
- * Pairs are blind A/B with randomised order per question; the reveal key is at the bottom.
+ * Pairs are blind A/B with randomised order per question (no fixed seed); the reveal key is at the bottom.
  */
 
 // Load .env before any other import (Next.js does this automatically, tsx does not).
@@ -68,10 +68,18 @@ const stories = readdirSync(storiesDir)
   .map((f) => parseStory(`stories/${f}`, readFileSync(join(storiesDir, f), "utf8")))
   .filter((s): s is NonNullable<typeof s> => s !== null);
 
+// Build a combined fixture sources string for faithfulness checks
+const fixturesSources = [
+  profileRaw.cvText,
+  ...stories.map((s) => (s.finalVersions || s.rawNotes)),
+].join("\n\n");
+
 // ─── Old pipeline (inlined to avoid `import "server-only"` in generate.ts) ───
 const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const HAIKU_ID = "claude-haiku-4-5";
+// New engine uses Sonnet (via the sonnet model import inside draftText)
+const SONNET_ID = "claude-sonnet-4-5";
 
 const OLD_STYLE = [
   "Write in the first person as the applicant.",
@@ -163,11 +171,17 @@ const JudgeScore = z.object({
 });
 type JudgeScore = z.infer<typeof JudgeScore>;
 
-async function judgeBlind(question: string, a: string, b: string): Promise<JudgeScore> {
-  const { object } = await generateObject({
-    model: haikuModel,
-    schema: JudgeScore,
-    prompt: `Two anonymous drafts answer the same UK finance job-application question. Score each on:
+const FaithfulnessResult = z.object({
+  inventedSpecifics: z.array(z.string()).max(10),
+});
+type FaithfulnessResult = z.infer<typeof FaithfulnessResult>;
+
+async function judgeBlind(question: string, a: string, b: string): Promise<JudgeScore | "FAILED"> {
+  try {
+    const { object } = await generateObject({
+      model: haikuModel,
+      schema: JudgeScore,
+      prompt: `Two anonymous drafts answer the same UK finance job-application question. Score each on:
 - voice: sounds like a specific human (not generic AI), 1=boilerplate, 5=clearly someone's own voice
 - detail: concrete real specifics (numbers, named things), 1=none, 5=rich specifics every paragraph
 - tells: count of AI-giveaway phrases (em dashes, "I'm excited", "proven track record", "delve", "passionate about", "in today's fast-paced", symmetric abstract noun lists)
@@ -183,8 +197,34 @@ ${a}
 <b>
 ${b}
 </b>`,
-  });
-  return object;
+    });
+    return object;
+  } catch (err) {
+    console.error(`  judge failed:`, err);
+    return "FAILED";
+  }
+}
+
+async function checkFaithfulness(draft: string, sources: string): Promise<FaithfulnessResult> {
+  try {
+    const { object } = await generateObject({
+      model: haikuModel,
+      schema: FaithfulnessResult,
+      prompt: `You are a faithfulness checker. Given source material and a draft, list any specific claims in the draft (numbers, names, events, outcomes) that are NOT present in the sources. These are potential fabrications.
+
+Sources:
+${sources.slice(0, 4000)}
+
+Draft:
+${draft}
+
+List claims with numbers, names, or events that do not appear in the sources above. Return an empty array if everything checks out.`,
+    });
+    return object;
+  } catch (err) {
+    console.error(`  faithfulness check failed:`, err);
+    return { inventedSpecifics: [] };
+  }
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -201,6 +241,10 @@ async function main() {
   let newWins = 0;
   let oldWins = 0;
   let ties = 0;
+  let judgeFailures = 0;
+  let totalInventedNew = 0;
+  let totalInventedOld = 0;
+  let callCount = 0;
 
   console.log(`[eval] Running ${subset.length} questions...`);
   const start = Date.now();
@@ -212,6 +256,7 @@ async function main() {
     let oldText: string;
     try {
       oldText = await generateAnswerOld({ question: q.question, charLimit: q.charLimit, employer: q.employer });
+      callCount++;
     } catch (err) {
       console.error(`  ${q.id}: old pipeline failed:`, err);
       oldText = "(old pipeline error)";
@@ -227,38 +272,67 @@ async function main() {
         charLimit: q.charLimit,
       });
       newText = result.text;
+      callCount += 2; // draft + critique
     } catch (err) {
       console.error(`  ${q.id}: new engine failed:`, err);
       newText = "(new engine error)";
     }
 
-    // Blind A/B — randomise which is A
+    // Blind A/B — randomise which is A (no fixed seed)
     const newIsA = Math.random() < 0.5;
     const [a, b] = newIsA ? [newText, oldText] : [oldText, newText];
     key.push(`${q.id}: A=${newIsA ? "new" : "old"}, B=${newIsA ? "old" : "new"}`);
 
+    // Faithfulness pre-check for both arms
+    console.log(`  ${q.id}: faithfulness check...`);
+    const [faithA, faithB] = await Promise.all([
+      checkFaithfulness(a, fixturesSources),
+      checkFaithfulness(b, fixturesSources),
+    ]);
+    callCount += 2;
+
+    const inventedA = faithA.inventedSpecifics;
+    const inventedB = faithB.inventedSpecifics;
+
+    // Map back to new/old
+    const inventedNew = newIsA ? inventedA : inventedB;
+    const inventedOld = newIsA ? inventedB : inventedA;
+    totalInventedNew += inventedNew.length;
+    totalInventedOld += inventedOld.length;
+
     // Judge
-    let judge: JudgeScore;
-    try {
-      judge = await judgeBlind(q.question, a, b);
-    } catch (err) {
-      console.error(`  ${q.id}: judge failed:`, err);
-      judge = { a: { voice: 3, detail: 3, tells: 0 }, b: { voice: 3, detail: 3, tells: 0 }, better: "tie" };
+    console.log(`  ${q.id}: judging...`);
+    const judge = await judgeBlind(q.question, a, b);
+    callCount++;
+
+    let winner: "new" | "old" | "tie" | "FAILED";
+    let judgeDisplay: string;
+
+    if (judge === "FAILED") {
+      judgeFailures++;
+      winner = "FAILED";
+      judgeDisplay = "FAILED";
+    } else {
+      winner =
+        judge.better === "tie"
+          ? "tie"
+          : (judge.better === "a") === newIsA
+          ? "new"
+          : "old";
+
+      if (winner === "new") newWins++;
+      else if (winner === "old") oldWins++;
+      else ties++;
+
+      judgeDisplay = `A voice ${judge.a.voice}/5 detail ${judge.a.detail}/5 tells ${judge.a.tells} | B voice ${judge.b.voice}/5 detail ${judge.b.detail}/5 tells ${judge.b.tells} | better: **${judge.better}**`;
     }
 
-    // Decode winner
-    const winner =
-      judge.better === "tie"
-        ? "tie"
-        : (judge.better === "a") === newIsA
-        ? "new"
-        : "old";
+    console.log(`  ${q.id}: judge=${judgeDisplay} (${winner}) | inventedNew=${inventedNew.length} inventedOld=${inventedOld.length}`);
 
-    if (winner === "new") newWins++;
-    else if (winner === "old") oldWins++;
-    else ties++;
-
-    console.log(`  ${q.id}: judge=${judge.better} (${winner})`);
+    const faithSection = [
+      `_Faithfulness — A invented: ${inventedA.length > 0 ? inventedA.join("; ") : "none"}_`,
+      `_Faithfulness — B invented: ${inventedB.length > 0 ? inventedB.join("; ") : "none"}_`,
+    ].join("\n");
 
     rows.push(
       [
@@ -273,7 +347,11 @@ async function main() {
         "",
         b,
         "",
-        `_Pre-judge: A voice ${judge.a.voice}/5 detail ${judge.a.detail}/5 tells ${judge.a.tells} | B voice ${judge.b.voice}/5 detail ${judge.b.detail}/5 tells ${judge.b.tells} | better: **${judge.better}**_`,
+        judge === "FAILED"
+          ? `_Pre-judge: FAILED_`
+          : `_Pre-judge: ${judgeDisplay}_`,
+        "",
+        faithSection,
         "",
       ].join("\n"),
     );
@@ -283,7 +361,8 @@ async function main() {
 
   const report = [
     `# Writing eval — old pipeline vs new engine`,
-    `_Run: ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC | Questions: ${subset.length} | Elapsed: ${elapsed}s_`,
+    `_Run: ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC | Questions: ${subset.length} | Elapsed: ${elapsed}s | Approx API calls: ${callCount}_`,
+    `_Models: old arm = ${HAIKU_ID} | new arm = ${SONNET_ID} | judge = ${HAIKU_ID} | A/B assignment is random per run (no fixed seed)_`,
     "",
     `## LLM pre-judge summary`,
     `| | Count |`,
@@ -291,8 +370,16 @@ async function main() {
     `| New engine wins | ${newWins} |`,
     `| Old pipeline wins | ${oldWins} |`,
     `| Ties | ${ties} |`,
+    `| Judge failures (excluded from totals) | ${judgeFailures} |`,
+    "",
+    `## Faithfulness (invented specifics)`,
+    `| Arm | Total invented specifics across all questions |`,
+    `|---|---|`,
+    `| New engine | ${totalInventedNew} |`,
+    `| Old pipeline | ${totalInventedOld} |`,
     "",
     `**THE USER IS THE FINAL JUDGE** — read each pair against \`rubric.md\`, record verdict in docs/MANUAL-TASKS.md Gate B.`,
+    `_Note: The LLM pre-judge is a pre-filter only; judge failures are excluded from totals and do not count for or against either arm._`,
     "",
     "---",
     "",
@@ -309,7 +396,8 @@ async function main() {
   writeFileSync(join(ROOT, "REPORT.md"), report, "utf8");
 
   console.log(`\n[eval] Done in ${elapsed}s`);
-  console.log(`[eval] Pre-judge: new=${newWins} old=${oldWins} ties=${ties}`);
+  console.log(`[eval] Pre-judge: new=${newWins} old=${oldWins} ties=${ties} failures=${judgeFailures}`);
+  console.log(`[eval] Invented specifics: new=${totalInventedNew} old=${totalInventedOld}`);
   console.log(`[eval] Report written to src/eval/REPORT.md`);
 }
 

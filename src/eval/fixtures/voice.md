@@ -20,4 +20,4 @@
 ## Exemplars
 > I joined the rowing club in first year because I liked the 5am starts. That's the honest answer. Three years later I was treasurer, staring at an 800-pound deficit and a committee that wanted to cancel the summer tour.
 
-> The model was wrong. Not subtly wrong — the growth assumptions were off by a factor of three because I'd pulled the wrong vintage of ONS data. I caught it the night before the presentation and stayed until 2am rebuilding it. Not ideal, but it was right the next morning.
+> The model was wrong. Not subtly wrong. The growth assumptions were off by a factor of three because I'd pulled the wrong vintage of ONS data. I caught it the night before the presentation and stayed until 2am rebuilding it. Not ideal, but it was right the next morning.

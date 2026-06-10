@@ -30,14 +30,20 @@ Count of flagged phrases: em dashes, "I'm excited", "proven track record", "delv
 ### 4. Would you send it with fewer than 2 minutes of edits? (binary)
 Yes / No — the key question. If yes, the draft is production-ready.
 
+### 5. Faithfulness check (mandatory)
+Cross-check every specific claim (numbers, events, details) in the draft against `src/eval/fixtures/`. ANY invented specific — a number, name, or event not present in the fixtures — is an **automatic loss** for that draft regardless of scores on other dimensions.
+
+> Note: The LLM pre-judge (Haiku) is a convenience **pre-filter** whose scoring criteria overlap the engine's own constraints. It is NOT the verdict. Its scores are useful for spotting obvious differences but must not override your own reading. Judge-failures (marked `FAILED`) are excluded from totals and do not count for or against either arm.
+
 ## Judging instructions for the human reviewer
 
 1. Open `src/eval/REPORT.md`.
 2. For each question, read both A and B **without** looking at the blind key first.
-3. Score each on dimensions 1–3; answer dimension 4 for each.
-4. Note your overall winner (new engine / old pipeline / tie).
-5. After all 20, look at the blind key at the bottom of REPORT.md.
-6. Record your final verdict in docs/MANUAL-TASKS.md Gate B: **new engine wins**, **old wins**, or **rerun needed** (if fewer than 12 clear wins either way).
+3. Score each on dimensions 1–4; answer dimension 4 for each.
+4. Apply the Faithfulness check (dimension 5): if any invented specific is found, that draft loses automatically.
+5. Note your overall winner (new engine / old pipeline / tie).
+6. After all 20, look at the blind key at the bottom of REPORT.md.
+7. Record your final verdict in docs/MANUAL-TASKS.md Gate B: **new engine wins**, **old wins**, or **rerun needed** (if fewer than 12 clear wins either way).
 
 ## Kill-gate rule
 

@@ -27,6 +27,11 @@ some gate others. Check them off as you go.
   eval run, score old vs new drafts against the rubric. **This is the spec's
   kill-gate** — if the new drafts don't clearly sound more like you, we iterate
   on the engine before phase 3 features matter.
+  Judging now includes a mandatory **faithfulness check** (rubric dim 5): any
+  invented specific (number, name, event not in the fixtures) is an automatic
+  loss for that draft. The LLM pre-judge (Haiku) is a pre-filter only — judge
+  failures are excluded from totals and do not count as verdicts. Last eval
+  rerun: 2026-06-10.
 - [ ] Optional: backfill embeddings for existing answers/drafts:
   `! npx tsx scripts/backfill-embeddings.ts`
 

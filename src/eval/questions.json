@@ -45,7 +45,7 @@
     "id": "q08",
     "question": "Give an example of a time you were in charge of a project that did not go to plan. How did you lead through it?",
     "employer": "Barclays",
-    "charLimit": 1000
+    "charLimit": 1500
   },
   {
     "id": "q09",
@@ -69,7 +69,7 @@
     "id": "q12",
     "question": "Describe a setback you experienced. How did you analyse what went wrong and move forward?",
     "employer": "Deutsche Bank",
-    "charLimit": 1000
+    "charLimit": 2000
   },
   {
     "id": "q13",
@@ -99,13 +99,13 @@
     "id": "q17",
     "question": "What are your key strengths and how will they contribute to the role?",
     "employer": "Schroders",
-    "charLimit": 600
+    "charLimit": 300
   },
   {
     "id": "q18",
     "question": "Is there anything else you would like us to know about you that is not covered elsewhere in the application?",
     "employer": "Rothschild & Co",
-    "charLimit": 500
+    "charLimit": 300
   },
   {
     "id": "q19",
