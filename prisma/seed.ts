@@ -55,6 +55,37 @@ async function main() {
     },
   });
 
+  console.log("→ Registering live ingestion sources…");
+  // Greenhouse boards verified in src/ingestion/source-plans/uk-finance-2027.json
+  // (activation_status auto_publish_with_light_checks). The long tail of
+  // boutique firms enters via Firm Scout rather than this seed.
+  const liveSources = [
+    {
+      kind: "GREENHOUSE" as const,
+      identifier: "mangroup",
+      employerName: "Man Group",
+      sector: "Hedge Fund",
+      url: "https://job-boards.eu.greenhouse.io/mangroup",
+    },
+    {
+      kind: "GREENHOUSE" as const,
+      identifier: "point72",
+      employerName: "Point72",
+      sector: "Hedge Fund",
+      url: "https://job-boards.greenhouse.io/point72",
+    },
+  ];
+  for (const s of liveSources) {
+    await prisma.ingestionSource.upsert({
+      where: { kind_identifier: { kind: s.kind, identifier: s.identifier } },
+      update: {},
+      create: s,
+    });
+  }
+  console.log(
+    `  ${liveSources.length} sources registered — run the sync (POST /api/ingest/sync with CRON_SECRET) to pull them.`,
+  );
+
   console.log("→ Computing match scores for demo user…");
   const count = await recomputeMatchScores(demo.id);
   console.log(`  scored ${count} opportunities.`);

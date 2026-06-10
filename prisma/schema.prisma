@@ -45,6 +45,7 @@ enum SourceType {
   CAREERS_PAGE
   GREENHOUSE
   LEVER
+  ASHBY
   WORKDAY
   MANUAL
 }
@@ -251,6 +252,33 @@ model IngestionRun {
   created    Int       @default(0)
   updated    Int       @default(0)
   notes      String?
+}
+
+// A live ingestion source the sync job polls — one row per public ATS job
+// board (Greenhouse / Lever / Ashby). Rows are seeded for known employers and
+// created by users through Firm Scout ("paste a careers URL"), which is how
+// niche/boutique firms enter the dataset without a code change. `identifier`
+// is the ATS-specific board key (Greenhouse board token, Lever site name,
+// Ashby job-board name). Unsupported-but-recognised boards (e.g. Workday) are
+// stored disabled as a review queue.
+model IngestionSource {
+  id                  String     @id @default(cuid())
+  kind                SourceType
+  identifier          String
+  employerName        String
+  sector              String?
+  url                 String? // the human URL the source was derived from
+  enabled             Boolean    @default(true)
+  suggestedById       String? // userId of the scout who added it (informational)
+  lastRunAt           DateTime?
+  lastStatus          String? // e.g. "ok: 3 created, 1 updated"
+  lastError           String?
+  consecutiveFailures Int        @default(0)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  @@unique([kind, identifier])
+  @@index([enabled])
 }
 
 // ---------------------------------------------------------------------------

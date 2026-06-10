@@ -1,6 +1,6 @@
 # Trackr — Project Status
 
-_Last updated: 2026-06-05_
+_Last updated: 2026-06-10_
 
 A snapshot of where the project is, so any future session (human or agent) can pick
 up without re-deriving context. For product/setup detail see `README.md`; for the
@@ -63,6 +63,17 @@ Human-in-the-loop. **Hard rule: never auto-submits, solves captchas, or scrapes*
 - **AI generation**: cover-letter draft button on opportunity pages; on-page answer drafts in the extension. Grounded in the user's CV, UK English, finance tone — not boilerplate.
 - **Applications tracker** (`/applications`): every autofilled/submitted role recorded with an editable status (Draft → Submitted → Interviewing → Offer …).
 - **Browser extension** (`extension/`): autofills Greenhouse / Lever / Ashby forms (Workday best-effort) and drafts answers in an on-page Shadow-DOM panel. Records the application back to the dashboard.
+
+### Radar — live ingestion + Firm Scout (new — built 2026-06-10)
+The growth engine for niche/boutique coverage. Reads **public ATS JSON feeds only** (no HTML scraping, no logins); listing summaries stay original templated text.
+- **Live adapters** (`src/ingestion/adapters/`): Greenhouse, Lever, Ashby — verified against real boards (Point72, Man Group, Wintermute).
+- **Classifier** (`src/ingestion/classify.ts`): deterministic word-boundary rules — internship? summer? UK? which finance role family? — with employer-sector fallback. Pure, 20 unit tests.
+- **Source registry** (`IngestionSource` model): per-board rows with health tracking (`lastStatus`, `lastError`, `consecutiveFailures`; auto-disable after 10 straight failures). Seeded with the evidence-backed Greenhouse boards from `source-plans/` (mangroup, point72).
+- **Cron sync**: `GET /api/ingest/sync` (Bearer `CRON_SECRET`), every 6h via Vercel Cron (`vercel.json`). **Set `CRON_SECRET` in Vercel before deploying.**
+- **Firm Scout** (dashboard sidebar): any user pastes a Greenhouse/Lever/Ashby URL → ATS auto-detected (`src/lib/source-detect.ts`) → board pulled immediately → roles live for everyone. Workday URLs are recognised and stored disabled as a review queue.
+- **Fresh finds** (dashboard sidebar): roles first seen ≤7 days, newest first.
+- **Stale-score fix**: tracker items without a cached `MatchScore` (i.e. ingested after the user's last recompute) now get scores computed live in `getTrackerItems`.
+- **Schema change**: `SourceType` gains `ASHBY`; new `IngestionSource` table → run `npm run db:push` (or a migration) on deploy.
 
 ---
 
