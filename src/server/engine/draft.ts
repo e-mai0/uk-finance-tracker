@@ -5,6 +5,15 @@ import { classifyQuestion, selectStories, employerSlugOf } from "@/server/engine
 import { critiqueAndRevise, GLOBAL_TELLS, checkTells } from "@/server/engine/critique";
 import type { DraftArgs, DraftContext, DraftResult } from "@/server/engine/types";
 
+/**
+ * Escape user-supplied content so it cannot prematurely close a <reference> XML tag.
+ * Replaces `</reference` with `</ reference` (adds a space) so the closing tag
+ * pattern is broken and cannot be used to inject instructions outside the reference block.
+ */
+export function escapeReference(s: string): string {
+  return s.replaceAll("</reference", "</ reference");
+}
+
 /** Trim to charLimit at a sentence boundary (falls back to word boundary). */
 export function trimToLimit(text: string, limit?: number): string {
   if (!limit || text.length <= limit) return text;
@@ -72,22 +81,22 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
 
   // Item 1: Wrap reference material in delimiters + Item 10: Cap story body to 2000 chars
   if (ctx.profile.cvText) {
-    parts.push(`<reference name="cv">\n${ctx.profile.cvText.slice(0, 4000)}\n</reference>`);
+    parts.push(`<reference name="cv">\n${escapeReference(ctx.profile.cvText.slice(0, 4000))}\n</reference>`);
   }
   for (const s of stories) {
-    const body = (s.finalVersions || s.rawNotes).slice(0, 2000);
+    const body = escapeReference((s.finalVersions || s.rawNotes).slice(0, 2000));
     parts.push(`<reference name="story:${s.slug}">\nReal story to ground the answer in ("${s.title}"):\n${body}\n</reference>`);
   }
   if (ctx.companyNotes) {
-    parts.push(`<reference name="company-notes">\nApplicant's own notes on this employer:\n${ctx.companyNotes.slice(0, 2000)}\n</reference>`);
+    parts.push(`<reference name="company-notes">\nApplicant's own notes on this employer:\n${escapeReference(ctx.companyNotes.slice(0, 2000))}\n</reference>`);
   }
   if (ctx.research) {
-    parts.push(`<reference name="research">\nEmployer research (use one specific, current detail if relevant):\n${ctx.research.slice(0, 3000)}\n</reference>`);
+    parts.push(`<reference name="research">\nEmployer research (use one specific, current detail if relevant):\n${escapeReference(ctx.research.slice(0, 3000))}\n</reference>`);
   }
   if (ctx.pastAnswers.length) {
     // Item 7: render hits with empty question as plain excerpts
     const renderedAnswers = ctx.pastAnswers
-      .map((p) => (p.question ? `Q: ${p.question}\nA: ${p.excerpt}` : p.excerpt))
+      .map((p) => (p.question ? `Q: ${p.question}\nA: ${escapeReference(p.excerpt)}` : escapeReference(p.excerpt)))
       .join("\n\n");
     parts.push(`<reference name="past-answers">\nThe applicant's past answers to similar questions (stay consistent, do not repeat verbatim):\n${renderedAnswers}\n</reference>`);
   }

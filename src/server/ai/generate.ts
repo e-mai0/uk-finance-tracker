@@ -8,6 +8,7 @@ import {
   mergeMappings,
   parseMappings,
 } from "../../lib/form-plan";
+import { HAIKU_ID, SONNET_ID } from "@/server/ai/models";
 
 /**
  * Server-only LLM helpers for the apply copilot. The API key never leaves the
@@ -16,8 +17,8 @@ import {
  * is exactly what ATS bot-detection flags.
  */
 
-const HAIKU = "claude-haiku-4-5";
-const SONNET = "claude-sonnet-4-6";
+const HAIKU = HAIKU_ID;
+const SONNET = SONNET_ID;
 
 let _client: Anthropic | null = null;
 function client(): Anthropic {

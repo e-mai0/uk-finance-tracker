@@ -1,10 +1,17 @@
 import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
-import { sonnet } from "@/server/ai/models";
+import { sonnet, SONNET_ID } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 import { prisma } from "@/server/db";
 
 const STALE_MS = 14 * 24 * 60 * 60 * 1000;
+
+/**
+ * In-process inflight guard: prevents stampede when multiple concurrent requests
+ * trigger research for the same employer simultaneously. Per-instance (serverless-
+ * acceptable since per-instance dedup is sufficient).
+ */
+const inflight = new Map<string, Promise<string | null>>();
 
 /**
  * Returns fresh research content for an employer, generating/refreshing if the
@@ -20,40 +27,53 @@ export async function ensureEmployerResearch(
     return existing.content;
   }
 
-  const employer = await prisma.employer.findUnique({ where: { id: employerId } });
-  if (!employer) return null;
+  // Stampede guard: if another call for this employer is already generating, await it
+  const inFlight = inflight.get(employerId);
+  if (inFlight) {
+    return inFlight;
+  }
 
-  try {
-    const { text, usage } = await generateText({
-      model: sonnet,
-      tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: 4 }) },
-      prompt: `Research ${employer.name} (UK finance employer, ${employer.sector ?? "financial services"}) for a student preparing internship/graduate applications. Produce concise markdown with these sections:
+  const generate = (async (): Promise<string | null> => {
+    try {
+      const employer = await prisma.employer.findUnique({ where: { id: employerId } });
+      if (!employer) return null;
+
+      const { text, usage } = await generateText({
+        model: sonnet,
+        tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: 4 }) },
+        prompt: `Research ${employer.name} (UK finance employer, ${employer.sector ?? "financial services"}) for a student preparing internship/graduate applications. Produce concise markdown with these sections:
 ## Divisions & what they do
 ## Culture signals
 ## Recent news (last 6 months, with dates)
 ## Common application questions & what they look for
 Facts only, no advice fluff, no applicant-specific content. Cite nothing; just state findings.`,
-      maxOutputTokens: 2000,
-    });
-    if (userIdForBudget) recordUsage(userIdForBudget, usage?.totalTokens ?? 0).catch(() => {});
+        maxOutputTokens: 2000,
+      });
+      if (userIdForBudget) recordUsage(userIdForBudget, usage?.totalTokens ?? 0).catch(() => {});
 
-    const saved = await prisma.employerResearch.upsert({
-      where: { employerId },
-      create: {
-        employerId,
-        content: text,
-        model: "claude-sonnet-4-6",
-        refreshedAt: new Date(),
-      },
-      update: {
-        content: text,
-        model: "claude-sonnet-4-6",
-        refreshedAt: new Date(),
-      },
-    });
-    return saved.content;
-  } catch (err) {
-    console.error("[research] failed for employer", employer.name, err);
-    return existing?.content ?? null;
-  }
+      const saved = await prisma.employerResearch.upsert({
+        where: { employerId },
+        create: {
+          employerId,
+          content: text,
+          model: SONNET_ID,
+          refreshedAt: new Date(),
+        },
+        update: {
+          content: text,
+          model: SONNET_ID,
+          refreshedAt: new Date(),
+        },
+      });
+      return saved.content;
+    } catch (err) {
+      console.error("[research] failed for employer", employerId, err);
+      return existing?.content ?? null;
+    } finally {
+      inflight.delete(employerId);
+    }
+  })();
+
+  inflight.set(employerId, generate);
+  return generate;
 }

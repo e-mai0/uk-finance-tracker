@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { auth } from "../auth";
 import { prisma } from "../db";
 import { ensureEmployerResearch } from "@/server/engine/research";
+import { checkBudget } from "@/server/ai/budget";
 
 export async function toggleSave(
   opportunityId: string,
@@ -41,6 +42,8 @@ export async function toggleSave(
     const capturedUserId = userId;
     after(async () => {
       try {
+        const { ok } = await checkBudget(capturedUserId);
+        if (!ok) return;
         await ensureEmployerResearch(capturedEmployerId, capturedUserId);
       } catch (err) {
         console.error("research trigger failed", err);

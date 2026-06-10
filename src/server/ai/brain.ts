@@ -22,7 +22,7 @@ export function buildSystemPrompt(
     ? `\nIf natural, ask whether there's any news on these submitted applications (one at a time, don't interrogate):\n${staleApps
         .map((a) => {
           const date = a.submittedAt ? a.submittedAt.toISOString().slice(0, 10) : "unknown";
-          return `- ${a.employerName ?? "Unknown employer"} — ${a.roleTitle ?? "unknown role"} (submitted ${date})`;
+          return `- ${a.employerName ?? "Unknown employer"} - ${a.roleTitle ?? "unknown role"} (submitted ${date})`;
         })
         .join("\n")}`
     : "";

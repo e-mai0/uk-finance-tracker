@@ -10,6 +10,7 @@ import { OpportunityStatus } from "@prisma/client";
 import { ensureEmployerResearch } from "@/server/engine/research";
 import { gatherSubstance } from "@/server/engine/substance";
 import { draftText } from "@/server/engine/draft";
+import { SONNET_ID } from "@/server/ai/models";
 
 const MAX_FILE_COUNT = 100;
 
@@ -194,9 +195,16 @@ export function buildTools(userId: string) {
         employerName: z.string().describe("The employer name to research."),
       }),
       execute: async ({ employerName }) => {
-        const employer = await prisma.employer.findFirst({
-          where: { name: { contains: employerName, mode: "insensitive" } },
+        // Exact-match first (case-insensitive), fall back to contains with deterministic ordering
+        const exactMatch = await prisma.employer.findFirst({
+          where: { name: { equals: employerName, mode: "insensitive" } },
         });
+        const employer =
+          exactMatch ??
+          (await prisma.employer.findFirst({
+            where: { name: { contains: employerName, mode: "insensitive" } },
+            orderBy: { name: "asc" },
+          }));
         if (!employer) return { error: `No employer named "${employerName}" in the catalog.` };
         const content = await ensureEmployerResearch(employer.id, userId);
         return content
@@ -226,7 +234,7 @@ export function buildTools(userId: string) {
             kind: input.kind === "COVER_LETTER" ? "COVER_LETTER" : "ANSWER",
             context: { question: input.question, employer: input.employerName ?? null },
             content: result.text,
-            model: "claude-sonnet-4-6",
+            model: SONNET_ID,
             provenance: JSON.stringify(result.provenance),
           },
         });
@@ -247,20 +255,35 @@ export function buildTools(userId: string) {
           .describe("The new status to set."),
       }),
       execute: async ({ employerName, roleTitle, status }) => {
-        const app = await prisma.application.findFirst({
+        const matches = await prisma.application.findMany({
           where: {
             userId,
             employerName: { contains: employerName, mode: "insensitive" },
             ...(roleTitle ? { roleTitle: { contains: roleTitle, mode: "insensitive" } } : {}),
           },
           orderBy: { updatedAt: "desc" },
+          take: 2,
         });
-        if (!app) {
+        if (matches.length === 0) {
           return {
             error: `No tracked application matching "${employerName}". Ask the user to check the Applications page.`,
           };
         }
-        await prisma.application.update({ where: { id: app.id }, data: { status } });
+        // Disambiguation: if two results came back and no roleTitle was provided, ask the user to clarify
+        if (matches.length === 2 && !roleTitle) {
+          return {
+            error: `Found multiple applications for "${employerName}". Please specify the role title to disambiguate.`,
+            candidates: matches.map((m) => ({ employer: m.employerName, role: m.roleTitle })),
+          };
+        }
+        const app = matches[0];
+        await prisma.application.update({
+          where: { id: app.id },
+          data: {
+            status,
+            ...(status === "SUBMITTED" ? { submittedAt: new Date() } : {}),
+          },
+        });
         return { updated: true, employer: app.employerName, role: app.roleTitle, status };
       },
     }),
