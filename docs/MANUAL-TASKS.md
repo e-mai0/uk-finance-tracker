@@ -13,6 +13,8 @@ some gate others. Check them off as you go.
   All files are CREATE-only; nothing existing is altered.
 - [ ] **Set env vars** in `.env` AND Vercel (after the SQL):
   `VOYAGE_API_KEY=<from voyageai.com>` and `CYCLOPS_DAILY_TOKEN_BUDGET=2000000`.
+- [ ] **Set `CRON_SECRET`** in `.env` AND Vercel: a random string, at least
+  32 chars (phase 4 cron auth; both cron routes 401 without it).
 
 ## Gate B — before merging `cyclopslevelup` to main (main auto-deploys prod)
 
@@ -28,6 +30,13 @@ some gate others. Check them off as you go.
   test page: suggestions on ask fields (provenance + confidence chip), prestaged
   drafts (max 3, sequential), draft provenance line, Different story button,
   thin-grounding warning, Discuss in Cyclops link.
+- [ ] **Agent assist**: on a Greenhouse test page with an unknown field, click
+  Agent assist. Proposals must render for review and NOTHING fills before you
+  click apply; round cap is 3; a budget error renders if over budget.
+- [ ] **Cron routes**:
+  `curl -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/gardener`
+  and the same for `/api/cron/overnight` (or via `!` commands) return JSON,
+  401 without the header.
 - [ ] **Judge the writing eval** (phase 2): open `src/eval/REPORT.md` after the
   eval run, score old vs new drafts against the rubric. **This is the spec's
   kill-gate** — if the new drafts don't clearly sound more like you, we iterate
@@ -45,21 +54,21 @@ some gate others. Check them off as you go.
 - [ ] **Rotate two secrets** (pre-existing TODO, now load-bearing because real
   users are the target): `ANTHROPIC_API_KEY` and the Supabase `service_role`
   key were pasted in chat once. Regenerate; update `.env` + Vercel.
-- [ ] **Vercel cron** (phase 4): after merging, confirm the cron entries in
-  `vercel.json` appear under Vercel → Settings → Cron Jobs.
+- [ ] **Vercel cron** (phase 4): after merging, confirm BOTH cron jobs from
+  `vercel.json` appear under Vercel → Settings → Cron Jobs: overnight at
+  05:30 UTC and gardener at 06:00 UTC.
 - [ ] **Reload the unpacked extension** after phases 2–4 (`extension/`:
-  `npm run build`, then chrome://extensions → Reload). Extension icons still
-  needed before any Web Store submission.
+  `npm run build`, then chrome://extensions → Reload). This also picks up the
+  Agent assist UI in the panel. Extension icons still needed before any
+  Web Store submission.
 
 ## Phase 3 resumed and completed (2026-06-10)
 
 The pause was temporary: the Claude monthly spend limit was raised and phase 3
 resumed and completed the same day
 (plan: `docs/superpowers/plans/2026-06-10-cyclops-phase-3-apply-v2.md`).
-Tasks 3-6 are done and logged in the Done section below. Remaining:
-
-- [ ] Phase 4 - mini-spec first, then plan + execute (agent page-driving
-  fallback, overnight queue, gardener cron)
+Tasks 3-6 are done and logged in the Done section below. Phase 4 is also done
+(see Done). Remaining: only the user gates (A/B/C above) and the merge to main.
 
 ## Done
 
@@ -77,3 +86,5 @@ Tasks 3-6 are done and logged in the Done section below. Remaining:
   dirty-text + in-flight guards, Different story button, Discuss in Cyclops link.
 - [x] 2026-06-10 - Phase 3 Task 6 - verification sweep: 229 tests green; tsc +
   builds clean (web + extension).
+- [x] 2026-06-10 - Phase 4 - agent fallback + overnight queue + gardener cron,
+  259 tests green, full review chain.

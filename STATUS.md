@@ -2,10 +2,10 @@
 
 _Last updated: 2026-06-10_
 
-> **IN FLIGHT — Cyclops Phases 1–3 (branch `cyclopslevelup`, not yet merged).**
+> **IN FLIGHT — Cyclops Phases 1–4 (branch `cyclopslevelup`, not yet merged).**
 > Trackr is being overhauled into **Cyclops**, an AI "application OS"
 > (spec: `docs/superpowers/specs/2026-06-09-cyclops-application-os-design.md`).
-> Phases 1, 2 AND 3 are fully implemented and reviewed on the branch:
+> All four phases are fully implemented and reviewed on the branch:
 > **Phase 1** — per-user markdown memory tree with revisions + anti-rot gardener,
 > AI SDK 6 agent brain behind `POST /api/chat` (six tools, confidence/uncertainty
 > discipline, per-user daily token budget), `/chat` and `/memory` pages, onboarding
@@ -23,7 +23,13 @@ _Last updated: 2026-06-10_
 > warning, sequential prestaged drafts max 3 with dirty-text + in-flight guards,
 > Discuss in Cyclops link), and server hardening (budget gate on
 > `/api/ext/answer`, exclusion-aware bank skip).
-> 229 unit tests green; `tsc` + `next build` clean (web + extension).
+> **Phase 4 (shipped 2026-06-10)** - agent page-driving fallback (user-invoked
+> "Agent assist" in the extension panel: a bounded 3-round request/response loop
+> against `POST /api/ext/agent`, fail-closed server validation,
+> confirmation-gated applies, budget-gated), overnight prep cron (deadline-near
+> research warmup, capped and time-guarded) plus deterministic morning-brief
+> chat threads, a gardener daily cron, and `vercel.json` carrying both schedules.
+> 259 unit tests green; `tsc` + `next build` clean (web + extension).
 > The deterministic extension autofill is untouched and its API responses are
 > byte-compatible.
 >
@@ -36,16 +42,18 @@ _Last updated: 2026-06-10_
 >    in order: `prisma/sql/2026-06-09-cyclops-memory.sql` then
 >    `prisma/sql/2026-06-09-pgvector.sql` (needs the `vector` extension), then
 >    `prisma/sql/2026-06-10-cyclops-phase2.sql` (phase 2 schema additions).
-> 2. Set `VOYAGE_API_KEY` and `CYCLOPS_DAILY_TOKEN_BUDGET` in `.env` + Vercel
->    (only after step 1). Optional backfill: `npx tsx scripts/backfill-embeddings.ts`.
+> 2. Set `VOYAGE_API_KEY`, `CYCLOPS_DAILY_TOKEN_BUDGET` and `CRON_SECRET`
+>    (random, at least 32 chars) in `.env` + Vercel (only after step 1).
+>    Optional backfill: `npx tsx scripts/backfill-embeddings.ts`.
 > 3. Complete Gate B (USER judgment of writing eval) and Gate C checklist items
 >    in `docs/MANUAL-TASKS.md`.
 > 4. Smoke test on localhost: /chat ("remember X" → memory diff chip; Stop
 >    mid-tool-call then send again), /memory (edit/save/restore), one extension
 >    autofill + answer generation round.
 >
-> **Phase 4** (agent page-driving fallback, overnight queue, gardener cron)
-> remains — mini-spec first, then plan + execute.
+> All four phases of the Cyclops overhaul are now implemented. What remains is
+> the manual gates (SQL, env vars, smoke tests, eval judgment) in
+> `docs/MANUAL-TASKS.md` and the merge itself.
 >
 > Known fast-follows (logged, not blocking): gardener cron schedule (only the
 > every-10-edits trigger exists), mobile rails for /chat + /memory, gardener
