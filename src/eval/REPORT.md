@@ -1,4 +1,4 @@
-﻿# Writing eval â€” old pipeline vs new engine
+# Writing eval — old pipeline vs new engine
 _Run: 2026-06-10 00:39 UTC | Questions: 20 | Elapsed: 217.8s | Approx API calls: 120_
 _Models: old arm = claude-haiku-4-5 | new arm = claude-sonnet-4-6 | judge = claude-haiku-4-5 | A/B assignment is random per run (no fixed seed)_
 
@@ -16,12 +16,12 @@ _Models: old arm = claude-haiku-4-5 | new arm = claude-sonnet-4-6 | judge = clau
 | New engine | 45 |
 | Old pipeline | 62 |
 
-**THE USER IS THE FINAL JUDGE** â€” read each pair against `rubric.md`, record verdict in docs/MANUAL-TASKS.md Gate B.
+**THE USER IS THE FINAL JUDGE** — read each pair against `rubric.md`, record verdict in docs/MANUAL-TASKS.md Gate B.
 _Note: The LLM pre-judge is a pre-filter only; judge failures are excluded from totals and do not count for or against either arm._
 
 ---
 
-## q01 â€” Why do you want to work at Goldman Sachs?
+## q01 — Why do you want to work at Goldman Sachs?
 **Employer:** Goldman Sachs | **Char limit:** 500
 
 **Answer A**
@@ -30,21 +30,21 @@ Goldman Sachs operates at a scale where the advisory work is genuinely consequen
 
 **Answer B**
 
-I am drawn to Goldman Sachs because of the calibre of analysis and breadth of sectors you undertake. My experience shadowing debt advisory at Rothschild & Co showed me I thrive in fast-paced deal environments, whilst my econometrics work and CFA Research Challenge participationâ€”where my team placed second regionallyâ€”have built strong quantitative foundations.
+I am drawn to Goldman Sachs because of the calibre of analysis and breadth of sectors you undertake. My experience shadowing debt advisory at Rothschild & Co showed me I thrive in fast-paced deal environments, whilst my econometrics work and CFA Research Challenge participation—where my team placed second regionally—have built strong quantitative foundations.
 
 _Pre-judge: A voice 4/5 detail 3/5 tells 0 | B voice 2/5 detail 3/5 tells 2 | better: **a**_
 
-_Faithfulness â€” A invented: Goldman Sachs operates at a scale where the advisory work is genuinely consequential; Goldman's research culture; transactions are larger and the analytical bar is higher at Goldman Sachs_
-_Faithfulness â€” B invented: Goldman Sachs_
+_Faithfulness — A invented: Goldman Sachs operates at a scale where the advisory work is genuinely consequential; Goldman's research culture; transactions are larger and the analytical bar is higher at Goldman Sachs_
+_Faithfulness — B invented: Goldman Sachs_
 
 ---
 
-## q02 â€” Why are you applying to J.P. Morgan and what attracts you to investment banking?
+## q02 — Why are you applying to J.P. Morgan and what attracts you to investment banking?
 **Employer:** J.P. Morgan | **Char limit:** 600
 
 **Answer A**
 
-J.P. Morgan attracts me because of its pre-eminence in investment banking advisory and its breadth across infrastructure, M&A, and capital marketsâ€”sectors I want to deepen my understanding of beyond my Rothschild insight week. I'm drawn to investment banking because I enjoy the analytical rigour and client interaction I experienced shadowing debt advisory work, combined with the commercial problem-solving required to structure complex transactions.
+J.P. Morgan attracts me because of its pre-eminence in investment banking advisory and its breadth across infrastructure, M&A, and capital markets—sectors I want to deepen my understanding of beyond my Rothschild insight week. I'm drawn to investment banking because I enjoy the analytical rigour and client interaction I experienced shadowing debt advisory work, combined with the commercial problem-solving required to structure complex transactions.
 
 **Answer B**
 
@@ -54,17 +54,17 @@ Investment banking draws me because the analytical and advisory functions are in
 
 _Pre-judge: A voice 2/5 detail 2/5 tells 5 | B voice 4/5 detail 4/5 tells 1 | better: **b**_
 
-_Faithfulness â€” A invented: J.P. Morgan; pre-eminence in investment banking advisory; infrastructure, M&A, and capital markets sectors_
-_Faithfulness â€” B invented: J.P. Morgan's debt capital markets volume; CFA Regional Challenge_
+_Faithfulness — A invented: J.P. Morgan; pre-eminence in investment banking advisory; infrastructure, M&A, and capital markets sectors_
+_Faithfulness — B invented: J.P. Morgan's debt capital markets volume; CFA Regional Challenge_
 
 ---
 
-## q03 â€” What motivates you to pursue a career in asset management at BlackRock?
+## q03 — What motivates you to pursue a career in asset management at BlackRock?
 **Employer:** BlackRock | **Char limit:** 500
 
 **Answer A**
 
-I'm drawn to asset management because it combines the quantitative rigour and data analysis I've developed through my Economics degreeâ€”particularly econometrics and financial modellingâ€”with real-world investment decision-making. My dissertation on housing supply elasticity and research work cleaning ONS datasets have shown me how to extract insight from complex data.
+I'm drawn to asset management because it combines the quantitative rigour and data analysis I've developed through my Economics degree—particularly econometrics and financial modelling—with real-world investment decision-making. My dissertation on housing supply elasticity and research work cleaning ONS datasets have shown me how to extract insight from complex data.
 
 **Answer B**
 
@@ -72,17 +72,17 @@ Markets are where economics becomes real decisions. My dissertation modelling ho
 
 _Pre-judge: A voice 3/5 detail 3/5 tells 1 | B voice 4/5 detail 4/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: financial modelling_
-_Faithfulness â€” B invented: BlackRock's scale in multi-asset research; dissertation modelling housing supply across UK local authorities; CFA Research Challenge experience leading to wanting to work where analysis moves capital_
+_Faithfulness — A invented: financial modelling_
+_Faithfulness — B invented: BlackRock's scale in multi-asset research; dissertation modelling housing supply across UK local authorities; CFA Research Challenge experience leading to wanting to work where analysis moves capital_
 
 ---
 
-## q04 â€” Why do you want to work at Barclays and why markets specifically?
+## q04 — Why do you want to work at Barclays and why markets specifically?
 **Employer:** Barclays | **Char limit:** 600
 
 **Answer A**
 
-I am drawn to Barclays' Markets division because of the breadth of opportunity to apply quantitative analysis to real client problems. My dissertation on housing supply elasticity and research work cleaning and analysing ONS datasets have shown me that rigorous econometric modellingâ€”combined with practical data handlingâ€”drives genuine insights in financial markets.
+I am drawn to Barclays' Markets division because of the breadth of opportunity to apply quantitative analysis to real client problems. My dissertation on housing supply elasticity and research work cleaning and analysing ONS datasets have shown me that rigorous econometric modelling—combined with practical data handling—drives genuine insights in financial markets.
 
 Your Markets team's reputation for combining sophisticated analytics with client advisory appeals to me directly.
 
@@ -92,17 +92,17 @@ Barclays runs one of the larger FICC franchises in Europe, and that scale means 
 
 _Pre-judge: A voice 3/5 detail 2/5 tells 2 | B voice 4/5 detail 4/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: Barclays' Markets division; Schroders_
-_Faithfulness â€” B invented: Barclays runs one of the larger FICC franchises in Europe; work is real from day one; sitting with Rothschild's debt advisory team on a live infrastructure refinancing showed me how quickly market conditions reprice a deal; draws me to markets over advisory; pricing and risk_
+_Faithfulness — A invented: Barclays' Markets division; Schroders_
+_Faithfulness — B invented: Barclays runs one of the larger FICC franchises in Europe; work is real from day one; sitting with Rothschild's debt advisory team on a live infrastructure refinancing showed me how quickly market conditions reprice a deal; draws me to markets over advisory; pricing and risk_
 
 ---
 
-## q05 â€” What draws you to advisory work and why Evercore over the bulge brackets?
+## q05 — What draws you to advisory work and why Evercore over the bulge brackets?
 **Employer:** Evercore | **Char limit:** 600
 
 **Answer A**
 
-I'm drawn to advisory work because it combines rigorous analysis with direct client impactâ€”something I've experienced firsthand during my Rothschild insight week, where I prepared transaction comparables that directly informed senior stakeholders' decision-making.
+I'm drawn to advisory work because it combines rigorous analysis with direct client impact—something I've experienced firsthand during my Rothschild insight week, where I prepared transaction comparables that directly informed senior stakeholders' decision-making.
 
 Evercore appeals to me specifically because of its reputation for deep sector expertise and selective engagement model. Unlike bulge brackets, where I'd be one of hundreds rotating through standardised processes, Evercore's focused approach means I'd develop genuine specialisation early.
 
@@ -114,12 +114,12 @@ Evercore's independent model sharpens that further. No lending relationships, no
 
 _Pre-judge: A voice 3/5 detail 2/5 tells 3 | B voice 5/5 detail 3/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: Evercore appeals to me specifically because of its reputation for deep sector expertise and selective engagement model; Unlike bulge brackets, where I'd be one of hundreds rotating through standardised processes; Evercore's focused approach means I'd develop genuine specialisation early_
-_Faithfulness â€” B invented: Evercore's independent model; No lending relationships, no product quotas; CFA regional round taught me how quickly a narrative collapses under a conflicted interest_
+_Faithfulness — A invented: Evercore appeals to me specifically because of its reputation for deep sector expertise and selective engagement model; Unlike bulge brackets, where I'd be one of hundreds rotating through standardised processes; Evercore's focused approach means I'd develop genuine specialisation early_
+_Faithfulness — B invented: Evercore's independent model; No lending relationships, no product quotas; CFA regional round taught me how quickly a narrative collapses under a conflicted interest_
 
 ---
 
-## q06 â€” Tell us about a time you led a team through a difficult challenge.
+## q06 — Tell us about a time you led a team through a difficult challenge.
 **Employer:** Goldman Sachs | **Char limit:** 800
 
 **Answer A**
@@ -132,21 +132,21 @@ Six weeks later the deficit was cleared. The tour went ahead with 24 members, th
 
 **Answer B**
 
-During my tenure as Treasurer of LSE Rowing Club in 2024â€“2025, I managed a significant financial challenge: we faced an Â£800 deficit with limited options to reduce costs without compromising member experience. Rather than simply cutting expenses, I took a three-part approach. First, I renegotiated supplier contracts with our boat maintenance and equipment providers, securing a 12% reduction in annual costs. Second, I secured new sponsorship from a local fitness brand, generating Â£600 in additional revenue. Third, I coordinated with the committee to streamline administrative spending. These actions closed the deficit whilst enabling us to organise a record summer tour that attracted 24 membersâ€”our highest participation to date.
+During my tenure as Treasurer of LSE Rowing Club in 2024–2025, I managed a significant financial challenge: we faced an £800 deficit with limited options to reduce costs without compromising member experience. Rather than simply cutting expenses, I took a three-part approach. First, I renegotiated supplier contracts with our boat maintenance and equipment providers, securing a 12% reduction in annual costs. Second, I secured new sponsorship from a local fitness brand, generating £600 in additional revenue. Third, I coordinated with the committee to streamline administrative spending. These actions closed the deficit whilst enabling us to organise a record summer tour that attracted 24 members—our highest participation to date.
 
 _Pre-judge: A voice 5/5 detail 4/5 tells 0 | B voice 2/5 detail 4/5 tells 3 | better: **a**_
 
-_Faithfulness â€” A invented: the committee needed a clear timeline, not reassurance, so I gave them weekly updates tied to specific targets_
-_Faithfulness â€” B invented: renegotiated supplier contracts with boat maintenance and equipment providers; 12% reduction in annual costs; local fitness brand sponsorship; Â£600 in additional revenue; streamline administrative spending_
+_Faithfulness — A invented: the committee needed a clear timeline, not reassurance, so I gave them weekly updates tied to specific targets_
+_Faithfulness — B invented: renegotiated supplier contracts with boat maintenance and equipment providers; 12% reduction in annual costs; local fitness brand sponsorship; £600 in additional revenue; streamline administrative spending_
 
 ---
 
-## q07 â€” Describe a situation where you had to organise and lead a group project to a tight deadline.
+## q07 — Describe a situation where you had to organise and lead a group project to a tight deadline.
 **Employer:** J.P. Morgan | **Char limit:** 900
 
 **Answer A**
 
-During my role as Treasurer of LSE Rowing Club, I led the resolution of an Â£800 deficit within a tight financial year. I identified the root causes by auditing spending across boat maintenance, coaching fees and facilities, then organised the team to execute three concurrent initiatives: I personally renegotiated supplier contracts with our boat service provider and equipment vendors, reducing annual costs by roughly 15%. Simultaneously, I secured sponsorship from two local businesses, bringing in Â£600 in additional revenue. I coordinated with the club committee to implement modest membership fee adjustments, which required careful communication to avoid losing members. Throughout, I maintained weekly progress updates and held the group accountable to deadlines. We resolved the deficit by year-end and funded a record summer tour attended by 24 members.
+During my role as Treasurer of LSE Rowing Club, I led the resolution of an £800 deficit within a tight financial year. I identified the root causes by auditing spending across boat maintenance, coaching fees and facilities, then organised the team to execute three concurrent initiatives: I personally renegotiated supplier contracts with our boat service provider and equipment vendors, reducing annual costs by roughly 15%. Simultaneously, I secured sponsorship from two local businesses, bringing in £600 in additional revenue. I coordinated with the club committee to implement modest membership fee adjustments, which required careful communication to avoid losing members. Throughout, I maintained weekly progress updates and held the group accountable to deadlines. We resolved the deficit by year-end and funded a record summer tour attended by 24 members.
 
 **Answer B**
 
@@ -160,21 +160,21 @@ The deadline was fixed and public, which meant there was no option to slip. I ha
 
 _Pre-judge: A voice 3/5 detail 4/5 tells 1 | B voice 5/5 detail 4/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: auditing spending across boat maintenance, coaching fees and facilities; boat service provider and equipment vendors; sponsorship from two local businesses; bringing in Â£600 in additional revenue; modest membership fee adjustments; weekly progress updates; resolved the deficit by year-end_
-_Faithfulness â€” B invented: speaker drop out four days before the event; other lead was unavailable that evening; wrote a short briefing note; three alternatives approached within 24 hours; We didn't change the programme, reschedule the room, or tell the 120 attendees anything had gone wrong_
+_Faithfulness — A invented: auditing spending across boat maintenance, coaching fees and facilities; boat service provider and equipment vendors; sponsorship from two local businesses; bringing in £600 in additional revenue; modest membership fee adjustments; weekly progress updates; resolved the deficit by year-end_
+_Faithfulness — B invented: speaker drop out four days before the event; other lead was unavailable that evening; wrote a short briefing note; three alternatives approached within 24 hours; We didn't change the programme, reschedule the room, or tell the 120 attendees anything had gone wrong_
 
 ---
 
-## q08 â€” Give an example of a time you were in charge of a project that did not go to plan. How did you lead through it?
+## q08 — Give an example of a time you were in charge of a project that did not go to plan. How did you lead through it?
 **Employer:** Barclays | **Char limit:** 1500
 
 **Answer A**
 
-During my tenure as Treasurer of LSE Rowing Club in 2024â€“2025, I inherited a club facing an Â£800 deficit with the summer tourâ€”our flagship eventâ€”scheduled for that season. This was a significant challenge given my responsibility to the 24 members planning to attend.
+During my tenure as Treasurer of LSE Rowing Club in 2024–2025, I inherited a club facing an £800 deficit with the summer tour—our flagship event—scheduled for that season. This was a significant challenge given my responsibility to the 24 members planning to attend.
 
 Rather than cancel or scale back, I took a structured approach. First, I conducted a detailed financial audit to understand exactly where costs were concentrated. I then systematically renegotiated contracts with our existing suppliers, leveraging the multi-year relationship to secure better terms. Simultaneously, I identified sponsorship opportunities aligned with the club's profile and approached local businesses directly, ultimately securing commitments that covered the shortfall.
 
-The tour proceeded as planned with record attendance. This experience taught me that when a project veers off track, the priority is to diagnose the problem clearly, break it into manageable components, and communicate transparently with stakeholders about the path forward. I'm confident those principlesâ€”combined with the analytical skills I've developed through econometric projects and financial modellingâ€”will serve me well in a fast-paced banking environment where adapting to unforeseen circumstances is routine.
+The tour proceeded as planned with record attendance. This experience taught me that when a project veers off track, the priority is to diagnose the problem clearly, break it into manageable components, and communicate transparently with stakeholders about the path forward. I'm confident those principles—combined with the analytical skills I've developed through econometric projects and financial modelling—will serve me well in a fast-paced banking environment where adapting to unforeseen circumstances is routine.
 
 **Answer B**
 
@@ -190,17 +190,17 @@ What I learned leading through it was straightforward: panic is not a plan, but 
 
 _Pre-judge: A voice 3/5 detail 3/5 tells 3 | B voice 5/5 detail 4/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: renegotiated contracts with existing suppliers for better terms (sources specify renegotiation of minibus contract specifically, not general supplier renegotiation); approached local businesses directly (sources do not specify direct approach method); leveraging the multi-year relationship (sources do not mention multi-year relationship history); commitments that covered the shortfall (sources say deficit was cleared but do not specify sponsorship alone covered it)_
-_Faithfulness â€” B invented: none_
+_Faithfulness — A invented: renegotiated contracts with existing suppliers for better terms (sources specify renegotiation of minibus contract specifically, not general supplier renegotiation); approached local businesses directly (sources do not specify direct approach method); leveraging the multi-year relationship (sources do not mention multi-year relationship history); commitments that covered the shortfall (sources say deficit was cleared but do not specify sponsorship alone covered it)_
+_Faithfulness — B invented: none_
 
 ---
 
-## q09 â€” Describe a time you worked effectively as part of a team to achieve a shared goal.
+## q09 — Describe a time you worked effectively as part of a team to achieve a shared goal.
 **Employer:** Morgan Stanley | **Char limit:** 800
 
 **Answer A**
 
-During my time as Treasurer of LSE Rowing Club, I led a recovery from an Â£800 deficit whilst organising a record summer tour for 24 members. This required coordinating across multiple stakeholdersâ€”the committee, suppliers, and prospective sponsors. I renegotiated contracts with existing suppliers to reduce costs and simultaneously secured new sponsorship funding. The success depended on clear communication: I presented the financial position to the committee, itemised cost-saving opportunities, and articulated the sponsorship value proposition to external partners.
+During my time as Treasurer of LSE Rowing Club, I led a recovery from an £800 deficit whilst organising a record summer tour for 24 members. This required coordinating across multiple stakeholders—the committee, suppliers, and prospective sponsors. I renegotiated contracts with existing suppliers to reduce costs and simultaneously secured new sponsorship funding. The success depended on clear communication: I presented the financial position to the committee, itemised cost-saving opportunities, and articulated the sponsorship value proposition to external partners.
 
 **Answer B**
 
@@ -210,12 +210,12 @@ My specific contribution was the Q&A format: pre-submitted questions mixed with 
 
 _Pre-judge: A voice 3/5 detail 4/5 tells 1 | B voice 5/5 detail 5/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: Â£800 deficit (source states 800 pounds, not Â£800); record summer tour (source states record attendance but does not call it a 'record summer tour'); 15% saving (source mentions 15% saving in narrative but draft does not include this specific figure)_
-_Faithfulness â€” B invented: none_
+_Faithfulness — A invented: £800 deficit (source states 800 pounds, not £800); record summer tour (source states record attendance but does not call it a 'record summer tour'); 15% saving (source mentions 15% saving in narrative but draft does not include this specific figure)_
+_Faithfulness — B invented: none_
 
 ---
 
-## q10 â€” Tell us about a time you collaborated with others to solve a problem. What was your specific contribution?
+## q10 — Tell us about a time you collaborated with others to solve a problem. What was your specific contribution?
 **Employer:** HSBC | **Char limit:** 900
 
 **Answer A**
@@ -236,12 +236,12 @@ The collaboration mattered because I needed someone to stress-test the logic, no
 
 _Pre-judge: A voice 4/5 detail 5/5 tells 0 | B voice 5/5 detail 5/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: systematically map the boundary changes in Stata; create a crosswalk to align all three datasets; ran descriptive regressions to test whether the merged dataset behaved as expected economically_
-_Faithfulness â€” B invented: My dissertation supervisor caught a structural flaw; My specific contribution was identifying the cause; I flagged the boundary issue to my supervisor; My supervisor confirmed the reasoning was sound and suggested how to frame it for the conclusion; I needed someone to stress-test the logic, not just validate that the code ran_
+_Faithfulness — A invented: systematically map the boundary changes in Stata; create a crosswalk to align all three datasets; ran descriptive regressions to test whether the merged dataset behaved as expected economically_
+_Faithfulness — B invented: My dissertation supervisor caught a structural flaw; My specific contribution was identifying the cause; I flagged the boundary issue to my supervisor; My supervisor confirmed the reasoning was sound and suggested how to frame it for the conclusion; I needed someone to stress-test the logic, not just validate that the code ran_
 
 ---
 
-## q11 â€” Tell us about a time you failed at something. What did you learn and what would you do differently?
+## q11 — Tell us about a time you failed at something. What did you learn and what would you do differently?
 **Employer:** Citi | **Char limit:** 900
 
 **Answer A**
@@ -256,7 +256,7 @@ I'd change that sequence. Residual plots first, every time, before I touch an in
 
 **Answer B**
 
-During my role as Treasurer of LSE Rowing Club in 2024â€“2025, I inherited an Â£800 deficit with limited visibility into spending patterns. Rather than making reactive cuts, I initially assumed the problem was simply overspending on events. I proposed across-the-board budget reductions without first analysing where money was actually going.
+During my role as Treasurer of LSE Rowing Club in 2024–2025, I inherited an £800 deficit with limited visibility into spending patterns. Rather than making reactive cuts, I initially assumed the problem was simply overspending on events. I proposed across-the-board budget reductions without first analysing where money was actually going.
 
 This approach proved ineffective. Within weeks, I realised I needed to understand the root causes. I conducted a detailed audit of supplier contracts and discovered we were significantly overpaying for boat maintenance and catering. I renegotiated those contracts directly with suppliers, emphasising our membership size and loyalty. Simultaneously, I secured new sponsorship rather than cutting member-facing activities.
 
@@ -264,12 +264,12 @@ The key lesson was that data precedes solutions. In finance, making assumptions 
 
 _Pre-judge: A voice 5/5 detail 5/5 tells 0 | B voice 3/5 detail 4/5 tells 2 | better: **a**_
 
-_Faithfulness â€” A invented: none_
-_Faithfulness â€” B invented: initially assumed the problem was simply overspending on events; proposed across-the-board budget reductions without first analysing; overpaying for boat maintenance and catering; renegotiated those contracts directly with suppliers, emphasising our membership size and loyalty_
+_Faithfulness — A invented: none_
+_Faithfulness — B invented: initially assumed the problem was simply overspending on events; proposed across-the-board budget reductions without first analysing; overpaying for boat maintenance and catering; renegotiated those contracts directly with suppliers, emphasising our membership size and loyalty_
 
 ---
 
-## q12 â€” Describe a setback you experienced. How did you analyse what went wrong and move forward?
+## q12 — Describe a setback you experienced. How did you analyse what went wrong and move forward?
 **Employer:** Deutsche Bank | **Char limit:** 2000
 
 **Answer A**
@@ -286,22 +286,22 @@ In a research or modelling context, a result that looks clean should probably pr
 
 **Answer B**
 
-During my first year at LSE, I received a 71 averageâ€”below the 75+ I'd targeted. I'd underestimated the jump from A-level to university-level problem-solving, particularly in the mathematical rigour required for proofs and derivations in core modules.
+During my first year at LSE, I received a 71 average—below the 75+ I'd targeted. I'd underestimated the jump from A-level to university-level problem-solving, particularly in the mathematical rigour required for proofs and derivations in core modules.
 
 Rather than accept this as fixed, I analysed where I'd gone wrong. I reviewed my exam scripts and attended office hours with tutors, identifying that I was rushing through multi-step problems without checking intermediate steps and not building intuition around concepts before attempting applications. I also realised I'd relied too heavily on past papers without working through foundational textbooks first.
 
 I restructured my approach for year two. I worked through core concepts systematically using supplementary texts, attempted problems before checking solutions, and built a formula sheet that forced me to understand *why* relationships held rather than memorising them. I also began attending smaller study groups, which exposed gaps I'd otherwise missed.
 
-This paid off. My year-two average improved to 73+, and more importantly, I now approach unfamiliar technical material methodicallyâ€”breaking problems into components, validating assumptions, and checking my work. This discipline has been directly useful in my research assistant role at LSE, where I caught inconsistencies in boundary revision data that would have corrupted the analysis. It's a habit I intend to apply to analytical work in finance, where accuracy compounds in importance.
+This paid off. My year-two average improved to 73+, and more importantly, I now approach unfamiliar technical material methodically—breaking problems into components, validating assumptions, and checking my work. This discipline has been directly useful in my research assistant role at LSE, where I caught inconsistencies in boundary revision data that would have corrupted the analysis. It's a habit I intend to apply to analytical work in finance, where accuracy compounds in importance.
 
 _Pre-judge: A voice 5/5 detail 5/5 tells 0 | B voice 2/5 detail 3/5 tells 4 | better: **a**_
 
-_Faithfulness â€” A invented: Tracing it back, the cause was a 2011 boundary revision that had distorted the planning data for that authority_
-_Faithfulness â€” B invented: year-two average improved to 73+; A-level to university-level problem-solving; 75+ I'd targeted; 75+ threshold mentioned as personal target; office hours with tutors; smaller study groups; supplementary texts; foundational textbooks; formula sheet; exam scripts review_
+_Faithfulness — A invented: Tracing it back, the cause was a 2011 boundary revision that had distorted the planning data for that authority_
+_Faithfulness — B invented: year-two average improved to 73+; A-level to university-level problem-solving; 75+ I'd targeted; 75+ threshold mentioned as personal target; office hours with tutors; smaller study groups; supplementary texts; foundational textbooks; formula sheet; exam scripts review_
 
 ---
 
-## q13 â€” Discuss a current market trend or economic development that interests you and its implications for financial services.
+## q13 — Discuss a current market trend or economic development that interests you and its implications for financial services.
 **Employer:** Goldman Sachs | **Char limit:** 700
 
 **Answer A**
@@ -312,21 +312,21 @@ Private credit has grown from a niche asset class to roughly $2 trillion globall
 
 The UK's regional productivity divergence has captured my attention, particularly given my research work at LSE on this topic. ONS data reveal persistent gaps between London and peripheral regions, with implications for financial services that extend beyond traditional lending patterns.
 
-Banks face a challenge in funding regional growth without simply concentrating capital in already-developed areas. This creates opportunity for structured products and regional development financeâ€”areas where Goldman Sachs has significant expertise.
+Banks face a challenge in funding regional growth without simply concentrating capital in already-developed areas. This creates opportunity for structured products and regional development finance—areas where Goldman Sachs has significant expertise.
 
 _Pre-judge: A voice 4/5 detail 3/5 tells 1 | B voice 2/5 detail 2/5 tells 3 | better: **a**_
 
-_Faithfulness â€” A invented: Private credit has grown to roughly $2 trillion globally; tighter bank capital requirements after Basel III; Banks are increasingly originating loans they once held, then distributing them to private funds; debt advisory work on private credit and capital distribution_
-_Faithfulness â€” B invented: Goldman Sachs has significant expertise in structured products and regional development finance; ONS data reveal persistent gaps between London and peripheral regions; implications for financial services that extend beyond traditional lending patterns; Banks face a challenge in funding regional growth without simply concentrating capital in already-developed areas_
+_Faithfulness — A invented: Private credit has grown to roughly $2 trillion globally; tighter bank capital requirements after Basel III; Banks are increasingly originating loans they once held, then distributing them to private funds; debt advisory work on private credit and capital distribution_
+_Faithfulness — B invented: Goldman Sachs has significant expertise in structured products and regional development finance; ONS data reveal persistent gaps between London and peripheral regions; implications for financial services that extend beyond traditional lending patterns; Banks face a challenge in funding regional growth without simply concentrating capital in already-developed areas_
 
 ---
 
-## q14 â€” What recent news story or deal in the financial markets caught your attention and why?
+## q14 — What recent news story or deal in the financial markets caught your attention and why?
 **Employer:** Lazard | **Char limit:** 600
 
 **Answer A**
 
-The recent Â£15bn takeover of Wm Morrison by private equity consortium Apollo and Softbank in late 2024 caught my attention. What struck me was the structural tension between the consortium's operational improvements and inflation's erosion of supermarket marginsâ€”a dynamic I've studied in Industrial Organisation at LSE. The deal highlighted how financial engineering alone cannot offset secular pressures in low-margin sectors, and how debt financing strategies must account for macroeconomic headwinds.
+The recent £15bn takeover of Wm Morrison by private equity consortium Apollo and Softbank in late 2024 caught my attention. What struck me was the structural tension between the consortium's operational improvements and inflation's erosion of supermarket margins—a dynamic I've studied in Industrial Organisation at LSE. The deal highlighted how financial engineering alone cannot offset secular pressures in low-margin sectors, and how debt financing strategies must account for macroeconomic headwinds.
 
 **Answer B**
 
@@ -334,12 +334,12 @@ Nippon Steel's bid for US Steel caught my attention. A $14.9bn cross-border deal
 
 _Pre-judge: A voice 4/5 detail 4/5 tells 1 | B voice 5/5 detail 4/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: Â£15bn takeover of Wm Morrison by Apollo and Softbank in late 2024; Morrison takeover involved private equity consortium Apollo and Softbank; Morrison takeover occurred in late 2024_
-_Faithfulness â€” B invented: Nippon Steel's bid for US Steel; $14.9bn cross-border deal; blocked by presidential order on national security grounds; transaction analysis; comparable transaction analysis_
+_Faithfulness — A invented: £15bn takeover of Wm Morrison by Apollo and Softbank in late 2024; Morrison takeover involved private equity consortium Apollo and Softbank; Morrison takeover occurred in late 2024_
+_Faithfulness — B invented: Nippon Steel's bid for US Steel; $14.9bn cross-border deal; blocked by presidential order on national security grounds; transaction analysis; comparable transaction analysis_
 
 ---
 
-## q15 â€” Describe a time you handled significant pressure or multiple competing deadlines. How did you manage?
+## q15 — Describe a time you handled significant pressure or multiple competing deadlines. How did you manage?
 **Employer:** Jane Street | **Char limit:** 800
 
 **Answer A**
@@ -352,25 +352,25 @@ Both came off. The deficit cleared, the tour ran with 24 members, and the panel 
 
 **Answer B**
 
-During my time as Treasurer of LSE Rowing Club in 2024â€“2025, I managed competing priorities under real time pressure. The club faced an Â£800 deficit whilst I was simultaneously organising the summer tour for 24 members and overseeing day-to-day finances.
+During my time as Treasurer of LSE Rowing Club in 2024–2025, I managed competing priorities under real time pressure. The club faced an £800 deficit whilst I was simultaneously organising the summer tour for 24 members and overseeing day-to-day finances.
 
-I tackled this systematically. First, I identified the root causes by reviewing supplier contracts line-by-line, then renegotiated terms with three key vendors to reduce costs. Concurrently, I secured additional sponsorship to bridge the remaining gap. Rather than juggling everything ad hoc, I created a simple spreadsheet tracking cash flow weekly and prioritised actions by impactâ€”the sponsorship approach yielded results fastest.
+I tackled this systematically. First, I identified the root causes by reviewing supplier contracts line-by-line, then renegotiated terms with three key vendors to reduce costs. Concurrently, I secured additional sponsorship to bridge the remaining gap. Rather than juggling everything ad hoc, I created a simple spreadsheet tracking cash flow weekly and prioritised actions by impact—the sponsorship approach yielded results fastest.
 
 The tour ran successfully within budget, and we eliminated the deficit by year-end.
 
 _Pre-judge: A voice 4/5 detail 4/5 tells 1 | B voice 2/5 detail 3/5 tells 4 | better: **a**_
 
-_Faithfulness â€” A invented: none_
-_Faithfulness â€” B invented: renegotiated terms with three key vendors; created a simple spreadsheet tracking cash flow weekly; eliminated the deficit by year-end_
+_Faithfulness — A invented: none_
+_Faithfulness — B invented: renegotiated terms with three key vendors; created a simple spreadsheet tracking cash flow weekly; eliminated the deficit by year-end_
 
 ---
 
-## q16 â€” Give an example of a challenging situation you faced. How did you stay focused and perform under pressure?
+## q16 — Give an example of a challenging situation you faced. How did you stay focused and perform under pressure?
 **Employer:** Citadel | **Char limit:** 900
 
 **Answer A**
 
-During my role as Treasurer of LSE Rowing Club in 2024â€“2025, I faced a significant financial challenge: the club had accumulated an Â£800 deficit with limited runway to resolve it. The situation required immediate action, as the summer tourâ€”a core event for 24 membersâ€”was at risk.
+During my role as Treasurer of LSE Rowing Club in 2024–2025, I faced a significant financial challenge: the club had accumulated an £800 deficit with limited runway to resolve it. The situation required immediate action, as the summer tour—a core event for 24 members—was at risk.
 
 I approached this systematically. First, I audited all supplier contracts and identified renegotiation opportunities, securing cost reductions with our main vendors. Simultaneously, I sourced new sponsorship by pitching to local businesses and alumni networks, emphasizing the club's track record and membership engagement. Within weeks, I had recovered the deficit and actually increased our budget for the summer tour.
 
@@ -386,12 +386,12 @@ The pressure was real: a hard deadline, a sceptical committee, and no guarantee 
 
 _Pre-judge: A voice 3/5 detail 3/5 tells 2 | B voice 5/5 detail 4/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: increased our budget for the summer tour_
-_Faithfulness â€” B invented: none_
+_Faithfulness — A invented: increased our budget for the summer tour_
+_Faithfulness — B invented: none_
 
 ---
 
-## q17 â€” What are your key strengths and how will they contribute to the role?
+## q17 — What are your key strengths and how will they contribute to the role?
 **Employer:** Schroders | **Char limit:** 300
 
 **Answer A**
@@ -400,16 +400,16 @@ Quantitative analysis and working under pressure. A 73-average dissertation buil
 
 **Answer B**
 
-I possess strong quantitative foundationsâ€”I have worked with R, Python, Stata and SQL on real datasets during my LSE dissertation and research assistant role, giving me practical experience in econometric analysis and data manipulation.
+I possess strong quantitative foundations—I have worked with R, Python, Stata and SQL on real datasets during my LSE dissertation and research assistant role, giving me practical experience in econometric analysis and data manipulation.
 
 _Pre-judge: A voice 4/5 detail 3/5 tells 0 | B voice 2/5 detail 2/5 tells 1 | better: **a**_
 
-_Faithfulness â€” A invented: none_
-_Faithfulness â€” B invented: none_
+_Faithfulness — A invented: none_
+_Faithfulness — B invented: none_
 
 ---
 
-## q18 â€” Is there anything else you would like us to know about you that is not covered elsewhere in the application?
+## q18 — Is there anything else you would like us to know about you that is not covered elsewhere in the application?
 **Employer:** Rothschild & Co | **Char limit:** 300
 
 **Answer A**
@@ -422,12 +422,12 @@ I completed Rothschild & Co's Investment Banking Insight Programme in June 2026,
 
 _Pre-judge: A voice 4/5 detail 4/5 tells 0 | B voice 2/5 detail 2/5 tells 2 | better: **a**_
 
-_Faithfulness â€” A invented: none_
-_Faithfulness â€” B invented: contributed to transaction analysis_
+_Faithfulness — A invented: none_
+_Faithfulness — B invented: contributed to transaction analysis_
 
 ---
 
-## q19 â€” Tell us about a commercial development in a sector that interests you and how it might affect the deal landscape.
+## q19 — Tell us about a commercial development in a sector that interests you and how it might affect the deal landscape.
 **Employer:** Evercore | **Char limit:** 700
 
 **Answer A**
@@ -442,17 +442,17 @@ This creates structural opportunities in the deal landscape. Developers face per
 
 _Pre-judge: A voice 4/5 detail 3/5 tells 0 | B voice 3/5 detail 4/5 tells 1 | better: **a**_
 
-_Faithfulness â€” A invented: Private credit's expansion into infrastructure; deal structures that once went to syndicated loan markets are now being arranged bilaterally; concentration of advisory mandates with banks that have strong debt structuring capability; buyers with flexible private credit backing can move faster; M&A timelines being compressed; premium on rigorous, rapid valuation work_
-_Faithfulness â€” B invented: housing supply elasticity across English local authorities; planning restrictions mean supply remains highly inelastic in high-demand areas, particularly the South East; Developers face persistent cost inflation and extended project timelines; favours larger, well-capitalised operators_
+_Faithfulness — A invented: Private credit's expansion into infrastructure; deal structures that once went to syndicated loan markets are now being arranged bilaterally; concentration of advisory mandates with banks that have strong debt structuring capability; buyers with flexible private credit backing can move faster; M&A timelines being compressed; premium on rigorous, rapid valuation work_
+_Faithfulness — B invented: housing supply elasticity across English local authorities; planning restrictions mean supply remains highly inelastic in high-demand areas, particularly the South East; Developers face persistent cost inflation and extended project timelines; favours larger, well-capitalised operators_
 
 ---
 
-## q20 â€” What experience, skill or interest outside of your degree makes you a distinctive candidate?
+## q20 — What experience, skill or interest outside of your degree makes you a distinctive candidate?
 **Employer:** BlackRock | **Char limit:** 500
 
 **Answer A**
 
-Beyond my degree, I bring demonstrated technical depth and practical initiative. I've applied R and Stata to real researchâ€”cleaning ONS datasets as an LSE research assistant and running panel regressions for my dissertation on housing supply elasticity. I've extended this into Python and SQL. Outside academics, I've led operational improvements: as Treasurer of LSE Rowing Club, I resolved an Â£800 deficit through contract renegotiation and sponsorship, growing our summer tour to a record 24
+Beyond my degree, I bring demonstrated technical depth and practical initiative. I've applied R and Stata to real research—cleaning ONS datasets as an LSE research assistant and running panel regressions for my dissertation on housing supply elasticity. I've extended this into Python and SQL. Outside academics, I've led operational improvements: as Treasurer of LSE Rowing Club, I resolved an £800 deficit through contract renegotiation and sponsorship, growing our summer tour to a record 24
 
 **Answer B**
 
@@ -460,8 +460,8 @@ Treasurer of LSE Rowing Club from my first year. We had an 800-pound deficit and
 
 _Pre-judge: A voice 4/5 detail 4/5 tells 1 | B voice 5/5 detail 4/5 tells 0 | better: **b**_
 
-_Faithfulness â€” A invented: none_
-_Faithfulness â€” B invented: summer tour was the largest in the club's history; Treasurer from my first year_
+_Faithfulness — A invented: none_
+_Faithfulness — B invented: summer tour was the largest in the club's history; Treasurer from my first year_
 
 
 ---
