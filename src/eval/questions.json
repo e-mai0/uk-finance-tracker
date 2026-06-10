@@ -1,0 +1,122 @@
+[
+  {
+    "id": "q01",
+    "question": "Why do you want to work at Goldman Sachs?",
+    "employer": "Goldman Sachs",
+    "charLimit": 500
+  },
+  {
+    "id": "q02",
+    "question": "Why are you applying to J.P. Morgan and what attracts you to investment banking?",
+    "employer": "J.P. Morgan",
+    "charLimit": 600
+  },
+  {
+    "id": "q03",
+    "question": "What motivates you to pursue a career in asset management at BlackRock?",
+    "employer": "BlackRock",
+    "charLimit": 500
+  },
+  {
+    "id": "q04",
+    "question": "Why do you want to work at Barclays and why markets specifically?",
+    "employer": "Barclays",
+    "charLimit": 600
+  },
+  {
+    "id": "q05",
+    "question": "What draws you to advisory work and why Evercore over the bulge brackets?",
+    "employer": "Evercore",
+    "charLimit": 600
+  },
+  {
+    "id": "q06",
+    "question": "Tell us about a time you led a team through a difficult challenge.",
+    "employer": "Goldman Sachs",
+    "charLimit": 800
+  },
+  {
+    "id": "q07",
+    "question": "Describe a situation where you had to organise and lead a group project to a tight deadline.",
+    "employer": "J.P. Morgan",
+    "charLimit": 900
+  },
+  {
+    "id": "q08",
+    "question": "Give an example of a time you were in charge of a project that did not go to plan. How did you lead through it?",
+    "employer": "Barclays",
+    "charLimit": 1000
+  },
+  {
+    "id": "q09",
+    "question": "Describe a time you worked effectively as part of a team to achieve a shared goal.",
+    "employer": "Morgan Stanley",
+    "charLimit": 800
+  },
+  {
+    "id": "q10",
+    "question": "Tell us about a time you collaborated with others to solve a problem. What was your specific contribution?",
+    "employer": "HSBC",
+    "charLimit": 900
+  },
+  {
+    "id": "q11",
+    "question": "Tell us about a time you failed at something. What did you learn and what would you do differently?",
+    "employer": "Citi",
+    "charLimit": 900
+  },
+  {
+    "id": "q12",
+    "question": "Describe a setback you experienced. How did you analyse what went wrong and move forward?",
+    "employer": "Deutsche Bank",
+    "charLimit": 1000
+  },
+  {
+    "id": "q13",
+    "question": "Discuss a current market trend or economic development that interests you and its implications for financial services.",
+    "employer": "Goldman Sachs",
+    "charLimit": 700
+  },
+  {
+    "id": "q14",
+    "question": "What recent news story or deal in the financial markets caught your attention and why?",
+    "employer": "Lazard",
+    "charLimit": 600
+  },
+  {
+    "id": "q15",
+    "question": "Describe a time you handled significant pressure or multiple competing deadlines. How did you manage?",
+    "employer": "Jane Street",
+    "charLimit": 800
+  },
+  {
+    "id": "q16",
+    "question": "Give an example of a challenging situation you faced. How did you stay focused and perform under pressure?",
+    "employer": "Citadel",
+    "charLimit": 900
+  },
+  {
+    "id": "q17",
+    "question": "What are your key strengths and how will they contribute to the role?",
+    "employer": "Schroders",
+    "charLimit": 600
+  },
+  {
+    "id": "q18",
+    "question": "Is there anything else you would like us to know about you that is not covered elsewhere in the application?",
+    "employer": "Rothschild & Co",
+    "charLimit": 500
+  },
+  {
+    "id": "q19",
+    "question": "Tell us about a commercial development in a sector that interests you and how it might affect the deal landscape.",
+    "employer": "Evercore",
+    "charLimit": 700
+  },
+  {
+    "id": "q20",
+    "question": "What experience, skill or interest outside of your degree makes you a distinctive candidate?",
+    "employer": "BlackRock",
+    "charLimit": 500
+  }
+]

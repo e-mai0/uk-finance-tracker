@@ -1,0 +1,12 @@
+{
+  "name": "Alex Hartley",
+  "university": "London School of Economics",
+  "degree": "BSc Economics",
+  "degreeSubject": "Economics",
+  "degreeType": "BSc",
+  "graduationYear": 2027,
+  "skills": ["Excel", "R", "Python", "Financial modelling", "Stata", "SQL"],
+  "workAuthStatement": "British citizen, full right to work in the UK.",
+  "sponsorshipStatement": "No sponsorship required.",
+  "cvText": "Alex Hartley — BSc Economics, London School of Economics, Expected June 2027\n\nContact: alex.hartley@lse.ac.uk | London, UK\n\nEducation\nLondon School of Economics, BSc Economics, 2024–2027\nFirst Year: 71 average (modules: Microeconomics, Statistics, Mathematics for Economists)\nRelevant modules: Financial Markets, Econometrics, Industrial Organisation, Macroeconomics\nDissertation: Housing supply elasticity across UK local authorities (panel regression, R) — provisional grade 73\nA Levels: Mathematics A*, Economics A*, History A (Harrow County School, 2024)\n\nExperience\nInvestment Banking Insight Programme — Rothschild & Co, London, June 2026 (1 week)\nShadowed analysts in the debt advisory team on a live infrastructure refinancing. Attended a client update call; prepared a summary of comparable transactions for a senior analyst.\n\nResearch Assistant — LSE Department of Economics, January–March 2026 (part-time)\nCleaned and merged three ONS datasets for a project on regional productivity divergence; ran descriptive regressions in Stata; flagged inconsistencies in the 2011 boundary revision data.\n\nActivities\nTreasurer, LSE Rowing Club, 2024–2025: resolved an 800-pound deficit, renegotiated supplier contracts, secured sponsorship; summer tour attended by 24 members (record).\nCo-organiser, LSE Economics Society Annual Panel, January 2025: sourced replacement speaker in three days when original dropped out; 120 attendees, society record.\nCompetitions: CFA Research Challenge participant (team finished second in regional round, 2026).\n\nSkills\nQuantitative: R (ggplot2, fixest, lm), Python (pandas, matplotlib), Stata, Excel (PivotTables, VLOOKUP, basic VBA), SQL\nLanguages: English (native), French (B2)\nOther: Bloomberg terminal (introductory certification)"
+}
