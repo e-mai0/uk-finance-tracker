@@ -10,6 +10,7 @@ import { OpportunityStatus } from "@prisma/client";
 import { ensureEmployerResearch } from "@/server/engine/research";
 import { gatherSubstance } from "@/server/engine/substance";
 import { draftText } from "@/server/engine/draft";
+import { distillOutcomes } from "@/server/engine/outcomes";
 import { SONNET_ID } from "@/server/ai/models";
 
 const MAX_FILE_COUNT = 100;
@@ -285,6 +286,8 @@ export function buildTools(userId: string) {
             ...(status === "SUBMITTED" ? { submittedAt: new Date() } : {}),
           },
         });
+        // Detached: distill outcomes into story signals + strategy observations.
+        void distillOutcomes(userId).catch(() => {});
         return { updated: true, employer: app.employerName, role: app.roleTitle, status };
       },
     }),
