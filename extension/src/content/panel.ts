@@ -115,6 +115,10 @@ export class Panel {
   private agentContinueBtn: HTMLButtonElement | null = null;
   private agentErrorEl: HTMLParagraphElement | null = null;
   private agentBusy = false;
+  // Per-row busy hooks for the agent review section: while a round is in
+  // flight, apply/skip/Apply-all must be inert so a stale row can't write
+  // through the next round's snapshot. Settled rows stay disabled.
+  private agentRowBusyHooks: ((busy: boolean) => void)[] = [];
 
   constructor(handlers: PanelHandlers) {
     this.handlers = handlers;
@@ -213,6 +217,7 @@ export class Panel {
     this.agentSection = null;
     this.agentContinueBtn = null;
     this.agentErrorEl = null;
+    this.agentRowBusyHooks = [];
     this.setAgentAffordance(false);
   }
 
@@ -230,6 +235,7 @@ export class Panel {
       this.agentContinueBtn.disabled = busy;
       this.agentContinueBtn.textContent = busy ? "thinking..." : "Continue ▸";
     }
+    for (const hook of this.agentRowBusyHooks) hook(busy);
   }
 
   private ensureAgentSection(): HTMLDivElement {
@@ -264,6 +270,7 @@ export class Panel {
     sec.innerHTML = "";
     this.agentErrorEl = null;
     this.agentContinueBtn = null;
+    this.agentRowBusyHooks = []; // old rows are gone with sec.innerHTML = ""
 
     const h = el("p", "muted");
     h.style.marginTop = "12px";
@@ -274,16 +281,23 @@ export class Panel {
 
     const rows: { applyIfPending: () => void }[] = [];
     const onApplied = () => {
-      // The first apply unlocks Continue (when another round is available).
+      // The first apply (or unresolved-answer save) unlocks Continue when
+      // another round is available.
       if (this.agentContinueBtn) this.agentContinueBtn.style.display = "";
     };
 
     if (actions.length > 1) {
       const all = el<HTMLButtonElement>("button", "btn row");
       all.textContent = "Apply all";
+      let allUsed = false;
       all.addEventListener("click", () => {
+        if (this.agentBusy) return;
+        allUsed = true;
         all.disabled = true;
         rows.forEach((r) => r.applyIfPending());
+      });
+      this.agentRowBusyHooks.push((busy) => {
+        if (!allUsed) all.disabled = busy;
       });
       sec.append(all);
     }
@@ -291,6 +305,7 @@ export class Panel {
     for (const a of actions) {
       const row = this.agentActionRow(a, onApplied);
       rows.push({ applyIfPending: row.applyIfPending });
+      this.agentRowBusyHooks.push(row.setBusy);
       sec.append(row.card);
     }
 
@@ -303,7 +318,13 @@ export class Panel {
         sec.append(
           this.askCard(
             { fieldId: u.fieldId, label: u.question, options: u.options },
-            this.handlers.onAgentAnswer,
+            async (fieldId, value) => {
+              const ok = await this.handlers.onAgentAnswer(fieldId, value);
+              // A saved answer is round progress too - it must unlock Continue,
+              // or a zero-action round with unresolved items dead-ends.
+              if (ok) onApplied();
+              return ok;
+            },
           ),
         );
       }
@@ -324,7 +345,11 @@ export class Panel {
     } else if (state.canContinue) {
       const cont = el<HTMLButtonElement>("button", "btn sec");
       cont.textContent = "Continue ▸";
-      cont.style.display = "none"; // appears after the first apply
+      // Normally appears after the first apply; a zero-action round with
+      // unresolved items has nothing to apply, so show it immediately or the
+      // flow dead-ends.
+      cont.style.display =
+        actions.length === 0 && unresolved.length > 0 ? "" : "none";
       cont.style.marginTop = "10px";
       cont.addEventListener("click", () => {
         if (!this.agentBusy) this.handlers.onAgentAssist();
@@ -338,7 +363,7 @@ export class Panel {
   private agentActionRow(
     a: AgentReviewAction,
     onApplied: () => void,
-  ): { card: HTMLElement; applyIfPending: () => void } {
+  ): { card: HTMLElement; applyIfPending: () => void; setBusy: (busy: boolean) => void } {
     const card = el("div", "q");
     const label = el("p", "q-label");
     label.textContent = a.label;
@@ -355,30 +380,43 @@ export class Panel {
     apply.textContent = "apply";
     const skip = el<HTMLButtonElement>("button", "btn sec row");
     skip.textContent = "skip";
+    const msg = el("span", "err");
+    msg.style.display = "none";
 
     let settled = false;
     const applyIfPending = () => {
-      if (settled) return;
+      if (settled || this.agentBusy) return;
       settled = true;
       const ok = this.handlers.onAgentApply(a.fieldId, a.value);
       apply.disabled = true;
       skip.disabled = true;
       apply.textContent = ok ? "applied ✓" : "failed";
-      if (ok) onApplied();
+      if (ok) {
+        onApplied();
+      } else {
+        msg.textContent = "could not apply - field changed";
+        msg.style.display = "block";
+      }
     };
     apply.addEventListener("click", applyIfPending);
     skip.addEventListener("click", () => {
-      if (settled) return;
+      if (settled || this.agentBusy) return;
       settled = true;
       apply.disabled = true;
       skip.disabled = true;
       skip.textContent = "skipped";
       card.style.opacity = ".6";
     });
+    // While a round is in flight this row is inert; once settled it stays disabled.
+    const setBusy = (busy: boolean) => {
+      if (settled) return;
+      apply.disabled = busy;
+      skip.disabled = busy;
+    };
 
     actions.append(apply, skip);
-    card.append(label, val, provLine, actions);
-    return { card, applyIfPending };
+    card.append(label, val, provLine, actions, msg);
+    return { card, applyIfPending, setBusy };
   }
 
   showConnectPrompt() {

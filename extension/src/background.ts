@@ -103,7 +103,11 @@ chrome.runtime.onMessage.addListener(
                 : undefined,
               required: f.required,
             })),
-            context: { employer: p.employer, role: p.role, url: p.url },
+            context: {
+              employer: p.employer?.slice(0, 200),
+              role: p.role?.slice(0, 200),
+              url: p.url?.slice(0, 2000),
+            },
             round: p.round,
           };
           sendResponse(

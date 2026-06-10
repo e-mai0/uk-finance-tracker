@@ -66,12 +66,18 @@ async function runAgentRound() {
       panel.showAgentError("No fillable fields found on this page.");
       return;
     }
-    agentForm = form;
+    if (form.fields.length > 60) {
+      console.debug(
+        `[trackr] agent round ${round}: ${form.fields.length} fields on page, submitting first 60 (${form.fields.length - 60} dropped)`,
+      );
+    }
     const fields = form.fields.slice(0, 60).map((f) => {
       const fieldEl = form.elements.get(f.id);
       const cur = fieldEl ? currentFieldValue(fieldEl).trim() : "";
       return cur ? { ...f, currentValue: cur } : { ...f };
     });
+    // Only the fields actually submitted this round may be written back to.
+    const submittedIds = new Set(fields.map((f) => f.id));
     const { employer, role } = adapter.employerRole();
     const res = await send<AgentResultPayload>({
       type: "agent",
@@ -84,14 +90,18 @@ async function runAgentRound() {
       return;
     }
     agentRound = round;
+    // Only now does this snapshot become the apply target: a superseded or
+    // failed round must never swap the snapshot out from under live review
+    // rows (their positional fieldIds would resolve against the wrong DOM).
+    agentForm = form;
     const data = res.data;
     const labelOf = (fid: string) =>
       form.fields.find((f) => f.id === fid)?.label || fid;
 
     // Belt-and-braces client mirror of the server's fail-closed validation:
-    // only fields present in THIS round's serialized set can be proposed.
+    // only the <=60 fields actually submitted THIS round can be proposed.
     const actions: AgentReviewAction[] = data.actions
-      .filter((a) => a && form.elements.has(a.fieldId) && typeof a.value === "string")
+      .filter((a) => a && submittedIds.has(a.fieldId) && typeof a.value === "string")
       .map((a) => ({
         fieldId: a.fieldId,
         label: labelOf(a.fieldId),
@@ -104,7 +114,7 @@ async function runAgentRound() {
       .filter(
         (u) =>
           u && typeof u.fieldId === "string" && typeof u.question === "string" &&
-          u.question.trim().length > 0 && form.elements.has(u.fieldId),
+          u.question.trim().length > 0 && submittedIds.has(u.fieldId),
       )
       .map((u) => ({
         fieldId: u.fieldId,
@@ -196,7 +206,9 @@ const panel = new Panel({
   // elements from the agent's own serialized snapshot.
   onAgentApply: (fieldId, value) => {
     const fieldEl = agentForm?.elements.get(fieldId);
-    if (!fieldEl) return false;
+    // A detached element (SPA re-render since the snapshot) cannot receive the
+    // write - fail visibly rather than reporting a phantom "applied".
+    if (!fieldEl || !fieldEl.isConnected) return false;
     return setFieldValue(fieldEl, value);
   },
   // Unresolved agent question: fill the field + persist the fact, mirroring
@@ -204,7 +216,7 @@ const panel = new Panel({
   onAgentAnswer: async (fieldId, value) => {
     const form = agentForm;
     const fieldEl = form?.elements.get(fieldId);
-    if (!form || !fieldEl) return false;
+    if (!form || !fieldEl || !fieldEl.isConnected) return false;
     setFieldValue(fieldEl, value);
     const questionText =
       agentQuestions.get(fieldId) ||

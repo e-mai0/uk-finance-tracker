@@ -117,6 +117,14 @@ export function setFieldValue(el: FillableEl, value: string): boolean {
       : [el];
     return fillRadioGroup(group, value);
   }
+  if (el instanceof HTMLInputElement && el.type === "checkbox") {
+    // Checkboxes carry "true"/"false" values (see currentFieldValue); writing
+    // .value would silently no-op, so toggle .checked + the usual events.
+    el.checked = value === "true";
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
   if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
     setNativeValue(el, value);
     return true;
