@@ -135,7 +135,7 @@ export async function POST(req: Request) {
     );
   }
   parts.push(
-    `Round ${d.round} of 3. Propose values only for fields whose currentValue is empty.`,
+    `Round ${d.round} of 3. Propose values for fields whose currentValue is empty. Checkbox fields are never empty: their currentValue is the current checked state ("true" or "false"); propose a value for a checkbox only when the reference material indicates that state is wrong.`,
   );
 
   let result: z.infer<typeof agentResultSchema>;

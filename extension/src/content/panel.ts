@@ -280,10 +280,21 @@ export class Panel {
     sec.append(h);
 
     const rows: { applyIfPending: () => void }[] = [];
+    let rowApplies = 0;
+    let rowSkips = 0;
     const onApplied = () => {
       // The first apply (or unresolved-answer save) unlocks Continue when
       // another round is available.
       if (this.agentContinueBtn) this.agentContinueBtn.style.display = "";
+    };
+    // Skip-all path: if every row was skipped and nothing applied, the normal
+    // "first apply unlocks Continue" never fires - give the user a way forward.
+    const onSkipped = () => {
+      rowSkips++;
+      if (rowSkips + rowApplies === actions.length && rowApplies === 0) {
+        if (this.agentContinueBtn) this.agentContinueBtn.style.display = "";
+        else this.setAgentAffordance(true);
+      }
     };
 
     if (actions.length > 1) {
@@ -303,7 +314,14 @@ export class Panel {
     }
 
     for (const a of actions) {
-      const row = this.agentActionRow(a, onApplied);
+      const row = this.agentActionRow(
+        a,
+        () => {
+          rowApplies++;
+          onApplied();
+        },
+        onSkipped,
+      );
       rows.push({ applyIfPending: row.applyIfPending });
       this.agentRowBusyHooks.push(row.setBusy);
       sec.append(row.card);
@@ -363,6 +381,7 @@ export class Panel {
   private agentActionRow(
     a: AgentReviewAction,
     onApplied: () => void,
+    onSkipped: () => void,
   ): { card: HTMLElement; applyIfPending: () => void; setBusy: (busy: boolean) => void } {
     const card = el("div", "q");
     const label = el("p", "q-label");
@@ -406,6 +425,7 @@ export class Panel {
       skip.disabled = true;
       skip.textContent = "skipped";
       card.style.opacity = ".6";
+      onSkipped();
     });
     // While a round is in flight this row is inert; once settled it stays disabled.
     const setBusy = (busy: boolean) => {

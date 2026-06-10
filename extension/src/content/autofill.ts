@@ -118,10 +118,18 @@ export function setFieldValue(el: FillableEl, value: string): boolean {
     return fillRadioGroup(group, value);
   }
   if (el instanceof HTMLInputElement && el.type === "checkbox") {
-    // Checkboxes carry "true"/"false" values (see currentFieldValue). Toggle
-    // via click() so React-controlled forms register the change (same reason
-    // fillRadioGroup clicks); fall back to .checked + events when already set.
-    const desired = value === "true";
+    // The agent sends "true"/"false" (see currentFieldValue), but plan fill
+    // items and ask answers can carry values like "Yes", so parse the desired
+    // state tolerantly. Anything unrecognized fails closed: leave the checkbox
+    // untouched and report not-filled rather than silently flipping state.
+    const v = value.trim().toLowerCase();
+    const desired =
+      ["true", "yes", "y", "checked", "on", "1"].includes(v) ? true
+      : ["false", "no", "n", "unchecked", "off", "0"].includes(v) ? false
+      : null;
+    if (desired === null) return false;
+    // Toggle via click() so React-controlled forms register the change (same
+    // reason fillRadioGroup clicks); fall back to .checked + events.
     if (el.checked !== desired) {
       el.click();
     }
