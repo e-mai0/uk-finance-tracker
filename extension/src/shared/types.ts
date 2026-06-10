@@ -20,6 +20,8 @@ export interface AnswerPayload {
   // Draft-edit learning: included when saving an edited AI draft.
   original?: string;
   draftId?: string;
+  // Story slugs to avoid when regenerating ("Different story"). Server caps at 10.
+  excludeStories?: string[];
 }
 
 export interface TrackPayload {
@@ -46,6 +48,24 @@ export interface FieldSchema {
 
 export type FillAction = "fill" | "ask" | "draft" | "skip";
 
+// Additive: newer servers attach a suggested value to "ask" plan items,
+// sourced from memory facts or the answer bank. Older servers omit it.
+export interface PlanSuggestion {
+  label: string;
+  value: string;
+  source: "memory" | "bank";
+  confidence: "high" | "medium" | "low";
+}
+
+// Additive: newer servers return provenance with generated answers. All
+// fields optional so the panel degrades gracefully against older servers.
+export interface DraftProvenance {
+  storiesUsed?: string[]; // story slugs
+  questionKind?: string;
+  residualTells?: string[];
+  thinGrounding?: boolean;
+}
+
 export interface FillPlanItem {
   fieldId: string;
   action: FillAction;
@@ -54,6 +74,7 @@ export interface FillPlanItem {
   confidence: number;
   question?: string;
   reason?: string;
+  suggestion?: PlanSuggestion;
 }
 
 export interface PlanPayload {

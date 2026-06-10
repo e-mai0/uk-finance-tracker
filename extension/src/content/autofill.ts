@@ -48,7 +48,7 @@ function fillRadioGroup(radios: HTMLInputElement[], desired: string): boolean {
 }
 
 import type { FillableEl } from "./field-map";
-import type { FieldSchema, FillPlanItem } from "../shared/types";
+import type { FieldSchema, FillPlanItem, PlanSuggestion } from "../shared/types";
 
 export interface PlanQuestion {
   fieldId: string;
@@ -57,6 +57,7 @@ export interface PlanQuestion {
   profileKey?: string;
   charLimit?: number;
   options?: string[];      // present for select/radio asks — drives the ask UI
+  suggestion?: PlanSuggestion; // server-suggested value for asks (newer servers)
 }
 
 export interface AppliedPlan {
@@ -96,6 +97,7 @@ export function applyPlan(
         label: item.question || label,
         profileKey: item.profileKey,
         options: schema?.options,
+        suggestion: item.suggestion,
       });
     }
   }

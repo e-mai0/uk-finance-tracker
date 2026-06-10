@@ -1,10 +1,10 @@
 import { pickAdapter } from "./adapters";
 import { serializeForm, type SerializedForm } from "./serialize";
 import { applyPlan, insertIntoField, setFieldValue, type PlanQuestion } from "./autofill";
-import { Panel } from "./panel";
+import { Panel, type GeneratedDraft } from "./panel";
 import { send } from "./messaging";
 import { looksLikeApplication, mountCue } from "./detect";
-import type { FieldSchema, FillPlanItem } from "../shared/types";
+import type { DraftProvenance, FieldSchema, FillPlanItem } from "../shared/types";
 
 /**
  * Content-script entry point, injected on all pages (except Trackr's own — see
@@ -19,6 +19,28 @@ let mounted = false;
 let serialized: SerializedForm | null = null;
 let askIndex = new Map<string, PlanQuestion>();
 let draftIndex = new Map<string, PlanQuestion>();
+// Bumped on every engage; pre-staging loops abort when it moves on or the
+// panel is closed, so a stale loop never writes into a re-planned panel.
+let engageSeq = 0;
+
+/** Call /api/ext/answer for a draft field; provenance/draftId are optional on older servers. */
+async function generateDraft(fieldId: string, excludeStories?: string[]): Promise<GeneratedDraft | null> {
+  const q = draftIndex.get(fieldId);
+  if (!q) return null;
+  const { employer, role } = adapter.employerRole();
+  const res = await send<{ answer?: string; draftId?: string; provenance?: DraftProvenance }>({
+    type: "answer",
+    payload: {
+      questionText: q.label, questionType: "long", charLimit: q.charLimit,
+      employer, role, externalUrl: location.href.split("#")[0],
+      ...(excludeStories && excludeStories.length
+        ? { excludeStories: excludeStories.slice(0, 10) }
+        : {}),
+    },
+  });
+  if (!res.ok || !res.data?.answer) return null;
+  return { text: res.data.answer, draftId: res.data.draftId, provenance: res.data.provenance };
+}
 
 const panel = new Panel({
   onEngage: engage,
@@ -32,20 +54,7 @@ const panel = new Panel({
     });
     return res.ok;
   },
-  onGenerate: async (fieldId) => {
-    const q = draftIndex.get(fieldId);
-    if (!q) return null;
-    const { employer, role } = adapter.employerRole();
-    const res = await send<{ answer?: string; draftId?: string }>({
-      type: "answer",
-      payload: {
-        questionText: q.label, questionType: "long", charLimit: q.charLimit,
-        employer, role, externalUrl: location.href.split("#")[0],
-      },
-    });
-    if (!res.ok || !res.data?.answer) return null;
-    return { text: res.data.answer, draftId: res.data.draftId };
-  },
+  onGenerate: (fieldId, excludeStories) => generateDraft(fieldId, excludeStories),
   onInsert: (fieldId, text) => {
     const q = draftIndex.get(fieldId);
     // Drafts are always textareas, but PlanQuestion.el is the wider FillableEl.
@@ -68,10 +77,11 @@ function formContainer(): ParentNode | null {
 }
 
 async function engage() {
+  const seq = ++engageSeq;
   const container = formContainer();
   if (!container) { panel.showError("No application form found on this page."); return; }
 
-  const status = await send<{ connected: boolean }>({ type: "status" });
+  const status = await send<{ connected: boolean; apiBase?: string }>({ type: "status" });
   if (!status.ok || !status.data?.connected) { panel.showConnectPrompt(); return; }
 
   serialized = serializeForm(container);
@@ -90,9 +100,21 @@ async function engage() {
 
   panel.showTriage(
     applied.filled,
-    applied.asks.map((q) => ({ fieldId: q.fieldId, label: q.label, profileKey: q.profileKey, options: q.options })),
+    applied.asks.map((q) => ({
+      fieldId: q.fieldId, label: q.label, profileKey: q.profileKey,
+      options: q.options, suggestion: q.suggestion,
+    })),
     applied.drafts.map((q) => ({ fieldId: q.fieldId, label: q.label, charLimit: q.charLimit })),
   );
+
+  // Footer link into the web app's chat, prefilled with this application.
+  const apiBase = status.data.apiBase?.replace(/\/+$/, "");
+  if (apiBase) {
+    const prefill = employer || role
+      ? `Let's talk about my ${[employer, role].filter(Boolean).join(" ")} application.`
+      : "Let's talk about this application.";
+    panel.setDiscussLink(`${apiBase}/chat?prefill=${encodeURIComponent(prefill)}`);
+  }
 
   void send({
     type: "trackApplication",
@@ -101,6 +123,23 @@ async function engage() {
       employerName: employer, roleTitle: role, status: "AUTOFILLED",
     },
   });
+
+  // Pre-stage drafts for the first three draft fields, sequentially (kind to
+  // the generation budget). Abort between calls if the panel was closed or a
+  // new engage superseded this one; one field failing never blocks the next.
+  for (const q of applied.drafts.slice(0, 3)) {
+    if (seq !== engageSeq || !panel.isOpen()) break;
+    panel.setDraftPending(q.fieldId);
+    try {
+      const result = await generateDraft(q.fieldId);
+      if (seq !== engageSeq || !panel.isOpen()) break;
+      if (result) panel.setDraftResult(q.fieldId, result);
+      else panel.setDraftFailed(q.fieldId);
+    } catch {
+      if (seq !== engageSeq || !panel.isOpen()) break;
+      panel.setDraftFailed(q.fieldId);
+    }
+  }
 }
 
 function init() {

@@ -5,15 +5,25 @@
  * the panel never touches the form's submit button.
  */
 
-export interface AskItem { fieldId: string; label: string; profileKey?: string; options?: string[]; }
+import type { PlanSuggestion, DraftProvenance } from "../shared/types";
+
+export interface AskItem { fieldId: string; label: string; profileKey?: string; options?: string[]; suggestion?: PlanSuggestion; }
 export interface DraftItem { fieldId: string; label: string; charLimit?: number; }
+export interface GeneratedDraft { text: string; draftId?: string; provenance?: DraftProvenance; }
 
 export interface PanelHandlers {
   onEngage: () => void;                                                // user asked to plan this form
   onAnswerAsk: (fieldId: string, value: string) => Promise<boolean>;   // fill + write-back
-  onGenerate: (fieldId: string) => Promise<{ text: string; draftId?: string } | null>;
+  onGenerate: (fieldId: string, excludeStories?: string[]) => Promise<GeneratedDraft | null>;
   onInsert: (fieldId: string, text: string) => void;
   onSaveDraft: (fieldId: string, label: string, text: string, original?: string, draftId?: string) => Promise<boolean>;
+}
+
+/** Per-card hooks so the content script can drive pre-staged drafting. */
+interface DraftCardControls {
+  setPending: () => void;
+  applyResult: (r: GeneratedDraft) => void;
+  setFailed: () => void;
 }
 
 const STYLE = `
@@ -51,8 +61,14 @@ textarea {
   border-radius: 6px; padding: 7px;
 }
 .foot { padding: 9px 14px; border-top: 1px solid #e6e0d2; font-size: 10.5px; color: #9b9385; }
+.foot a { display: block; margin-top: 4px; color: #7c2433; font-weight: 600; text-decoration: none; }
+.foot a:hover { text-decoration: underline; }
 .err { color: #b1431f; font-size: 12px; margin-top: 6px; }
 .ok { color: #2f6a45; }
+.prov { font-size: 10.5px; color: #6a6258; margin: 5px 0 0; }
+.prov .chip { font-weight: 700; font-size: 9.5px; letter-spacing: .05em; border: 1px solid #d6cfbd; border-radius: 4px; padding: 0 4px; }
+.warn { font-size: 10.5px; color: #b1431f; margin: 3px 0 0; }
+.hint { font-size: 11px; color: #1b1714; background: #f6f2e7; border: 1px dashed #d6cfbd; border-radius: 6px; padding: 5px 7px; margin: 6px 0 0; }
 `;
 
 export class Panel {
@@ -61,6 +77,8 @@ export class Panel {
   private body: HTMLDivElement;
   private statusEl: HTMLSpanElement;
   private handlers: PanelHandlers;
+  private discussLink: HTMLAnchorElement;
+  private draftCards = new Map<string, DraftCardControls>();
 
   constructor(handlers: PanelHandlers) {
     this.handlers = handlers;
@@ -85,7 +103,14 @@ export class Panel {
     this.body = el("div", "body") as HTMLDivElement;
 
     const foot = el("div", "foot");
-    foot.textContent = "You review and submit. Trackr never submits for you.";
+    const footText = el("span");
+    footText.textContent = "You review and submit. Trackr never submits for you.";
+    this.discussLink = el<HTMLAnchorElement>("a");
+    this.discussLink.target = "_blank";
+    this.discussLink.rel = "noopener";
+    this.discussLink.textContent = "Discuss in Cyclops ↗";
+    this.discussLink.style.display = "none";
+    foot.append(footText, this.discussLink);
 
     wrap.append(head, this.body, foot);
     this.root.appendChild(wrap);
@@ -105,8 +130,33 @@ export class Panel {
     this.statusEl.textContent = text;
   }
 
+  /** Whether the panel is still on the page - pre-staging checks this between calls. */
+  isOpen(): boolean {
+    return this.host.isConnected;
+  }
+
+  /** Show the "Discuss in Cyclops" footer link pointing at the web app's chat. */
+  setDiscussLink(href: string) {
+    this.discussLink.href = href;
+    this.discussLink.style.display = "block";
+  }
+
+  /** Pre-staging hooks: drive a draft card from the content script. No-ops if the card is gone. */
+  setDraftPending(fieldId: string) {
+    this.draftCards.get(fieldId)?.setPending();
+  }
+
+  setDraftResult(fieldId: string, result: GeneratedDraft) {
+    this.draftCards.get(fieldId)?.applyResult(result);
+  }
+
+  setDraftFailed(fieldId: string) {
+    this.draftCards.get(fieldId)?.setFailed();
+  }
+
   private clearBody() {
     this.body.innerHTML = "";
+    this.draftCards.clear();
   }
 
   showConnectPrompt() {
@@ -167,8 +217,10 @@ export class Panel {
     label.textContent = a.label;
 
     // select/radio asks render a dropdown of the field's options; everything
-    // else gets a free-text box. `readValue` abstracts the two.
+    // else gets a free-text box. `readValue`/`prefillValue` abstract the two.
     let readValue: () => string;
+    let prefillValue: (v: string) => boolean;
+    let isFreeText = false;
     let control: HTMLElement;
     if (a.options && a.options.length) {
       const sel = el("select") as HTMLSelectElement;
@@ -186,16 +238,40 @@ export class Panel {
       }
       control = sel;
       readValue = () => sel.value.trim();
+      prefillValue = (v) => {
+        const t = v.toLowerCase().trim();
+        const opt = Array.from(sel.options).find(
+          (o) => o.value && (o.text.toLowerCase().trim() === t || o.value.toLowerCase().trim() === t),
+        );
+        if (!opt) return false;
+        sel.value = opt.value;
+        return true;
+      };
     } else {
       const input = el("textarea") as HTMLTextAreaElement;
       input.style.minHeight = "38px";
       control = input;
+      isFreeText = true;
       readValue = () => input.value.trim();
+      prefillValue = (v) => {
+        input.value = v;
+        return true;
+      };
     }
+
+    // Suggestion handling (feature-detected - older servers send none).
+    // High/medium confidence: prefill + one-tap "Use". Low confidence (or a
+    // select with no matching option): hint line only, never auto-primed.
+    const s = a.suggestion;
+    const hasSuggestion = Boolean(s && typeof s.value === "string" && s.value.trim());
+    const conf =
+      s && (s.confidence === "high" || s.confidence === "medium") ? s.confidence : "low";
+    const prefilled = hasSuggestion && conf !== "low" ? prefillValue(s!.value) : false;
 
     const actions = el("div", "q-actions");
     const fill = el<HTMLButtonElement>("button", "btn row");
-    fill.textContent = "Fill & save";
+    const idleLabel = prefilled ? "Use" : "Fill & save";
+    fill.textContent = idleLabel;
     const msg = el("span", "err");
     msg.style.display = "none";
 
@@ -211,12 +287,42 @@ export class Panel {
       }
       setTimeout(() => {
         fill.disabled = false;
-        fill.textContent = "Fill & save";
+        fill.textContent = idleLabel;
       }, 1500);
     });
 
     actions.append(fill);
-    card.append(label, control, actions, msg);
+    card.append(label, control);
+
+    if (hasSuggestion && s) {
+      if (!prefilled) {
+        const hint = el("p", "hint");
+        const v = s.value.trim();
+        hint.textContent = `suggested: ${v.length > 160 ? v.slice(0, 160) + "…" : v}`;
+        card.append(hint);
+        // Free-text fields get a small "use anyway" that primes the input -
+        // the user still presses Fill & save. Selects with no matching option
+        // stay hint-only.
+        if (isFreeText) {
+          const useAnyway = el<HTMLButtonElement>("button", "btn sec row");
+          useAnyway.textContent = "use anyway";
+          useAnyway.addEventListener("click", () => prefillValue(s.value));
+          actions.append(useAnyway);
+        }
+      }
+      const provLine = el("p", "prov");
+      const sourceText =
+        s.source === "memory" ? "from your memory"
+        : s.source === "bank" ? "from your answer bank"
+        : "suggested";
+      provLine.append(`${sourceText} · `);
+      const chip = el("span", "chip");
+      chip.textContent = conf.toUpperCase();
+      provLine.append(chip);
+      card.append(provLine);
+    }
+
+    card.append(actions, msg);
     return card;
   }
 
@@ -226,9 +332,17 @@ export class Panel {
     label.textContent = d.label + (d.charLimit ? `  (max ${d.charLimit} chars)` : "");
     const ta = el("textarea") as HTMLTextAreaElement;
     ta.placeholder = "Click Draft to generate an answer…";
+    const prov = el("p", "prov");
+    prov.style.display = "none";
+    const warn = el("p", "warn");
+    warn.textContent = "thin grounding - double-check specifics";
+    warn.style.display = "none";
     const actions = el("div", "q-actions");
     const draft = el<HTMLButtonElement>("button", "btn sec row");
     draft.textContent = "Draft";
+    const different = el<HTMLButtonElement>("button", "btn sec row");
+    different.textContent = "Different story";
+    different.style.display = "none";
     const insert = el<HTMLButtonElement>("button", "btn row");
     insert.textContent = "Insert";
     const save = el<HTMLButtonElement>("button", "btn sec row");
@@ -236,26 +350,69 @@ export class Panel {
     const msg = el("span", "err");
     msg.style.display = "none";
 
-    // Track the original generated text and its draftId for edit learning.
+    // Track the original generated text and its draftId for edit learning,
+    // plus every story slug used so far so "Different story" can exclude them
+    // (capped at 10 - the server schema's limit).
     let generatedText: string | undefined;
     let generatedDraftId: string | undefined;
+    let usedStories: string[] = [];
 
-    draft.addEventListener("click", async () => {
+    // Apply a generation result: textarea, edit-learning state, provenance
+    // line, thin-grounding warning, and "Different story" visibility. Shared
+    // by the Draft click path and the pre-stage path (panel.setDraftResult).
+    const applyResult = (result: GeneratedDraft) => {
+      draft.disabled = false;
+      different.disabled = false;
+      draft.textContent = "Redraft";
+      ta.value = result.text;
+      generatedText = result.text;
+      generatedDraftId = result.draftId;
+
+      const p = result.provenance;
+      const stories =
+        p && Array.isArray(p.storiesUsed)
+          ? p.storiesUsed.filter((x): x is string => typeof x === "string" && x.length > 0)
+          : [];
+      const kind = p && typeof p.questionKind === "string" ? p.questionKind : "";
+      const line = stories.length
+        ? `based on: ${stories.join(", ")}${kind ? ` · ${kind}` : ""}`
+        : kind;
+      prov.textContent = line;
+      prov.style.display = line ? "block" : "none";
+      warn.style.display = p?.thinGrounding === true ? "block" : "none";
+
+      for (const slug of stories) if (!usedStories.includes(slug)) usedStories.push(slug);
+      if (usedStories.length > 10) usedStories = usedStories.slice(-10);
+      different.style.display = stories.length ? "" : "none";
+    };
+
+    const setPending = () => {
       draft.disabled = true;
+      different.disabled = true;
       draft.textContent = "Drafting…";
       msg.style.display = "none";
-      const result = await this.handlers.onGenerate(d.fieldId);
+    };
+
+    const setFailed = () => {
       draft.disabled = false;
-      draft.textContent = "Redraft";
+      different.disabled = false;
+      draft.textContent = generatedText ? "Redraft" : "Draft";
+    };
+
+    const runGenerate = async (excludeStories?: string[]) => {
+      setPending();
+      const result = await this.handlers.onGenerate(d.fieldId, excludeStories);
       if (result == null) {
-        msg.textContent = "Couldn’t generate — check the popup is connected.";
+        setFailed();
+        msg.textContent = "Couldn’t generate - check the popup is connected.";
         msg.style.display = "block";
       } else {
-        ta.value = result.text;
-        generatedText = result.text;
-        generatedDraftId = result.draftId;
+        applyResult(result);
       }
-    });
+    };
+
+    draft.addEventListener("click", () => void runGenerate());
+    different.addEventListener("click", () => void runGenerate(usedStories.slice(0, 10)));
     insert.addEventListener("click", () => {
       if (ta.value.trim()) this.handlers.onInsert(d.fieldId, ta.value);
     });
@@ -271,8 +428,10 @@ export class Panel {
       }, 1500);
     });
 
-    actions.append(draft, insert, save);
-    card.append(label, ta, actions, msg);
+    this.draftCards.set(d.fieldId, { setPending, applyResult, setFailed });
+
+    actions.append(draft, different, insert, save);
+    card.append(label, ta, prov, warn, actions, msg);
     return card;
   }
 
