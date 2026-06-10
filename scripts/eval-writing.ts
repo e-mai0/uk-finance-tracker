@@ -77,9 +77,9 @@ const fixturesSources = [
 // ─── Old pipeline (inlined to avoid `import "server-only"` in generate.ts) ───
 const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const HAIKU_ID = "claude-haiku-4-5";
-// New engine uses Sonnet (via the sonnet model import inside draftText)
-const SONNET_ID = "claude-sonnet-4-5";
+// Label strings for the report header. The new arm's actual model comes from
+// src/server/ai/models.ts via draftText; keep these imports in sync with it.
+import { HAIKU_ID, SONNET_ID } from "../src/server/ai/models";
 
 const OLD_STYLE = [
   "Write in the first person as the applicant.",
