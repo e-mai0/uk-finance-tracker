@@ -1,8 +1,10 @@
 import { after } from "next/server";
 import { requireToken } from "../../../../server/ext-auth";
 import { prisma } from "../../../../server/db";
-import { loadApplicantContext } from "../../../../server/ext-profile";
-import { generateAnswer, aiConfigured } from "../../../../server/ai/generate";
+import { aiConfigured } from "../../../../server/ai/generate";
+import { gatherSubstance } from "../../../../server/engine/substance";
+import { draftText } from "../../../../server/engine/draft";
+import { maybeDistill } from "../../../../server/engine/distill";
 import { indexContent } from "../../../../server/ai/embed";
 import { normalizeQuestion, bestAnswerMatch } from "../../../../lib/answers";
 import { extAnswerSchema } from "../../../../lib/validation";
@@ -59,6 +61,15 @@ export async function POST(req: Request) {
       });
       after(() => indexContent({ userId, kind: "answer", sourceId: item.id, content: `${item.questionText}\n${item.answer}` }));
     }
+
+    // Capture edit for learning: if the user edited an AI draft before saving.
+    if (d.original && d.draftId && d.original !== d.answer) {
+      await prisma.draftEdit
+        .create({ data: { userId, draftId: d.draftId, original: d.original, edited: d.answer } })
+        .catch(() => {});
+      after(() => maybeDistill(userId));
+    }
+
     return json({ answer: d.answer, source: "saved" });
   }
 
@@ -77,49 +88,55 @@ export async function POST(req: Request) {
     return json({ answer: match.item.answer, source: "bank", score: match.score });
   }
 
-  // 2. Generate with the LLM, grounded in the user's profile + CV.
+  // 2. Generate with the LLM, grounded in the user's profile + CV + voice + stories.
   if (!aiConfigured()) {
     return json({ error: "AI generation isn't configured on the server." }, 503);
   }
 
-  const applicant = await loadApplicantContext(userId);
   let answer: string;
+  let draftId: string | undefined;
   try {
-    answer = await generateAnswer({
+    const draftArgs = {
+      kind: "ANSWER" as const,
       question: d.questionText,
-      charLimit: d.charLimit,
-      employer: d.employer || null,
-      role: d.role || null,
-      applicant,
-    });
+      employerName: d.employer ?? undefined,
+      charLimit: d.charLimit ?? undefined,
+    };
+    const ctx = await gatherSubstance(userId, draftArgs);
+    const result = await draftText(userId, ctx, draftArgs);
+    answer = result.text;
+
+    // 3. Optionally save to the bank for reuse.
+    if (d.save && answer) {
+      const item = await prisma.answerBankItem.create({
+        data: {
+          userId,
+          questionText: d.questionText,
+          questionNormalized: normalizeQuestion(d.questionText),
+          answer,
+          employer: d.employer || null,
+        },
+      }).catch(() => null);
+      if (item) after(() => indexContent({ userId, kind: "answer", sourceId: item.id, content: `${item.questionText}\n${item.answer}` }));
+    }
+
+    // Record the generated draft for history (includes provenance).
+    const draft = await prisma.generatedDraft.create({
+      data: {
+        userId,
+        kind: "ANSWER",
+        content: answer,
+        context: { question: d.questionText, employer: d.employer, role: d.role },
+        provenance: JSON.stringify(result.provenance),
+      },
+    }).catch(() => null);
+    if (draft) {
+      draftId = draft.id;
+      after(() => indexContent({ userId, kind: "draft", sourceId: draft.id, content: draft.content }));
+    }
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Generation failed." }, 502);
   }
 
-  // 3. Optionally save to the bank for reuse.
-  if (d.save && answer) {
-    const item = await prisma.answerBankItem.create({
-      data: {
-        userId,
-        questionText: d.questionText,
-        questionNormalized: normalizeQuestion(d.questionText),
-        answer,
-        employer: d.employer || null,
-      },
-    }).catch(() => null);
-    if (item) after(() => indexContent({ userId, kind: "answer", sourceId: item.id, content: `${item.questionText}\n${item.answer}` }));
-  }
-
-  // Record the generated draft for history.
-  const draft = await prisma.generatedDraft.create({
-    data: {
-      userId,
-      kind: "ANSWER",
-      content: answer,
-      context: { question: d.questionText, employer: d.employer, role: d.role },
-    },
-  }).catch(() => null);
-  if (draft) after(() => indexContent({ userId, kind: "draft", sourceId: draft.id, content: draft.content }));
-
-  return json({ answer, source: "generated" });
+  return json({ answer, source: "generated", draftId });
 }

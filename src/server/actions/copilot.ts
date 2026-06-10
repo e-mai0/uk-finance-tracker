@@ -2,8 +2,9 @@
 
 import { auth } from "../auth";
 import { prisma } from "../db";
-import { loadApplicantContext } from "../ext-profile";
-import { generateCoverLetter, aiConfigured } from "../ai/generate";
+import { aiConfigured } from "../ai/generate";
+import { gatherSubstance } from "../engine/substance";
+import { draftText } from "../engine/draft";
 
 export interface DraftResult {
   ok?: boolean;
@@ -11,7 +12,7 @@ export interface DraftResult {
   content?: string;
 }
 
-/** Draft a cover letter for a known opportunity, grounded in the user's CV. */
+/** Draft a cover letter for a known opportunity, grounded in the user's voice, stories, and CV. */
 export async function draftCoverLetter(opportunityId: string): Promise<DraftResult> {
   const session = await auth();
   if (!session?.user) return { error: "Your session has expired. Sign in again." };
@@ -27,23 +28,27 @@ export async function draftCoverLetter(opportunityId: string): Promise<DraftResu
   });
   if (!opp) return { error: "Opportunity not found." };
 
-  const applicant = await loadApplicantContext(session.user.id);
+  const userId = session.user.id;
   try {
-    const content = await generateCoverLetter({
-      employer: opp.employer.name,
-      role: opp.title,
-      roleSummary: opp.descriptionSummary,
-      applicant,
-    });
+    const draftArgs = {
+      kind: "COVER_LETTER" as const,
+      question: `Cover letter for ${opp.title} at ${opp.employer.name}`,
+      employerName: opp.employer.name,
+      roleTitle: opp.title,
+    };
+    const ctx = await gatherSubstance(userId, draftArgs);
+    const result = await draftText(userId, ctx, draftArgs);
+    const content = result.text;
 
     await prisma.generatedDraft
       .create({
         data: {
-          userId: session.user.id,
+          userId,
           opportunityId,
           kind: "COVER_LETTER",
           content,
           context: { employer: opp.employer.name, role: opp.title },
+          provenance: JSON.stringify(result.provenance),
         },
       })
       .catch(() => {});

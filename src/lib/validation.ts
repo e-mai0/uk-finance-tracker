@@ -169,6 +169,11 @@ export const extAnswerSchema = z.object({
   // used by the panel's "Save to bank" on an edited answer.
   answer: z.string().trim().max(8000).optional(),
   save: z.boolean().default(false),
+  // Draft-edit learning: the original AI-generated text and the draft's DB id.
+  // When the user edits the draft before saving, original !== answer, and the
+  // pair is captured as a DraftEdit for later voice distillation.
+  original: z.string().max(8000).optional(),
+  draftId: z.string().optional(),
 });
 
 export type ExtAnswerInput = z.infer<typeof extAnswerSchema>;

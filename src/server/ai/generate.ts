@@ -1,3 +1,4 @@
+/** @deprecated superseded by src/server/engine — kept for eval comparison */
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { FieldSchema, FillPlanItem } from "../../lib/validation";

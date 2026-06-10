@@ -17,6 +17,9 @@ export interface AnswerPayload {
   externalUrl?: string;
   answer?: string;
   save?: boolean;
+  // Draft-edit learning: included when saving an edited AI draft.
+  original?: string;
+  draftId?: string;
 }
 
 export interface TrackPayload {

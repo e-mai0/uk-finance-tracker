@@ -36,14 +36,15 @@ const panel = new Panel({
     const q = draftIndex.get(fieldId);
     if (!q) return null;
     const { employer, role } = adapter.employerRole();
-    const res = await send<{ answer?: string }>({
+    const res = await send<{ answer?: string; draftId?: string }>({
       type: "answer",
       payload: {
         questionText: q.label, questionType: "long", charLimit: q.charLimit,
         employer, role, externalUrl: location.href.split("#")[0],
       },
     });
-    return res.ok && res.data?.answer ? res.data.answer : null;
+    if (!res.ok || !res.data?.answer) return null;
+    return { text: res.data.answer, draftId: res.data.draftId };
   },
   onInsert: (fieldId, text) => {
     const q = draftIndex.get(fieldId);
@@ -52,11 +53,11 @@ const panel = new Panel({
       insertIntoField(q.el, text);
     }
   },
-  onSaveDraft: async (_fieldId, label, text) => {
+  onSaveDraft: async (_fieldId, label, text, original, draftId) => {
     const { employer } = adapter.employerRole();
     const res = await send({
       type: "answer",
-      payload: { questionText: label, answer: text, employer, save: true },
+      payload: { questionText: label, answer: text, employer, save: true, original, draftId },
     });
     return res.ok;
   },

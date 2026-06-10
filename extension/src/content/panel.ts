@@ -11,9 +11,9 @@ export interface DraftItem { fieldId: string; label: string; charLimit?: number;
 export interface PanelHandlers {
   onEngage: () => void;                                                // user asked to plan this form
   onAnswerAsk: (fieldId: string, value: string) => Promise<boolean>;   // fill + write-back
-  onGenerate: (fieldId: string) => Promise<string | null>;
+  onGenerate: (fieldId: string) => Promise<{ text: string; draftId?: string } | null>;
   onInsert: (fieldId: string, text: string) => void;
-  onSaveDraft: (fieldId: string, label: string, text: string) => Promise<boolean>;
+  onSaveDraft: (fieldId: string, label: string, text: string, original?: string, draftId?: string) => Promise<boolean>;
 }
 
 const STYLE = `
@@ -236,18 +236,24 @@ export class Panel {
     const msg = el("span", "err");
     msg.style.display = "none";
 
+    // Track the original generated text and its draftId for edit learning.
+    let generatedText: string | undefined;
+    let generatedDraftId: string | undefined;
+
     draft.addEventListener("click", async () => {
       draft.disabled = true;
       draft.textContent = "Drafting…";
       msg.style.display = "none";
-      const text = await this.handlers.onGenerate(d.fieldId);
+      const result = await this.handlers.onGenerate(d.fieldId);
       draft.disabled = false;
       draft.textContent = "Redraft";
-      if (text == null) {
+      if (result == null) {
         msg.textContent = "Couldn’t generate — check the popup is connected.";
         msg.style.display = "block";
       } else {
-        ta.value = text;
+        ta.value = result.text;
+        generatedText = result.text;
+        generatedDraftId = result.draftId;
       }
     });
     insert.addEventListener("click", () => {
@@ -256,7 +262,8 @@ export class Panel {
     save.addEventListener("click", async () => {
       if (!ta.value.trim()) return;
       save.disabled = true;
-      const ok = await this.handlers.onSaveDraft(d.fieldId, d.label, ta.value);
+      // Pass original + draftId so the server can capture the edit for learning.
+      const ok = await this.handlers.onSaveDraft(d.fieldId, d.label, ta.value, generatedText, generatedDraftId);
       save.textContent = ok ? "Saved ✓" : "Save failed";
       setTimeout(() => {
         save.disabled = false;
