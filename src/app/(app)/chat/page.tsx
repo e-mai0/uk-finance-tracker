@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import Link from "next/link";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
@@ -129,7 +130,7 @@ export default async function ChatPage({
 
   // Auto-resolve any BRIEF (or other) attention items for this session.
   // Fire-and-forget: harmless no-op for non-attention sessions.
-  void resolveAttentionByTarget(userId, "chat-session", activeThread.id);
+  after(() => resolveAttentionByTarget(userId, "chat-session", activeThread.id));
 
   return (
     <div className="animate-rise flex h-[calc(100vh-3rem)] overflow-hidden">
