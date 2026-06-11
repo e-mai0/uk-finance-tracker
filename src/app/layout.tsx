@@ -22,7 +22,7 @@ const mono = Fragment_Mono({
 
 // GB+ display slab — page titles, greetings, card heads.
 const display = Zilla_Slab({
-  variable: "--font-display",
+  variable: "--font-display-slab",
   subsets: ["latin"],
   weight: ["500", "600"],
   display: "swap",

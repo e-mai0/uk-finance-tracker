@@ -90,7 +90,7 @@
   /* Fonts fed by next/font in app/layout.tsx:
      --font-geist-sans → Karla · --font-geist-mono → Fragment Mono
      --font-display → Zilla Slab. */
-  --font-display: var(--font-display), Georgia, serif;
+  --font-display: var(--font-display-slab), Georgia, serif;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
@@ -125,7 +125,7 @@ h2 {
 }
 
 /* Uppercase mono micro-label — column heads, eyebrows, chips.
-   TYPE FLOOR: 11px. Never smaller, anywhere. */
+   TYPE FLOOR: 11px for all new GB+ code; legacy sub-11px usages are swept in Task 6. */
 .label {
   font-family: var(--font-mono);
   font-size: 0.6875rem; /* 11px floor */
