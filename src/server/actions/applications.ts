@@ -37,7 +37,16 @@ export async function updateApplicationStatus(
   const userId = session.user.id;
   after(() => distillOutcomesForUser(userId));
   revalidatePath("/applications");
+  revalidatePath(`/applications/${id}`);
   return { ok: true };
+}
+
+/** Form-action wrapper: a `<form action>` can't consume the {ok/error} return. */
+export async function updateApplicationStatusForm(
+  id: string,
+  status: string,
+): Promise<void> {
+  await updateApplicationStatus(id, status);
 }
 
 export async function startApplication(

@@ -2,6 +2,7 @@ import type {
   RoleFamily,
   OpportunityStatus,
   WorkAuth,
+  ApplicationStatus,
 } from "@prisma/client";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,30 @@ export const STATUS_OPTIONS: { value: OpportunityStatus; label: string }[] = [
   { value: "CLOSED", label: "Closed" },
   { value: "UNKNOWN", label: "Unknown" },
 ];
+
+// ---------------------------------------------------------------------------
+// Application pipeline (real applications to external roles)
+// ---------------------------------------------------------------------------
+
+export const APPLICATION_STATUSES: readonly ApplicationStatus[] = [
+  "DRAFT",
+  "AUTOFILLED",
+  "SUBMITTED",
+  "INTERVIEWING",
+  "OFFER",
+  "REJECTED",
+  "WITHDRAWN",
+] as const;
+
+export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
+  DRAFT: "Draft",
+  AUTOFILLED: "Autofilled",
+  SUBMITTED: "Submitted",
+  INTERVIEWING: "Interviewing",
+  OFFER: "Offer",
+  REJECTED: "Rejected",
+  WITHDRAWN: "Withdrawn",
+};
 
 // ---------------------------------------------------------------------------
 // Work authorization
