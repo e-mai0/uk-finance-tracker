@@ -6,10 +6,14 @@
  */
 export function isMacPlatform(): boolean {
   if (typeof navigator === "undefined" || !navigator) return false;
+  // Modern Chromium exposes userAgentData; platform is the legacy fallback
+  // (still correct on Safari/Firefox).
+  const uad = (navigator as { userAgentData?: { platform?: string } }).userAgentData;
+  if (uad?.platform) return uad.platform === "macOS";
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform ?? "");
 }
 
-type Chord = "mod+K" | "mod+J" | "mod+Enter" | "collapse";
+export type Chord = "mod+K" | "mod+J" | "mod+Enter" | "collapse";
 
 export function formatShortcut(chord: Chord | string): string {
   const mac = isMacPlatform();

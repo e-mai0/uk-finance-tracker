@@ -16,6 +16,10 @@ describe("isMacPlatform", () => {
     vi.stubGlobal("navigator", undefined);
     expect(isMacPlatform()).toBe(false);
   });
+  it("prefers userAgentData when available", () => {
+    vi.stubGlobal("navigator", { platform: "Win32", userAgentData: { platform: "macOS" } });
+    expect(isMacPlatform()).toBe(true);
+  });
 });
 
 describe("formatShortcut", () => {
@@ -48,5 +52,25 @@ describe("matchesShortcut", () => {
     vi.stubGlobal("navigator", { platform: "Win32" });
     const e = { key: "\\", ctrlKey: true, metaKey: false, shiftKey: false } as KeyboardEvent;
     expect(matchesShortcut(e, "collapse")).toBe(true);
+  });
+  it("matches mod+Enter on the Enter key", () => {
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    const e = { key: "Enter", ctrlKey: true, metaKey: false, shiftKey: false } as KeyboardEvent;
+    expect(matchesShortcut(e, "mod+Enter")).toBe(true);
+  });
+  it("does not match mod+K when shift is held", () => {
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    const e = { key: "k", ctrlKey: true, metaKey: false, shiftKey: true } as KeyboardEvent;
+    expect(matchesShortcut(e, "mod+K")).toBe(false);
+  });
+  it("matches the collapse chord on mac (meta+shift+j)", () => {
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    const e = { key: "j", ctrlKey: false, metaKey: true, shiftKey: true } as KeyboardEvent;
+    expect(matchesShortcut(e, "collapse")).toBe(true);
+  });
+  it("returns false for non-mod chords", () => {
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    const e = { key: "k", ctrlKey: true, metaKey: false, shiftKey: false } as KeyboardEvent;
+    expect(matchesShortcut(e, "ctrl+K")).toBe(false);
   });
 });
