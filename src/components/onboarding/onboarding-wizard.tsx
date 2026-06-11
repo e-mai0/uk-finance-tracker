@@ -3,99 +3,46 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import type { RoleFamily, WorkAuth } from "@prisma/client";
+import type { RoleFamily } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ToggleChipGroup } from "@/components/ui/toggle-chip";
-import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
 import {
   DEGREE_TYPES,
   ROLE_FAMILIES,
-  ROLE_FAMILY_LABEL,
-  UK_LOCATIONS,
   UK_UNIVERSITIES,
-  WORK_AUTH_OPTIONS,
-  WORK_AUTH_LABEL,
 } from "@/lib/constants";
-import {
-  educationSchema,
-  interestsSchema,
-  eligibilitySchema,
-} from "@/lib/validation";
+import { essentialsSchema } from "@/lib/validation";
 import { completeOnboarding } from "@/server/actions/onboarding";
-import { WritingStep } from "@/components/onboarding/writing-step";
-import { StoriesStep } from "@/components/onboarding/stories-step";
+import { CvStep } from "@/components/onboarding/cv-step";
+import {
+  QuestionnaireForm,
+  EMPTY_QUESTIONNAIRE,
+} from "@/components/questionnaire/questionnaire-form";
 
-type Errors = Record<string, string[] | undefined>;
-
-interface WizardState {
+interface EssentialsState {
   university: string;
   degreeSubject: string;
   degreeType: string;
   graduationYear: string;
   currentYear: string;
   targetRoleFamilies: RoleFamily[];
-  skills: string[];
-  workAuth: WorkAuth | "";
-  aLevels: string;
-  gcseSummary: string;
-  gpaOrEquivalent: string;
-  preferredLocations: string[];
-  openToAnywhereUk: boolean;
-  targetEmployers: string[];
-  cvFileName: string;
-  cvFileSize?: number;
 }
 
-const STORAGE_KEY = "trackr.onboarding.v1";
+const STORAGE_KEY = "trackr.onboarding.v2";
 
-const EMPTY: WizardState = {
+const EMPTY: EssentialsState = {
   university: "",
   degreeSubject: "",
   degreeType: "",
   graduationYear: "",
   currentYear: "",
   targetRoleFamilies: [],
-  skills: [],
-  workAuth: "",
-  aLevels: "",
-  gcseSummary: "",
-  gpaOrEquivalent: "",
-  preferredLocations: [],
-  openToAnywhereUk: false,
-  targetEmployers: [],
-  cvFileName: "",
 };
 
-const STEPS = [
-  "Welcome",
-  "Education",
-  "Interests",
-  "Eligibility",
-  "Targets",
-  "Review",
-  "Your writing",
-  "Your stories",
-] as const;
-
-const REVIEW_STEP = 5;
-const WRITING_STEP = 6;
-const STORIES_STEP = 7;
-
-const SKILL_SUGGESTIONS = [
-  "Excel",
-  "Valuation",
-  "Modelling",
-  "Python",
-  "Accounting",
-  "Statistics",
-  "Probability",
-  "SQL",
-  "Equity research",
-  "Trading",
-];
+const STEPS = ["Essentials", "Your CV", "More about you"] as const;
 
 const YEAR_OPTIONS = ["2026", "2027", "2028", "2029", "2030", "2031"];
 
@@ -109,13 +56,13 @@ export function OnboardingWizard({
   const router = useRouter();
   const { update } = useSession();
   const [step, setStep] = useState(0);
-  const [state, setState] = useState<WizardState>(EMPTY);
-  const [errors, setErrors] = useState<Errors>({});
+  const [state, setState] = useState<EssentialsState>(EMPTY);
+  const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Restore any in-progress draft.
+  // Restore any in-progress draft of the essentials step.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -126,7 +73,6 @@ export function OnboardingWizard({
     setHydrated(true);
   }, []);
 
-  // Autosave progress between steps.
   useEffect(() => {
     if (!hydrated) return;
     try {
@@ -136,70 +82,12 @@ export function OnboardingWizard({
     }
   }, [state, hydrated]);
 
-  const set = <K extends keyof WizardState>(key: K, value: WizardState[K]) =>
+  const set = <K extends keyof EssentialsState>(key: K, value: EssentialsState[K]) =>
     setState((s) => ({ ...s, [key]: value }));
 
-  function validateStep(current: number): boolean {
+  /** Step 0 submit: validates, completes onboarding, then unlocks steps 1–2. */
+  function submitEssentials() {
     setErrors({});
-    if (current === 1) {
-      const r = educationSchema.safeParse({
-        university: state.university,
-        degreeSubject: state.degreeSubject,
-        degreeType: state.degreeType,
-        graduationYear: Number(state.graduationYear),
-        currentYear: Number(state.currentYear),
-      });
-      if (!r.success) {
-        setErrors(r.error.flatten().fieldErrors);
-        return false;
-      }
-    }
-    if (current === 2) {
-      const r = interestsSchema.safeParse({
-        targetRoleFamilies: state.targetRoleFamilies,
-        skills: state.skills,
-      });
-      if (!r.success) {
-        setErrors(r.error.flatten().fieldErrors);
-        return false;
-      }
-    }
-    if (current === 3) {
-      const r = eligibilitySchema.safeParse({
-        workAuth: state.workAuth,
-        gradeInfo: {
-          aLevels: state.aLevels,
-          gcseSummary: state.gcseSummary,
-          gpaOrEquivalent: state.gpaOrEquivalent,
-        },
-      });
-      if (!r.success) {
-        setErrors(r.error.flatten().fieldErrors);
-        return false;
-      }
-    }
-    if (current === 4) {
-      if (!state.openToAnywhereUk && state.preferredLocations.length === 0) {
-        setErrors({
-          preferredLocations: [
-            "Pick at least one location, or select 'open to anywhere in the UK'.",
-          ],
-        });
-        return false;
-      }
-    }
-    return true;
-  }
-
-  function next() {
-    if (validateStep(step)) setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  }
-  function back() {
-    setErrors({});
-    setStep((s) => Math.max(s - 1, 0));
-  }
-
-  function finish() {
     setSubmitError(null);
     const payload = {
       university: state.university,
@@ -208,30 +96,18 @@ export function OnboardingWizard({
       graduationYear: Number(state.graduationYear),
       currentYear: Number(state.currentYear),
       targetRoleFamilies: state.targetRoleFamilies,
-      skills: state.skills,
-      workAuth: state.workAuth,
-      gradeInfo: {
-        aLevels: state.aLevels,
-        gcseSummary: state.gcseSummary,
-        gpaOrEquivalent: state.gpaOrEquivalent,
-      },
-      preferredLocations: state.preferredLocations,
-      openToAnywhereUk: state.openToAnywhereUk,
-      targetEmployers: state.targetEmployers,
-      cvFileName: state.cvFileName,
-      cvFileSize: state.cvFileSize,
     };
+    const r = essentialsSchema.safeParse(payload);
+    if (!r.success) {
+      setErrors(r.error.flatten().fieldErrors);
+      return;
+    }
 
     startTransition(async () => {
       const res = await completeOnboarding(payload);
-      if (res.error) {
-        setSubmitError(res.error);
-        return;
-      }
-      if (res.fieldErrors) {
-        setSubmitError(
-          "Some details need a second look — please review the earlier steps.",
-        );
+      if (res.error || res.fieldErrors) {
+        setSubmitError(res.error ?? "Some details need a second look.");
+        if (res.fieldErrors) setErrors(res.fieldErrors);
         return;
       }
       try {
@@ -239,10 +115,15 @@ export function OnboardingWizard({
       } catch {
         /* ignore */
       }
+      // Session flips to onboarded now; user is done even if they bail here.
       await update({ onboarded: true });
-      router.push("/dashboard");
-      router.refresh();
+      setStep(1);
     });
+  }
+
+  function goToDashboard() {
+    router.push("/dashboard");
+    router.refresh();
   }
 
   return (
@@ -250,40 +131,23 @@ export function OnboardingWizard({
       <Stepper step={step} />
 
       <div className="mt-8 rounded-[var(--radius-card)] border border-border bg-surface p-6 sm:p-8">
-        {submitError && step >= REVIEW_STEP && (
-          <div className="mb-6 rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
-            {submitError}
-          </div>
-        )}
-
         {step === 0 && (
-          <StepShell
-            title={`Welcome, ${firstName}`}
-            subtitle="Let's set up your tracker. This takes about two minutes and powers your personalized fit scores. You can change anything later in Settings."
-          >
-            <ul className="space-y-2.5 text-sm text-muted">
-              {[
-                "Tell us about your degree and timing",
-                "Pick the areas of finance you're targeting",
-                "Confirm your eligibility and preferences",
-              ].map((t) => (
-                <li key={t} className="flex items-start gap-2.5">
-                  <span className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-soft text-[0.7rem] font-bold text-accent">
-                    ✓
-                  </span>
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </StepShell>
-        )}
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-ink">
+              Welcome, {firstName}
+            </h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted">
+              Six quick answers and your personalized fit scores go live. You
+              can change anything later in Settings.
+            </p>
 
-        {step === 1 && (
-          <StepShell
-            title="Your education"
-            subtitle="This helps us judge timing and eligibility for each programme."
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
+            {submitError && (
+              <div className="mt-4 rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
+                {submitError}
+              </div>
+            )}
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Label htmlFor="university">University</Label>
                 <Input
@@ -367,18 +231,13 @@ export function OnboardingWizard({
                 </Select>
                 <FieldError message={errors.currentYear?.[0]} />
               </div>
-            </div>
-          </StepShell>
-        )}
 
-        {step === 2 && (
-          <StepShell
-            title="What are you targeting?"
-            subtitle="Pick every area you'd consider. We weight matching roles more heavily."
-          >
-            <div>
-              <Label>Role families</Label>
-              <div className="mt-2">
+              <div className="sm:col-span-2">
+                <Label>What are you targeting?</Label>
+                <p className="mb-2 mt-1 text-xs text-muted">
+                  Pick every area you&apos;d consider — matching roles are
+                  weighted more heavily.
+                </p>
                 <ToggleChipGroup
                   options={ROLE_FAMILIES.map((r) => ({
                     value: r.value,
@@ -387,218 +246,48 @@ export function OnboardingWizard({
                   selected={state.targetRoleFamilies}
                   onChange={(v) => set("targetRoleFamilies", v)}
                 />
-              </div>
-              <FieldError message={errors.targetRoleFamilies?.[0]} />
-            </div>
-
-            <div className="mt-6">
-              <Label>Skills &amp; interests</Label>
-              <p className="mb-2 mt-1 text-xs text-muted">
-                Add a few — they give roles a small relevance boost. Press Enter
-                to add.
-              </p>
-              <TagInput
-                value={state.skills}
-                onChange={(v) => set("skills", v)}
-                suggestions={SKILL_SUGGESTIONS}
-                placeholder="e.g. Excel, valuation, Python"
-                max={20}
-              />
-            </div>
-          </StepShell>
-        )}
-
-        {step === 3 && (
-          <StepShell
-            title="Eligibility"
-            subtitle="Work authorization shapes which roles are realistic. Academic details are optional."
-          >
-            <div>
-              <Label>UK work authorization</Label>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {WORK_AUTH_OPTIONS.map((o) => {
-                  const active = state.workAuth === o.value;
-                  return (
-                    <button
-                      key={o.value}
-                      type="button"
-                      onClick={() => set("workAuth", o.value)}
-                      className={cn(
-                        "rounded-lg border px-3.5 py-2.5 text-left text-sm font-medium transition-colors",
-                        active
-                          ? "border-accent bg-accent-soft text-accent"
-                          : "border-border-strong bg-surface text-muted hover:border-ink/30 hover:text-ink",
-                      )}
-                    >
-                      {o.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <FieldError message={errors.workAuth?.[0]} />
-            </div>
-
-            <div className="mt-6">
-              <Label>Academic details (optional)</Label>
-              <div className="mt-2 grid gap-3 sm:grid-cols-3">
-                <Input
-                  value={state.aLevels}
-                  onChange={(e) => set("aLevels", e.target.value)}
-                  placeholder="A-levels e.g. A*A*A"
-                />
-                <Input
-                  value={state.gcseSummary}
-                  onChange={(e) => set("gcseSummary", e.target.value)}
-                  placeholder="GCSEs e.g. 9 A*/9s"
-                />
-                <Input
-                  value={state.gpaOrEquivalent}
-                  onChange={(e) => set("gpaOrEquivalent", e.target.value)}
-                  placeholder="Degree grade / GPA"
-                />
+                <FieldError message={errors.targetRoleFamilies?.[0]} />
               </div>
             </div>
-          </StepShell>
+
+            <div className="mt-8 flex justify-end">
+              <Button onClick={submitEssentials} disabled={isPending}>
+                {isPending ? "Setting up…" : "Create my tracker"}
+              </Button>
+            </div>
+          </div>
         )}
 
-        {step === 4 && (
-          <StepShell
-            title="Preferences & targets"
-            subtitle="Where you want to be and which firms you're aiming at."
-          >
-            <div>
-              <Label>Preferred UK locations</Label>
-              <div className="mt-2">
-                <ToggleChipGroup
-                  options={UK_LOCATIONS.map((l) => ({ value: l, label: l }))}
-                  selected={state.preferredLocations}
-                  onChange={(v) => set("preferredLocations", v)}
-                />
-              </div>
-              <label className="mt-3 flex items-center gap-2 text-sm text-muted">
-                <input
-                  type="checkbox"
-                  checked={state.openToAnywhereUk}
-                  onChange={(e) => set("openToAnywhereUk", e.target.checked)}
-                  className="h-4 w-4 rounded border-border-strong accent-[var(--color-accent)]"
-                />
-                I&apos;m open to roles anywhere in the UK
-              </label>
-              <FieldError message={errors.preferredLocations?.[0]} />
-            </div>
+        {step === 1 && <CvStep onContinue={() => setStep(2)} />}
 
+        {step === 2 && (
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-ink">
+              More about you
+            </h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted">
+              All optional — each answer sharpens your matches and drafts. Skip
+              now and update any of it later in Settings.
+            </p>
             <div className="mt-6">
-              <Label>Target employers (optional)</Label>
-              <p className="mb-2 mt-1 text-xs text-muted">
-                Roles at these firms get a fit boost. Press Enter to add.
-              </p>
-              <TagInput
-                value={state.targetEmployers}
-                onChange={(v) => set("targetEmployers", v)}
-                suggestions={employerSuggestions}
-                placeholder="e.g. Goldman Sachs, Blackstone"
+              <QuestionnaireForm
+                initial={EMPTY_QUESTIONNAIRE}
+                employerSuggestions={employerSuggestions}
+                variant="onboarding"
+                onDone={goToDashboard}
               />
             </div>
-
-            <div className="mt-6">
-              <Label htmlFor="cv">CV (optional)</Label>
-              <p className="mb-2 mt-1 text-xs text-muted">
-                We note the file name now; upload the actual CV later in Settings
-                so the apply copilot can tailor to it.
-              </p>
-              <input
-                id="cv"
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  set("cvFileName", f?.name ?? "");
-                  set("cvFileSize", f?.size);
-                }}
-                className="block w-full text-sm text-muted file:mr-3 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink hover:file:bg-surface-2"
-              />
-              {state.cvFileName && (
-                <p className="mt-1.5 text-xs text-success">
-                  Attached: {state.cvFileName}
-                </p>
-              )}
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={goToDashboard}
+                className="text-sm text-muted underline decoration-border-strong underline-offset-4 hover:text-ink hover:decoration-ink/40"
+              >
+                Skip for now — take me to my dashboard
+              </button>
             </div>
-          </StepShell>
+          </div>
         )}
-
-        {step === REVIEW_STEP && (
-          <StepShell
-            title="Review & finish"
-            subtitle="Confirm everything looks right. We'll build your matches instantly."
-          >
-            <dl className="divide-y divide-border rounded-lg border border-border">
-              <Row label="Name" value={firstName} />
-              <Row
-                label="Education"
-                value={`${state.degreeType} ${state.degreeSubject} · ${state.university}`}
-              />
-              <Row
-                label="Timing"
-                value={`Year ${state.currentYear || "—"} · graduating ${state.graduationYear || "—"}`}
-              />
-              <Row
-                label="Targeting"
-                value={
-                  state.targetRoleFamilies
-                    .map((r) => ROLE_FAMILY_LABEL[r])
-                    .join(", ") || "—"
-                }
-              />
-              <Row
-                label="Work auth"
-                value={state.workAuth ? WORK_AUTH_LABEL[state.workAuth] : "—"}
-              />
-              <Row
-                label="Locations"
-                value={
-                  state.openToAnywhereUk
-                    ? "Anywhere in the UK"
-                    : state.preferredLocations.join(", ") || "—"
-                }
-              />
-              <Row
-                label="Target firms"
-                value={state.targetEmployers.join(", ") || "None specified"}
-              />
-            </dl>
-          </StepShell>
-        )}
-
-        {step === WRITING_STEP && (
-          <WritingStep onContinue={next} onSkip={next} />
-        )}
-
-        {step === STORIES_STEP && (
-          <StoriesStep onContinue={finish} onSkip={finish} />
-        )}
-
-        <div className="mt-8 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={back}
-            disabled={step === 0 || isPending}
-            className={step === 0 ? "invisible" : ""}
-          >
-            Back
-          </Button>
-          {/* Steps 0–(REVIEW_STEP-1) use the shared bottom navigation */}
-          {step < REVIEW_STEP && (
-            <Button onClick={next}>
-              {step === 0 ? "Get started" : "Continue"}
-            </Button>
-          )}
-          {step === REVIEW_STEP && (
-            <Button onClick={next} disabled={isPending}>
-              Continue
-            </Button>
-          )}
-          {/* Steps WRITING_STEP–STORIES_STEP manage their own primary CTA and skip link internally */}
-        </div>
       </div>
     </div>
   );
@@ -625,33 +314,6 @@ function Stepper({ step }: { step: number }) {
           </span>
         </div>
       ))}
-    </div>
-  );
-}
-
-function StepShell({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <h2 className="text-xl font-semibold tracking-tight text-ink">{title}</h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted">{subtitle}</p>
-      <div className="mt-6">{children}</div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4 px-4 py-3">
-      <dt className="text-sm text-muted">{label}</dt>
-      <dd className="text-right text-sm font-medium text-ink">{value}</dd>
     </div>
   );
 }
