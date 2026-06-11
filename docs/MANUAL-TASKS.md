@@ -32,6 +32,23 @@ some gate others. Check them off as you go.
 - [ ] **Reload the unpacked extension** if you haven't since the universal-forms
   merge (extension/: `npm run build`, then chrome://extensions → Reload).
   Extension icons still needed before any Web Store submission.
+- [ ] **Finish linking the Supabase MCP server** (`.mcp.json` is now in the
+  repo; it reads two env vars, so no secrets live in git):
+  1. Create a personal access token: Supabase dashboard → Account →
+     Access Tokens → "Generate new token".
+  2. Grab the project ref (the `[PROJECT-REF]` part of `SUPABASE_URL`, also
+     under Project → Settings → General).
+  3. Make both available to Claude Code as `SUPABASE_ACCESS_TOKEN` and
+     `SUPABASE_PROJECT_REF`:
+     - Claude Code on the web: claude.ai/code → Environments → this repo's
+       environment → environment variables (mark the token as a secret).
+     - Local CLI: export them in your shell (or shell profile) — `.env` is
+       NOT read for MCP config.
+  4. First run: approve the project-scoped server when prompted; `claude mcp
+     list` should then show `supabase` connected, and `/mcp` in a session
+     lists its tools.
+  - Note: the server is pinned `read_only=true`; drop that query param in
+    `.mcp.json` if you want it to apply SQL/migrations for you.
 
 ## Done
 
