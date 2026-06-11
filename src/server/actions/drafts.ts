@@ -7,6 +7,7 @@ import { prisma } from "../db";
 import { saveAnswerToBank } from "../answers";
 import { resolveAttentionByKey } from "../attention";
 import { maybeDistill } from "../engine/distill";
+import { recordStoryUsage } from "../engine/story-usage";
 
 /**
  * Accept a generated draft (optionally edited) into the answer bank and
@@ -48,6 +49,7 @@ export async function acceptDraft(
     after(() => maybeDistill(userId));
   }
 
+  after(() => recordStoryUsage(userId, draftId));
   await resolveAttentionByKey(userId, `draft:${draftId}`);
   revalidatePath("/today");
   return { ok: true };
@@ -71,5 +73,6 @@ export async function skipDraft(
   if (!draft) return { error: "Not found." };
 
   await resolveAttentionByKey(userId, `draft:${draftId}`);
+  revalidatePath("/today");
   return { ok: true };
 }

@@ -8,7 +8,7 @@ const PRI_PILL =
   "rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-bold text-canvas transition-opacity disabled:opacity-60";
 const SEC_PILL =
   "rounded-pill border border-border-interactive bg-surface px-3 py-1 text-[0.8125rem] font-bold text-ink transition-colors hover:bg-surface-2 disabled:opacity-60";
-const GHOST = "label px-1.5 py-1 text-subtle transition-colors hover:text-ink";
+const GHOST = "label px-1.5 py-1 text-subtle transition-colors hover:text-ink disabled:opacity-40";
 
 /**
  * Review card for one generated draft (GB+ proposal idiom — agent border,
@@ -121,7 +121,7 @@ export function DraftReviewCard({
 
       <div className="flex items-center gap-2 border-t border-border px-3.5 py-2.5">
         <button type="button" onClick={accept} disabled={pending} className={PRI_PILL}>
-          {pending ? "Saving…" : editing || edited ? "Save edited" : "Accept"}
+          {pending ? "Saving…" : edited ? "Save edited" : "Accept"}
         </button>
         {!editing && (
           <button
