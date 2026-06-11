@@ -5,7 +5,7 @@ import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { CyclopsChat } from "./cyclops-chat";
 import { createThread } from "./actions";
-import { rowToUIMessage } from "@/server/chat/messages";
+import { toUIMessages } from "@/server/chat/messages";
 import { resolveAttentionByTarget } from "@/server/attention";
 
 export const dynamic = "force-dynamic";
@@ -126,7 +126,7 @@ export default async function ChatPage({
   }
 
   // Map stored messages to UIMessages (shared helper — item 11)
-  const initialMessages = activeThread.messages.map(rowToUIMessage);
+  const initialMessages = toUIMessages(activeThread.messages);
 
   // Auto-resolve any BRIEF (or other) attention items for this session.
   // Fire-and-forget: harmless no-op for non-attention sessions.

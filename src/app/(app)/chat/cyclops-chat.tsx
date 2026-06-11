@@ -152,11 +152,17 @@ export function CyclopsChat({
   sessionId,
   initialMessages,
   prefill,
+  compact,
+  suggestions,
 }: {
   sessionId: string;
   initialMessages: UIMessage[];
   /** Deep-link prefill: seeds the input only, never auto-sent. */
   prefill?: string;
+  /** Dock mode: tighter paddings, no char counter. */
+  compact?: boolean;
+  /** ≤3 conversation starters shown above the composer on an empty thread; clicking sends immediately. */
+  suggestions?: string[];
 }) {
   // Component is keyed by thread id, so useState init is sufficient.
   // Only seed from prefill on a fresh thread — after a send/refresh the
@@ -210,7 +216,13 @@ export function CyclopsChat({
   return (
     <div className="flex h-full flex-col">
       {/* Message feed */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div
+        ref={scrollContainerRef}
+        className={cn(
+          "flex-1 overflow-y-auto",
+          compact ? "px-3 py-2" : "px-4 py-4",
+        )}
+      >
         {messages.length === 0 && !isStreaming && (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <p className="label text-subtle">Cyclops</p>
@@ -285,8 +297,37 @@ export function CyclopsChat({
         <div ref={bottomRef} />
       </div>
 
+      {/* Suggestions — empty-thread starters, sent through the same path as submit */}
+      {suggestions &&
+        suggestions.length > 0 &&
+        messages.length === 0 &&
+        !isStreaming && (
+          <div
+            className={cn(
+              "flex flex-wrap gap-1.5",
+              compact ? "px-3 pb-2" : "px-4 pb-3",
+            )}
+          >
+            {suggestions.slice(0, 3).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => sendMessage({ text: s })}
+                className="rounded-pill border border-border px-3 py-1.5 text-[0.8125rem] font-bold text-muted transition-colors hover:border-agent-mark hover:text-accent"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
       {/* Input bar */}
-      <div className="border-t border-border bg-surface px-4 py-3">
+      <div
+        className={cn(
+          "border-t border-border bg-surface",
+          compact ? "px-3 py-2" : "px-4 py-3",
+        )}
+      >
         <form
           onSubmit={handleSubmit}
           className="flex items-center gap-2"
@@ -331,7 +372,7 @@ export function CyclopsChat({
             </button>
           )}
         </form>
-        {input.length > 7500 && (
+        {!compact && input.length > 7500 && (
           <p className="mt-1 font-mono text-[0.6875rem] text-warning">
             {8000 - input.length} chars remaining
           </p>
