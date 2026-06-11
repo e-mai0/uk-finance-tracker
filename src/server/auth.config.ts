@@ -15,6 +15,7 @@ const APP_PREFIXES = [
   "/settings",
   "/opportunities",
   "/applications",
+  "/activity",
 ];
 
 export const authConfig = {

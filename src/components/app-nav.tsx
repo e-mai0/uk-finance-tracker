@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
-import { formatShortcut } from "@/lib/shortcuts";
+import { CommandPalette } from "@/components/command-palette";
 
 const NAV: { href: string; label: string; badgeKey?: "today" | "applications" | "chat" }[] = [
   { href: "/today", label: "Today", badgeKey: "today" },
@@ -30,12 +30,8 @@ export function AppNav({
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [kHint, setKHint] = useState("⌘K");
   const menuRef = useRef<HTMLDivElement>(null);
   const avatarButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Platform-aware hint must render client-side (navigator).
-  useEffect(() => setKHint(formatShortcut("mod+K")), []);
 
   // Close the avatar menu on outside click / esc.
   useEffect(() => {
@@ -111,24 +107,20 @@ export function AppNav({
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5">
-          {/* ⌘K affordance — palette itself lands with the dock (Plan 3) */}
-          <button
-            type="button"
-            className="label flex items-center gap-2 rounded-pill border border-border bg-surface px-3 py-1.5 text-faint"
-          >
-            <span aria-hidden className="text-accent">
-              ›
-            </span>
-            <span suppressHydrationWarning>{kHint}</span>
-          </button>
+          {/* ⌘K palette — trigger button + overlay live in the component. */}
+          <CommandPalette />
 
-          {/* Agent activity pill — click target becomes the activity log (Plan 4) */}
-          <span className="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle">
+          {/* Agent activity pill — opens the activity log. */}
+          <Link
+            href="/activity"
+            aria-label="Agent activity log"
+            className="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle transition-colors hover:bg-surface-2 hover:text-ink"
+          >
             <span aria-hidden className="text-agent-mark">
               ●
             </span>
             {activity}
-          </span>
+          </Link>
 
           <div className="relative" ref={menuRef}>
             <button
