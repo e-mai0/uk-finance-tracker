@@ -231,8 +231,9 @@ export function CommandPalette() {
                         onMouseMove={() => setSelected(idx)}
                         className={cn(
                           "flex cursor-pointer items-center gap-2.5 px-4 py-1.5 text-[0.8125rem]",
+                          // Selection law (§2): ink inset, never amber.
                           isSelected
-                            ? "bg-accent-tint text-ink"
+                            ? "bg-surface-2 text-ink shadow-[inset_3px_0_0_var(--color-ink)]"
                             : "text-muted",
                         )}
                       >
@@ -240,7 +241,7 @@ export function CommandPalette() {
                           aria-hidden
                           className={cn(
                             "w-3 shrink-0 text-center text-[0.6875rem]",
-                            isSelected ? "text-accent" : "text-faint",
+                            isSelected ? "text-ink" : "text-faint",
                           )}
                         >
                           {isSelected ? "›" : ""}
