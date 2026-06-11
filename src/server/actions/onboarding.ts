@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { auth } from "../auth";
 import { prisma } from "../db";
 import { recomputeMatchScores } from "../matching";
-import { onboardingSchema } from "../../lib/validation";
+import { essentialsSchema } from "../../lib/validation";
+import { syncProfileFactsToMemory } from "../memory/sync";
 
 export interface OnboardingResult {
   ok?: boolean;
@@ -12,11 +13,16 @@ export interface OnboardingResult {
   fieldErrors?: Record<string, string[]>;
 }
 
+/**
+ * Completes onboarding from the mandatory essentials step alone. The optional
+ * CV and questionnaire steps that follow are progressive enhancement — the
+ * user is fully onboarded once this returns ok.
+ */
 export async function completeOnboarding(raw: unknown): Promise<OnboardingResult> {
   const session = await auth();
   if (!session?.user) return { error: "Your session has expired. Sign in again." };
 
-  const parsed = onboardingSchema.safeParse(raw);
+  const parsed = essentialsSchema.safeParse(raw);
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
@@ -24,68 +30,27 @@ export async function completeOnboarding(raw: unknown): Promise<OnboardingResult
   const d = parsed.data;
   const userId = session.user.id;
 
-  const gradeInfo =
-    d.gradeInfo &&
-    (d.gradeInfo.aLevels || d.gradeInfo.gcseSummary || d.gradeInfo.gpaOrEquivalent)
-      ? d.gradeInfo
-      : undefined;
-
-  // The onboarding wizard captures a CV filename hint only (no bytes). The real
-  // upload + parsing happens in Settings → Apply Profile, so we stash the hint
-  // on ApplyProfile when present and prompt the user to finish uploading there.
-  const cvHint = d.cvFileName
-    ? { cvFileName: d.cvFileName, cvFileSize: d.cvFileSize ?? null }
-    : null;
+  const education = {
+    university: d.university,
+    degreeSubject: d.degreeSubject,
+    degreeType: d.degreeType,
+    graduationYear: d.graduationYear,
+    currentYear: d.currentYear,
+  };
 
   await prisma.$transaction([
+    // Updates touch only essentials fields so a re-run never clobbers
+    // questionnaire answers (workAuth, skills, gradeInfo, locations…).
     prisma.profile.upsert({
       where: { userId },
-      update: {
-        university: d.university,
-        degreeSubject: d.degreeSubject,
-        degreeType: d.degreeType,
-        graduationYear: d.graduationYear,
-        currentYear: d.currentYear,
-        workAuth: d.workAuth,
-        skills: d.skills,
-        gradeInfo: gradeInfo ?? undefined,
-      },
-      create: {
-        userId,
-        university: d.university,
-        degreeSubject: d.degreeSubject,
-        degreeType: d.degreeType,
-        graduationYear: d.graduationYear,
-        currentYear: d.currentYear,
-        workAuth: d.workAuth,
-        skills: d.skills,
-        gradeInfo: gradeInfo ?? undefined,
-      },
+      update: education,
+      create: { userId, ...education },
     }),
-    ...(cvHint
-      ? [
-          prisma.applyProfile.upsert({
-            where: { userId },
-            update: cvHint,
-            create: { userId, ...cvHint },
-          }),
-        ]
-      : []),
     prisma.preferences.upsert({
       where: { userId },
-      update: {
-        targetRoleFamilies: d.targetRoleFamilies,
-        preferredLocations: d.preferredLocations,
-        openToAnywhereUk: d.openToAnywhereUk,
-        targetEmployers: d.targetEmployers,
-      },
-      create: {
-        userId,
-        targetRoleFamilies: d.targetRoleFamilies,
-        preferredLocations: d.preferredLocations,
-        openToAnywhereUk: d.openToAnywhereUk,
-        targetEmployers: d.targetEmployers,
-      },
+      update: { targetRoleFamilies: d.targetRoleFamilies },
+      // Until the user answers locations we treat them as open to anywhere.
+      create: { userId, targetRoleFamilies: d.targetRoleFamilies, openToAnywhereUk: true },
     }),
     prisma.user.update({
       where: { id: userId },
@@ -93,6 +58,7 @@ export async function completeOnboarding(raw: unknown): Promise<OnboardingResult
     }),
   ]);
 
+  await syncProfileFactsToMemory(userId, "onboarding completed");
   await recomputeMatchScores(userId);
   revalidatePath("/dashboard");
 
