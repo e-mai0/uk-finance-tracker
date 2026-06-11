@@ -31,6 +31,7 @@ export function AppNav({
   const [menuOpen, setMenuOpen] = useState(false);
   const [kHint, setKHint] = useState("⌘K");
   const menuRef = useRef<HTMLDivElement>(null);
+  const avatarButtonRef = useRef<HTMLButtonElement>(null);
 
   // Platform-aware hint must render client-side (navigator).
   useEffect(() => setKHint(formatShortcut("mod+K")), []);
@@ -42,7 +43,10 @@ export function AppNav({
       if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        avatarButtonRef.current?.focus();
+      }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -79,11 +83,7 @@ export function AppNav({
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                aria-label={
-                  count > 0
-                    ? `${item.label}, ${count} items need attention`
-                    : item.label
-                }
+                aria-label={count > 0 ? `${item.label}, ${count} items need attention` : undefined}
                 className={cn(
                   "rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold transition-colors",
                   active
@@ -96,7 +96,7 @@ export function AppNav({
                   <span
                     aria-hidden
                     className={cn(
-                      "tabular ml-1.5 text-[0.6875rem]",
+                      "tabular ml-1.5 text-[0.6875rem] font-normal",
                       active ? "text-amber" : "text-accent",
                     )}
                   >
@@ -130,8 +130,9 @@ export function AppNav({
 
           <div className="relative" ref={menuRef}>
             <button
+              ref={avatarButtonRef}
               type="button"
-              aria-haspopup="menu"
+              aria-haspopup="true"
               aria-expanded={menuOpen}
               aria-label={`Account: ${name}`}
               onClick={() => setMenuOpen((v) => !v)}
@@ -141,11 +142,9 @@ export function AppNav({
             </button>
             {menuOpen && (
               <div
-                role="menu"
                 className="absolute right-0 top-9 w-44 rounded-control border border-border bg-surface py-1 shadow-pop"
               >
                 <Link
-                  role="menuitem"
                   href="/settings"
                   onClick={() => setMenuOpen(false)}
                   className="block px-3.5 py-2 text-[0.8125rem] font-bold text-muted hover:bg-surface-2 hover:text-ink"
@@ -154,7 +153,6 @@ export function AppNav({
                 </Link>
                 <form action={signOutAction}>
                   <button
-                    role="menuitem"
                     type="submit"
                     className="block w-full px-3.5 py-2 text-left text-[0.8125rem] font-bold text-muted hover:bg-surface-2 hover:text-ink"
                   >
