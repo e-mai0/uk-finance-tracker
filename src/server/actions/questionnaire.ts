@@ -56,10 +56,14 @@ export async function saveQuestionnaire(raw: unknown): Promise<QuestionnaireResu
         },
       }),
     ]);
-  } catch {
-    // Profile/Preferences rows are created by completeOnboarding; missing rows
-    // mean the user somehow skipped it.
-    return { error: "Complete onboarding before saving the questionnaire." };
+  } catch (err) {
+    // P2025 = record to update not found: the Profile/Preferences rows are
+    // created by completeOnboarding, so their absence means it was skipped.
+    if ((err as { code?: string }).code === "P2025") {
+      return { error: "Complete onboarding before saving the questionnaire." };
+    }
+    console.error("[questionnaire] save failed:", err);
+    return { error: "Couldn't save right now — please try again." };
   }
 
   await syncProfileFactsToMemory(userId, "questionnaire updated");
