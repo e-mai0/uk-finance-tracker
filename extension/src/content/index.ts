@@ -1,6 +1,12 @@
 import { pickAdapter } from "./adapters";
 import { serializeForm, currentFieldValue, type SerializedForm } from "./serialize";
-import { applyPlan, insertIntoField, setFieldValue, type PlanQuestion } from "./autofill";
+import {
+  applyPlan,
+  insertIntoField,
+  isTargetConnected,
+  setFieldValue,
+  type PlanQuestion,
+} from "./autofill";
 import {
   Panel,
   type AgentReviewAction,
@@ -9,7 +15,7 @@ import {
   type GenerateFailure,
 } from "./panel";
 import { send } from "./messaging";
-import { looksLikeApplication, mountCue } from "./detect";
+import { looksLikeApplication, hasAnyField, mountCue } from "./detect";
 import type {
   AgentResultPayload,
   DraftProvenance,
@@ -208,7 +214,7 @@ const panel = new Panel({
     const fieldEl = agentForm?.elements.get(fieldId);
     // A detached element (SPA re-render since the snapshot) cannot receive the
     // write - fail visibly rather than reporting a phantom "applied".
-    if (!fieldEl || !fieldEl.isConnected) return false;
+    if (!fieldEl || !isTargetConnected(fieldEl)) return false;
     return setFieldValue(fieldEl, value);
   },
   // Unresolved agent question: fill the field + persist the fact, mirroring
@@ -216,7 +222,7 @@ const panel = new Panel({
   onAgentAnswer: async (fieldId, value) => {
     const form = agentForm;
     const fieldEl = form?.elements.get(fieldId);
-    if (!form || !fieldEl || !fieldEl.isConnected) return false;
+    if (!form || !fieldEl || !isTargetConnected(fieldEl)) return false;
     setFieldValue(fieldEl, value);
     const questionText =
       agentQuestions.get(fieldId) ||
@@ -234,14 +240,15 @@ function formContainer(): ParentNode | null {
   return adapter.formContainer() ?? (looksLikeApplication() ? document.body : null);
 }
 
-async function engage() {
+async function engage(force = false) {
   const seq = ++engageSeq;
   // Fresh agent session per engage: round counter back to 1, stale snapshot
   // and question index dropped (a stale in-flight round is dropped by seq).
   agentRound = 0;
   agentForm = null;
   agentQuestions = new Map();
-  const container = formContainer();
+  const container =
+    formContainer() ?? (force && hasAnyField() ? document.body : null);
   if (!container) { panel.showError("No application form found on this page."); return; }
 
   const status = await send<{ connected: boolean; apiBase?: string }>({ type: "status" });
@@ -255,7 +262,10 @@ async function engage() {
     type: "plan",
     payload: { fields: serialized.fields as FieldSchema[], employer, role, url: location.href.split("#")[0] },
   });
-  if (!res.ok || !res.data?.plan) { panel.showError(res.error || "Couldn’t plan this form."); return; }
+  if (!res.ok || !res.data?.plan) {
+    panel.showError(res.error || "Couldn’t plan this form. Try reloading the page.");
+    return;
+  }
   // A newer engage superseded this one while we awaited the plan - don't double-apply.
   if (seq !== engageSeq) return;
 
@@ -322,8 +332,26 @@ async function engage() {
   }
 }
 
+// The popup (extension icon) broadcasts this to every frame; the frame that
+// owns a form engages, the rest no-op. This is the universal fallback for pages
+// the auto-detector declines.
+chrome.runtime.onMessage.addListener((msg: { type?: string }, _sender, sendResponse) => {
+  if (msg?.type !== "trackr:activate") return false;
+  const hasForm = formContainer() != null || hasAnyField();
+  if (!hasForm) return false;
+  mounted = true;
+  document.getElementById("trackr-cue-root")?.remove();
+  panel.mount();
+  panel.setStatus("");
+  void engage(true);
+  sendResponse({ ok: true });
+  return true;
+});
+
 function init() {
   if (mounted) return;
+  // In sub-frames, only bother with reasonably sized frames (skip ad/util iframes).
+  if (window.top !== window && window.innerWidth * window.innerHeight < 90_000) return;
   if (!formContainer()) return;
   mounted = true;
   mountCue(() => { panel.mount(); panel.setStatus(""); void engage(); });

@@ -1,9 +1,12 @@
 import { getLabelText, collectFields, type FillableEl } from "./field-map";
+import { collectAriaControls } from "./aria-controls";
+import type { FillTarget } from "./autofill";
 import type { FieldSchema, FieldType } from "../shared/types";
+import { LIMITS } from "../shared/limits";
 
 export interface SerializedForm {
   fields: FieldSchema[];
-  elements: Map<string, FillableEl>;
+  elements: Map<string, FillTarget>;
 }
 
 function fieldType(el: FillableEl): FieldType {
@@ -30,7 +33,7 @@ function optionsFor(el: FillableEl): string[] | undefined {
 
 /** Walk a form container into a compact FieldSchema[] plus an id→element map. */
 export function serializeForm(root: ParentNode): SerializedForm {
-  const elements = new Map<string, FillableEl>();
+  const elements = new Map<string, FillTarget>();
   const fields: FieldSchema[] = [];
   const seenRadioGroups = new Set<string>();
   let i = 0;
@@ -63,16 +66,51 @@ export function serializeForm(root: ParentNode): SerializedForm {
     });
   }
 
-  return { fields, elements };
+  for (const control of collectAriaControls(root)) {
+    const id = `f${i++}`;
+    elements.set(id, control);
+    fields.push({
+      id,
+      label: control.label,
+      type: control.type,
+      options: control.options.map((o) => o.label),
+      required: control.required,
+    });
+  }
+
+  return { fields: clampFields(fields), elements };
+}
+
+/** Clamp serialized fields to the server's accepted bounds (defense in depth —
+ *  the server clamps too). Truncates over-long text and caps option/field counts. */
+export function clampFields(fields: FieldSchema[]): FieldSchema[] {
+  return fields.slice(0, LIMITS.maxFields).map((f) => ({
+    ...f,
+    label: (f.label ?? "").slice(0, LIMITS.maxLabel),
+    nearbyText: f.nearbyText
+      ? f.nearbyText.slice(0, LIMITS.maxNearbyText)
+      : undefined,
+    options: f.options
+      ? f.options.slice(0, LIMITS.maxOptions).map((o) => o.slice(0, LIMITS.maxOption))
+      : undefined,
+    charLimit:
+      f.charLimit && f.charLimit > LIMITS.maxCharLimit ? LIMITS.maxCharLimit : f.charLimit,
+  }));
 }
 
 /**
  * Current user-visible value of a field, for agent-assist rounds (the server
  * needs to know what is already filled). Radio groups report the checked
  * radio's label; checkboxes report "true"/"false"; selects report the chosen
- * option's text (empty when only the placeholder is selected).
+ * option's text (empty when only the placeholder is selected). ARIA widgets
+ * report the aria-checked/aria-selected option's label.
  */
-export function currentFieldValue(el: FillableEl): string {
+export function currentFieldValue(el: FillTarget): string {
+  if ("kind" in el) {
+    const stateAttr = el.type === "radio" ? "aria-checked" : "aria-selected";
+    const chosen = el.options.find((o) => o.el.getAttribute(stateAttr) === "true");
+    return chosen ? chosen.label : "";
+  }
   if (el instanceof HTMLSelectElement) {
     const opt = el.selectedOptions[0];
     return opt && opt.value ? opt.text.trim() : "";
