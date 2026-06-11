@@ -1,12 +1,11 @@
 import { Suspense } from "react";
 import { auth } from "@/server/auth";
 import { getTrackerItems } from "@/server/queries/opportunities";
+import { getOpenAttentionByTarget } from "@/server/queries/attention";
 import { parseFilters, applyFiltersAndSort } from "@/lib/filters";
 import { daysUntil, formatShortDate } from "@/lib/utils";
 import { FiltersBar } from "@/components/tracker/filters-bar";
-import { OpportunityTable } from "@/components/tracker/opportunity-table";
-import { SummaryCards } from "@/components/tracker/summary-cards";
-import { TopMatches } from "@/components/tracker/top-matches";
+import { Board } from "@/components/tracker/board";
 import { TickerTape } from "@/components/tracker/ticker-tape";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +19,10 @@ export default async function DashboardPage({
   const session = await auth();
   const userId = session!.user.id;
 
-  const [sp, allItems] = await Promise.all([
+  const [sp, allItems, attention] = await Promise.all([
     searchParams,
     getTrackerItems(userId),
+    getOpenAttentionByTarget(userId, "opportunity"),
   ]);
 
   const filters = parseFilters(sp);
@@ -47,32 +47,78 @@ export default async function DashboardPage({
     .map((i) => new Date(i.lastSeenAt).getTime())
     .reduce((a, b) => Math.max(a, b), 0);
 
+  const rows = items.map((it) => ({
+    id: it.id,
+    employerName: it.employerName,
+    title: it.title,
+    divisionDesk: it.divisionDesk ?? null,
+    location: it.location ?? null,
+    status: it.status,
+    deadlineAt: it.deadlineAt ? new Date(it.deadlineAt).toISOString() : null,
+    daysLeft: daysUntil(it.deadlineAt, now),
+    score: it.score,
+    saved: it.saved === true,
+    agentTags: (attention.get(it.id) ?? []).map((a) => ({
+      kind: a.kind,
+      title: a.title,
+    })),
+  }));
+
   return (
     <div className="animate-rise">
-      {/* Live tape — completes the dark command rail beneath the header */}
+      {/* Live tape — stays the first element, full width (user requirement) */}
       <TickerTape items={allItems} />
 
       {/* Title strip */}
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-surface px-3 py-2">
-        <div className="flex items-baseline gap-3">
-          <span className="label text-subtle">Trackr Desk</span>
-          <span className="text-[0.95rem] font-semibold tracking-tight text-ink">
-            Summer 2027{" "}
-            <span className="text-subtle">· UK finance internships</span>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border bg-surface px-4 py-3">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-[1.35rem] leading-none text-ink">Tracker</h1>
+          <span className="text-[0.8125rem] text-subtle">
+            Summer 2027 · UK finance internships
           </span>
         </div>
-        <div className="label flex items-center gap-2 text-subtle">
-          <span className="tabular text-ink">{allItems.length}</span> positions
-          <span aria-hidden className="text-border-strong">
-            │
+        <div className="label flex flex-wrap items-center gap-2 text-subtle">
+          <span>
+            <span className="tabular text-ink">{allItems.length}</span> positions
           </span>
-          <span className="tabular text-ink">{employerCount}</span> firms
+          <span aria-hidden className="text-border-strong">│</span>
+          <span>
+            <span className="tabular text-ink">{employerCount}</span> firms
+          </span>
+          {lastSync > 0 && (
+            <>
+              <span aria-hidden className="text-border-strong">│</span>
+              <span>
+                Synced{" "}
+                <span className="tabular text-muted">
+                  {formatShortDate(new Date(lastSync))}
+                </span>
+              </span>
+            </>
+          )}
+          <span aria-hidden className="text-border-strong">│</span>
+          <span>Deterministic · No ML</span>
         </div>
       </div>
 
-      {/* Index ribbon */}
-      <div className="border-b border-border">
-        <SummaryCards stats={stats} />
+      {/* Stats line — the old index ribbon, inlined */}
+      <div className="label flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-surface px-4 py-2 text-subtle">
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden className="text-success">▲</span>
+          Open <span className="tabular text-ink">{stats.openCount}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          New · 7d <span className="tabular text-ink">{stats.newlyAdded}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden className="text-warning">▼</span>
+          Closing · 14d{" "}
+          <span className="tabular text-ink">{stats.deadlinesSoon}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden className="text-accent">●</span>
+          Match ≥ 75 <span className="tabular text-ink">{stats.topMatches}</span>
+        </span>
       </div>
 
       {/* Filter line */}
@@ -82,58 +128,10 @@ export default async function DashboardPage({
         </Suspense>
       </div>
 
-      {/* Main — grid + watchlist butt together, divided by one hairline */}
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_310px]">
-        <div className="min-w-0 border-border-strong lg:border-r">
-          <OpportunityTable items={items} />
-        </div>
-        <aside className="border-t border-border-strong lg:sticky lg:top-12 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-auto lg:border-t-0">
-          <TopMatches items={allItems} />
-        </aside>
-      </div>
-
-      {/* Status / legend footer */}
-      <div className="label flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border-strong bg-surface-2 px-3 py-2 text-subtle">
-        <Legend tone="text-success" glyph="▲" label="Open" />
-        <Legend tone="text-warning" glyph="◆" label="Soon" />
-        <Legend tone="text-danger" glyph="▼" label="Closing" />
-        <Legend tone="text-faint" glyph="·" label="Closed" />
-        <span className="ml-auto flex items-center gap-3">
-          <span>Deterministic · No ML</span>
-          {lastSync > 0 && (
-            <>
-              <span aria-hidden className="text-border-strong">
-                │
-              </span>
-              <span>
-                Last sync{" "}
-                <span className="tabular text-muted">
-                  {formatShortDate(new Date(lastSync))}
-                </span>
-              </span>
-            </>
-          )}
-        </span>
+      {/* The board */}
+      <div className="p-4">
+        <Board rows={rows} />
       </div>
     </div>
-  );
-}
-
-function Legend({
-  tone,
-  glyph,
-  label,
-}: {
-  tone: string;
-  glyph: string;
-  label: string;
-}) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span aria-hidden className={tone}>
-        {glyph}
-      </span>
-      {label}
-    </span>
   );
 }
