@@ -1,99 +1,96 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   "PAPER TERMINAL" — a Bloomberg-grade terminal printed on financial newsprint.
-   One unified light surface: warm paper-white, near-black ink, hairline
-   gridlines, a single committed ink-blue identifier accent, and green-up /
-   red-down market semantics. Every number is mono + tabular. Each open role is
-   a tradeable ticker. No drawn icons — only typographic terminal glyphs.
-
-   Franklin-Gothic UI (Libre Franklin) · finance-grade mono (IBM Plex Mono) ·
-   editorial serif (Newsreader, marketing headlines only). Light theme.
+   "GB+" — Cyclops application OS. Warm linen paper, cream cards, slab display
+   over a humanist sans, single-weight data mono. Amber means agent — always
+   and only. Pill controls, 14px cards, hairline rules. Type floor: 11px.
+   Spec: docs/superpowers/specs/2026-06-11-cyclops-gbplus-ui-design.md
 --------------------------------------------------------------------------- */
 @theme {
-  /* Surfaces — "Porcelain": crisp near-white, faintly cool-neutral. De-yellowed
-     from the old warm wash so the desk reads clean rather than tinted. */
-  --color-canvas: #f6f6f5; /* page base, near-white */
-  --color-surface: #ffffff; /* panels / the terminal body */
-  --color-surface-2: #f1f1ef; /* header rows, ribbon cells, subtle fills */
-  --color-surface-3: #e7e7e3; /* deeper fill / pressed */
+  /* Surfaces — old token names remapped so existing pages degrade gracefully */
+  --color-canvas: #f4f1ea;    /* linen page base */
+  --color-surface: #fffdf9;   /* cream cards */
+  --color-surface-2: #faf6ee; /* card heads + hover */
+  --color-surface-3: #f0ebdf; /* table heads / pressed */
 
-  /* Ink scale */
-  --color-ink: #18181a; /* near-black primary text */
-  --color-muted: #56565a; /* secondary text */
-  --color-subtle: #86868b; /* meta / labels */
-  --color-faint: #ababb0; /* faintest */
+  /* Ink scale — all text-grade values are WCAG-measured on their surfaces */
+  --color-ink: #2b2722;
+  --color-muted: #5d564b;
+  --color-subtle: #6b6256;    /* replaces failing #847b6e for text */
+  --color-faint: #756c5f;     /* micro-labels ≥11px only */
+  --color-deco: #a39885;      /* NON-TEXT only: decorative rules, tracks */
 
-  /* Hairlines — the terminal's gridlines */
-  --color-border: #e8e8e5;
-  --color-border-strong: #d9d9d5;
+  /* Borders */
+  --color-border: #e3dccd;            /* decorative card hairlines */
+  --color-hairline: #efe9dc;          /* row dividers */
+  --color-border-strong: #d4cab6;     /* decorative emphasis (legacy mapping) */
+  --color-border-interactive: #847b6e;/* input + secondary-button boundaries */
+  --color-border-agent: #ecd9bd;      /* dock + proposal cards only */
 
-  /* Accent — committed AMBER identifier (codes, links, active, command, live).
-     Burnt so it stays legible as text/fill on the white desk; the bright amber
-     (--color-amber) is its counterpart on the dark chrome. */
-  --color-accent: #b45309;
-  --color-accent-2: #c2660f;
-  --color-accent-hover: #8f3f06;
-  --color-accent-fg: #ffffff;
-  --color-accent-soft: #f8ecda;
-  --color-accent-tint: #f8f2ea; /* cooler so the warm active-row wash doesn't read yellow on near-white */
+  /* Agent — amber. Text vs mark split is the a11y law. */
+  --color-accent: #9a4c0c;        /* agent TEXT at any size (legacy accent was text-heavy) */
+  --color-accent-2: #c05f10;      /* legacy alias of the mark */
+  --color-agent-mark: #c05f10;    /* fills, bars, rules, dots, focus ring — non-text */
+  --color-accent-hover: #7a3c0a;
+  --color-accent-fg: #fffdf9;
+  --color-accent-soft: #f8ead9;   /* agent tint chips */
+  --color-accent-tint: #fdf6ea;   /* agent-warmed row wash (--hot) */
+  --color-agent-on-dark: #f0b35f; /* badge text inside dark pills */
 
-  /* Dark command chrome — the striking near-black rail over the white desk */
-  --color-chrome: #111519;
-  --color-chrome-2: #161b21;
-  --color-chrome-line: #29303a;
-  --color-chrome-ink: #e9ebee;
-  --color-chrome-ink-2: #aab1bb;
-  --color-chrome-dim: #79818c;
+  /* Dark ink surfaces (primary buttons, active pills, user bubbles) */
+  --color-chrome: #2b2722;        /* legacy chrome remaps to warm ink */
+  --color-chrome-2: #3d372e;
+  --color-chrome-line: #4a4234;
+  --color-chrome-ink: #f4f1ea;
+  --color-chrome-ink-2: #c4b9a6;
+  --color-chrome-dim: #9d917f;
+  --color-amber: #f0b35f;         /* live signal on dark ink */
+  --color-amber-2: #f5c57e;
 
-  /* Amber — the live / active signal that glows on the dark chrome */
-  --color-amber: #e8a33d;
-  --color-amber-2: #f2b85f;
-
-  /* Market semantics — green up / amber caution / red down */
-  --color-success: #1f7a4d;
-  --color-success-soft: #e2f1e8;
-  --color-warning: #9a6410;
+  /* Semantics — green is for EVENTS, never default states */
+  --color-success: #3a6246;       /* text-grade green */
+  --color-good-mark: #4e7d5b;     /* bar fills, large glyphs */
+  --color-success-soft: #e8efe6;
+  --color-warning: #8f6b22;       /* text-grade gold */
   --color-warning-soft: #f6ecd8;
-  --color-danger: #b23a2e;
-  --color-danger-soft: #f7e7e4;
-  --color-info: #b45309;
-  --color-info-soft: #f8ecda;
+  --color-danger: #a93226;
+  --color-danger-soft: #f6e3e0;
+  --color-info: #9a4c0c;
+  --color-info-soft: #f8ead9;
 
-  /* Fit tiers */
-  --color-tier-strong: #1f7a4d;
-  --color-tier-good: #b45309;
-  --color-tier-mod: #9a6410;
-  --color-tier-low: #868b93;
+  /* Diff pair (proposal cards) */
+  --color-diff-del: #a93226;
+  --color-diff-del-bg: #f9ecea;
+  --color-diff-add: #2e6b46;
+  --color-diff-add-bg: #ebf2ec;
 
-  /* Radii — rectangular, terminal-sharp. Controls are pure rectangles; only
-     large panels keep a 2px crispness so corners don't fray. */
-  --radius-card: 0.125rem; /* panels / cards — barely-there crispness */
-  --radius-control: 0rem; /* inputs, buttons, filters — true rectangles */
-  --radius-pill: 0rem; /* squared tags */
-  --radius-bar: 0rem; /* squared meters */
+  /* Fit tiers — ramp independent of row state; number always rendered beside bar */
+  --color-tier-strong: #4e7d5b;
+  --color-tier-good: #9a4c0c;
+  --color-tier-mod: #8f6b22;
+  --color-tier-low: #b9b0a0;
 
-  /* Flatten Tailwind's built-in radius scale app-wide so every rounded-sm/md/lg
-     /xl utility becomes a true rectangle — the terminal has no soft corners.
-     (rounded-full is unaffected, so genuine status dots stay circular.) */
-  --radius: 0rem;
-  --radius-sm: 0rem;
-  --radius-md: 0rem;
-  --radius-lg: 0rem;
-  --radius-xl: 0rem;
-  --radius-2xl: 0rem;
-  --radius-3xl: 0rem;
+  /* Radii — GB+ is soft: 6 / 10 / 14 / pill */
+  --radius-card: 0.875rem;    /* 14px cards, dock, composer */
+  --radius-control: 0.625rem; /* 10px inputs, nested cards */
+  --radius-pill: 999px;
+  --radius-bar: 999px;
+  --radius: 0.625rem;
+  --radius-sm: 0.375rem;  /* 6px micro glyphs, diff lines */
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 0.875rem;
+  --radius-3xl: 0.875rem;
 
-  --shadow-card: 0 1px 2px rgba(20, 24, 30, 0.05), 0 1px 1px rgba(20, 24, 30, 0.04);
-  --shadow-pop: 0 16px 40px -16px rgba(20, 30, 55, 0.22),
-    0 4px 12px -6px rgba(20, 24, 30, 0.12);
-  --shadow-frame: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 24px 60px -32px rgba(20, 34, 64, 0.28), 0 6px 16px -10px rgba(20, 24, 30, 0.1);
+  --shadow-card: 0 2px 6px rgba(70, 60, 40, 0.05), 0 12px 32px -20px rgba(70, 60, 40, 0.14);
+  --shadow-pop: 0 10px 28px -16px rgba(70, 60, 40, 0.22);
+  --shadow-frame: 0 2px 6px rgba(70, 60, 40, 0.05), 0 12px 32px -20px rgba(70, 60, 40, 0.14);
 
   /* Fonts fed by next/font in app/layout.tsx:
-     --font-geist-sans → Libre Franklin · --font-geist-mono → IBM Plex Mono
-     --font-display → Newsreader (marketing headlines only). */
-  --font-display: var(--font-display), Georgia, "Times New Roman", serif;
+     --font-geist-sans → Karla · --font-geist-mono → Fragment Mono
+     --font-display → Zilla Slab. */
+  --font-display: var(--font-display), Georgia, serif;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
@@ -107,82 +104,66 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   background-color: var(--color-canvas);
-  /* faint paper grain + a soft top light */
-  background-image: radial-gradient(
-      125% 80% at 50% -8%,
-      #ffffff 0%,
-      rgba(255, 255, 255, 0) 46%
-    ),
-    radial-gradient(rgba(20, 24, 30, 0.022) 1px, transparent 1px);
-  background-size: 100% 100%, 3px 3px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Editorial serif for the largest marketing headings only. Card titles are
-   <h3> and stay grotesque. */
+/* Slab display for page-level headings. */
 h1,
 h2 {
   font-family: var(--font-display);
-  letter-spacing: -0.018em;
+  letter-spacing: -0.01em;
   font-weight: 500;
 }
 
-/* All numerics render in mono with tabular figures — the "terminal" signal.
-   JetBrains Mono is wide and legible; no negative tracking (it crushes glyphs). */
+/* All numerics render in mono with tabular figures. Fragment Mono is single
+   weight — never set font-weight above 400 on mono text. */
 .tabular {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
 
-/* Uppercase mono micro-label — column heads, eyebrows, ribbon labels. */
+/* Uppercase mono micro-label — column heads, eyebrows, chips.
+   TYPE FLOOR: 11px. Never smaller, anywhere. */
 .label {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
-  font-weight: 600;
+  font-size: 0.6875rem; /* 11px floor */
+  font-weight: 400;     /* Fragment Mono has no bold */
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-/* Dark command-chrome rail — a faint top highlight + inner shadow give the
-   black bar physical depth (the "screen" of the terminal). */
+/* Dark ink rail (legacy .chrome consumers: landing page). Warm ink, not black. */
 .chrome {
   background-color: var(--color-chrome);
-  background-image: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.04) 0,
-    rgba(255, 255, 255, 0) 40%
-  );
   color: var(--color-chrome-ink);
 }
 
-/* Soft amber glow for the LIVE indicator on the dark rail. */
 .live-dot {
-  box-shadow: 0 0 0 2px rgba(31, 122, 77, 0.18), 0 0 7px 0 rgba(40, 200, 120, 0.5);
+  box-shadow: 0 0 0 2px rgba(78, 125, 91, 0.18), 0 0 7px 0 rgba(78, 125, 91, 0.5);
 }
 
 ::selection {
-  background: var(--color-accent);
+  background: var(--color-agent-mark);
   color: var(--color-accent-fg);
 }
 
-/* Thin, unobtrusive scrollbars for the dense desk. */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-strong) transparent;
 }
 
+/* Global focus ring — never border-color-only focus. */
+:focus-visible {
+  outline: 2px solid var(--color-agent-mark);
+  outline-offset: 2px;
+}
+
 /* Hairline divider. */
 .rule {
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--color-border-strong) 12%,
-    var(--color-border-strong) 88%,
-    transparent
-  );
+  background: var(--color-hairline);
 }
 
 /* ---------------------------------------------------------------------------
