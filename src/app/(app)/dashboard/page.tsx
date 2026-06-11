@@ -7,6 +7,8 @@ import { FiltersBar } from "@/components/tracker/filters-bar";
 import { OpportunityTable } from "@/components/tracker/opportunity-table";
 import { SummaryCards } from "@/components/tracker/summary-cards";
 import { TopMatches } from "@/components/tracker/top-matches";
+import { FreshFinds } from "@/components/tracker/fresh-finds";
+import { ScoutCard } from "@/components/tracker/scout-card";
 import { TickerTape } from "@/components/tracker/ticker-tape";
 
 export const dynamic = "force-dynamic";
@@ -89,6 +91,12 @@ export default async function DashboardPage({
         </div>
         <aside className="border-t border-border-strong lg:sticky lg:top-11 lg:max-h-[calc(100vh-2.75rem)] lg:self-start lg:overflow-auto lg:border-t-0">
           <TopMatches items={allItems} />
+          <div className="border-t border-border-strong">
+            <FreshFinds items={allItems} />
+          </div>
+          <div className="border-t border-border-strong">
+            <ScoutCard />
+          </div>
         </aside>
       </div>
 

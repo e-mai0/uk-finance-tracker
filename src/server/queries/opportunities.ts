@@ -9,11 +9,14 @@ import {
 
 /**
  * Load every opportunity as a flattened TrackerItem for a given user, enriched
- * with the user's cached match score and saved flag. Filtering/sorting happens
- * in-memory (dataset is small) via lib/filters so it stays pure + testable.
+ * with the user's cached match score and saved flag. Opportunities ingested
+ * since the user's scores were last cached (live sources add rows at any time)
+ * get their score computed on the fly so the tracker never shows a blank fit.
+ * Filtering/sorting happens in-memory (dataset is small) via lib/filters so it
+ * stays pure + testable.
  */
 export async function getTrackerItems(userId: string): Promise<TrackerItem[]> {
-  const [opportunities, scores, saved] = await Promise.all([
+  const [opportunities, scores, saved, profile, prefs] = await Promise.all([
     prisma.opportunity.findMany({
       include: { employer: true, tags: true },
     }),
@@ -25,10 +28,41 @@ export async function getTrackerItems(userId: string): Promise<TrackerItem[]> {
       where: { userId },
       select: { opportunityId: true },
     }),
+    prisma.profile.findUnique({ where: { userId } }),
+    prisma.preferences.findUnique({ where: { userId } }),
   ]);
 
   const scoreMap = new Map(scores.map((s) => [s.opportunityId, s.score]));
   const savedSet = new Set(saved.map((s) => s.opportunityId));
+
+  let scoreUncached: ((o: (typeof opportunities)[number]) => number) | null =
+    null;
+  if (profile && prefs) {
+    const scoreProfile: ScoreProfile = {
+      workAuth: profile.workAuth,
+      graduationYear: profile.graduationYear,
+      currentYear: profile.currentYear,
+      skills: profile.skills,
+    };
+    const scorePrefs: ScorePreferences = {
+      targetRoleFamilies: prefs.targetRoleFamilies,
+      preferredLocations: prefs.preferredLocations,
+      openToAnywhereUk: prefs.openToAnywhereUk,
+      targetEmployers: prefs.targetEmployers,
+    };
+    scoreUncached = (o) => {
+      const input: ScoreOpportunity = {
+        roleFamily: o.roleFamily,
+        location: o.location,
+        employerName: o.employer.name,
+        sponsorshipInfo: o.sponsorshipInfo,
+        eligibilityNotes: o.eligibilityNotes,
+        tags: o.tags.map((t) => t.label),
+        title: o.title,
+      };
+      return scoreOpportunity(scoreProfile, scorePrefs, input).score;
+    };
+  }
 
   return opportunities.map((o) => ({
     id: o.id,
@@ -47,7 +81,7 @@ export async function getTrackerItems(userId: string): Promise<TrackerItem[]> {
     applicationUrl: o.applicationUrl,
     sponsorshipInfo: o.sponsorshipInfo,
     tags: o.tags.map((t) => t.label),
-    score: scoreMap.get(o.id),
+    score: scoreMap.get(o.id) ?? scoreUncached?.(o),
     saved: savedSet.has(o.id),
   }));
 }

@@ -14,16 +14,25 @@ export default async function SavedPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
-      <div>
-        <div className="label text-[0.6rem] text-subtle">Watchlist</div>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
-          Saved roles
-        </h1>
-        <p className="mt-0.5 text-sm text-muted">
-          {items.length === 0
-            ? "Roles you save will appear here, ranked by fit."
-            : `${items.length} saved ${items.length === 1 ? "role" : "roles"}, ranked by fit.`}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="label text-[0.6rem] text-subtle">Watchlist</div>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
+            Saved roles
+          </h1>
+          <p className="mt-0.5 text-sm text-muted">
+            {items.length === 0
+              ? "Roles you save will appear here, ranked by fit."
+              : `${items.length} saved ${items.length === 1 ? "role" : "roles"}, ranked by fit.`}
+          </p>
+        </div>
+        {items.length > 0 && (
+          <a href="/api/saved/calendar" download>
+            <Button size="sm" variant="outline">
+              ⤓ Export deadlines (.ics)
+            </Button>
+          </a>
+        )}
       </div>
 
       {items.length === 0 ? (
