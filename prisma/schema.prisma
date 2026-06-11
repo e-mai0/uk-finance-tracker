@@ -103,8 +103,9 @@ model User {
   answerBank    AnswerBankItem[]
   applications  Application[]
   drafts        GeneratedDraft[]
-  memoryFiles   MemoryFile[]
-  chatSessions  ChatSession[]
+  memoryFiles     MemoryFile[]
+  chatSessions    ChatSession[]
+  attentionItems  AttentionItem[]
 }
 
 model Profile {
@@ -381,6 +382,19 @@ model ApiToken {
 // Cyclops — memory, chat, gardener, usage (Phase 1)
 // ---------------------------------------------------------------------------
 
+enum AttentionKind {
+  PROPOSAL
+  FLAG
+  QUESTION
+  BRIEF
+}
+
+enum AttentionStatus {
+  OPEN
+  SNOOZED
+  RESOLVED
+}
+
 enum MemoryAuthor {
   USER
   CYCLOPS
@@ -437,6 +451,30 @@ model ChatMessage {
 
   @@unique([sessionId, clientId])
   @@index([sessionId, createdAt])
+}
+
+/// One canonical "pending decision" store (spec §4.3). Every nav badge is a
+/// filtered count over OPEN rows; resolving anywhere decrements all views.
+model AttentionItem {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind         AttentionKind
+  status       AttentionStatus @default(OPEN)
+  /// Stable dedupe key so cron re-runs upsert instead of duplicating,
+  /// e.g. "brief:2026-06-11", "gq:<id>", "draft:<id>".
+  key          String
+  /// "chat-session" | "draft" | "opportunity" | "application" | "gardener-question"
+  targetType   String
+  targetId     String
+  title        String
+  meta         Json?
+  snoozedUntil DateTime?
+  createdAt    DateTime        @default(now())
+  resolvedAt   DateTime?
+
+  @@unique([userId, key])
+  @@index([userId, status])
 }
 
 model GardenerQuestion {
