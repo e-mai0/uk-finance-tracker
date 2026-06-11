@@ -52,7 +52,6 @@ export default async function DashboardPage({
     employerName: it.employerName,
     title: it.title,
     divisionDesk: it.divisionDesk ?? null,
-    location: it.location ?? null,
     status: it.status,
     deadlineAt: it.deadlineAt ? new Date(it.deadlineAt).toISOString() : null,
     daysLeft: daysUntil(it.deadlineAt, now),

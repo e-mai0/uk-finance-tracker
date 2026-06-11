@@ -10,7 +10,6 @@ export type BoardRow = {
   employerName: string;
   title: string;
   divisionDesk: string | null;
-  location: string | null;
   status: string; // OpportunityStatus
   deadlineAt: string | null; // ISO
   daysLeft: number | null;
@@ -57,12 +56,18 @@ export function Board({ rows }: { rows: BoardRow[] }) {
     localStorage.setItem("tracker-density", d);
   };
 
+  // Clamp focusIdx when rows shrink (e.g. filter applied).
+  useEffect(() => {
+    setFocusIdx((i) => (i >= rows.length ? -1 : i));
+  }, [rows.length]);
+
   // Keyboard: J/K move · ⏎ open · S star · A ask. Single-letter keys are
   // inert while focus is in an editable field (spec keyboard rule zero).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable) return;
+      if ((t).closest("button, a, summary")) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const key = e.key.toLowerCase();
       if (key === "j" || e.key === "ArrowDown") {
@@ -72,11 +77,17 @@ export function Board({ rows }: { rows: BoardRow[] }) {
         e.preventDefault();
         setFocusIdx((i) => Math.max(0, i - 1));
       } else if (e.key === "Enter" && focusIdx >= 0) {
-        router.push(`/tracker/${rows[focusIdx].id}`);
+        const row = rows[focusIdx];
+        if (!row) return;
+        router.push(`/tracker/${row.id}`);
       } else if (key === "s" && focusIdx >= 0) {
-        startTransition(() => void toggleSave(rows[focusIdx].id));
+        const row = rows[focusIdx];
+        if (!row) return;
+        startTransition(() => void toggleSave(row.id));
       } else if (key === "a" && focusIdx >= 0) {
-        router.push(`/chat?opportunity=${rows[focusIdx].id}`);
+        const row = rows[focusIdx];
+        if (!row) return;
+        router.push(`/chat?opportunity=${row.id}`);
       }
     };
     document.addEventListener("keydown", onKey);
@@ -134,12 +145,14 @@ export function Board({ rows }: { rows: BoardRow[] }) {
                 key={row.id}
                 onClick={() => router.push(`/tracker/${row.id}`)}
                 onMouseEnter={() => setFocusIdx(i)}
-                aria-selected={focused}
+                data-focused={focused || undefined}
                 className={cn(
                   "group cursor-pointer border-b border-hairline transition-colors",
                   rowH,
-                  focused && "bg-surface-2",
-                  row.agentTags.length > 0 && "bg-accent-tint shadow-[inset_3px_0_0_var(--color-agent-mark)]",
+                  focused
+                    ? "bg-surface-2 shadow-[inset_3px_0_0_var(--color-ink)]"
+                    : row.agentTags.length > 0 &&
+                      "bg-accent-tint shadow-[inset_3px_0_0_var(--color-agent-mark)]",
                 )}
               >
                 <td className="px-4">
@@ -156,16 +169,22 @@ export function Board({ rows }: { rows: BoardRow[] }) {
                   </span>
                 </td>
                 <td className="max-w-0 truncate pr-3">
-                  <span className={cn("text-[0.8125rem] font-extrabold", closed ? "text-subtle" : "text-ink")}>
-                    {row.employerName}
-                  </span>
-                  <span className={cn("text-[0.75rem] font-bold", closed ? "text-faint" : "text-subtle")}>
-                    {" · "}{row.title}
-                    {row.divisionDesk ? ` · ${row.divisionDesk}` : ""}
-                  </span>
+                  <a
+                    href={`/tracker/${row.id}`}
+                    className="focus-visible:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className={cn("text-[0.8125rem] font-extrabold", closed ? "text-subtle" : "text-ink")}>
+                      {row.employerName}
+                    </span>
+                    <span className={cn("text-[0.75rem] font-bold", closed ? "text-faint" : "text-subtle")}>
+                      {" · "}{row.title}
+                      {row.divisionDesk ? ` · ${row.divisionDesk}` : ""}
+                    </span>
+                  </a>
                   {row.agentTags.map((tag) => (
                     <span
-                      key={tag.title}
+                      key={`${tag.kind}:${tag.title}`}
                       className="label ml-2 rounded-pill border border-border-agent bg-accent-soft px-1.5 text-accent"
                     >
                       <span aria-hidden>{tag.kind === "FLAG" ? "▲ " : "◆ "}</span>
@@ -174,7 +193,10 @@ export function Board({ rows }: { rows: BoardRow[] }) {
                     </span>
                   ))}
                   {row.saved && (
-                    <span className="ml-2 text-[0.75rem] text-warning" aria-label="saved">★</span>
+                    <span className="ml-2 text-[0.75rem] text-warning">
+                      <span aria-hidden>★</span>
+                      <span className="sr-only">saved</span>
+                    </span>
                   )}
                 </td>
                 <td className="tabular py-0 text-right text-[0.75rem] text-muted">
@@ -185,10 +207,10 @@ export function Board({ rows }: { rows: BoardRow[] }) {
                 <td
                   className={cn(
                     "tabular text-right text-[0.75rem]",
-                    row.daysLeft != null && row.daysLeft <= 21 && !closed ? "text-danger" : "text-muted",
+                    row.daysLeft != null && row.daysLeft <= 14 && !closed ? "text-danger" : "text-muted",
                   )}
                 >
-                  {row.daysLeft != null && row.daysLeft <= 21 && !closed && <span aria-hidden>▲ </span>}
+                  {row.daysLeft != null && row.daysLeft <= 14 && !closed && <span aria-hidden>▼ </span>}
                   {closed || row.daysLeft == null ? "—" : row.daysLeft}
                 </td>
                 <td className="text-right">
@@ -248,7 +270,7 @@ export function Board({ rows }: { rows: BoardRow[] }) {
         </tbody>
       </table>
       <div className="flex gap-4 border-t border-hairline px-4 py-2">
-        <span className="label text-faint">◆ = CYCLOPS · ▲ = CLOSING ≤21D · ★ = SAVED</span>
+        <span className="label text-faint">◆ = CYCLOPS · ▼ = CLOSING ≤14D · ★ = SAVED</span>
         <span className="label ml-auto text-faint">J/K MOVE · ⏎ OPEN · S SAVE · A ASK</span>
       </div>
     </div>
