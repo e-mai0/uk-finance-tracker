@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
-import { prisma } from "@/server/db";
-import { AppHeader } from "@/components/app-header";
+import { AppNav } from "@/components/app-nav";
 
 export default async function AppLayout({
   children,
@@ -12,15 +11,16 @@ export default async function AppLayout({
   if (!session?.user) redirect("/login");
   if (!session.user.onboarded) redirect("/onboarding");
 
-  const savedCount = await prisma.savedOpportunity.count({
-    where: { userId: session.user.id },
-  });
+  // Badge counts become live views over the attention store in Plan 2 (Phase C).
+  const badges = { today: 0, applications: 0, chat: 0 };
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <AppHeader name={session.user.name ?? "You"} savedCount={savedCount} />
-      {/* Full-bleed shell — data pages fill the viewport edge-to-edge like a
-          real terminal; content/form pages supply their own padded container. */}
+      <AppNav
+        name={session.user.name ?? "You"}
+        badges={badges}
+        activity="idle"
+      />
       <main className="flex-1">{children}</main>
     </div>
   );
