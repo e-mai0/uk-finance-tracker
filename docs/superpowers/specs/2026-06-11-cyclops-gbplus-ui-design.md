@@ -80,11 +80,11 @@ Rules: **Fragment Mono is never bold** (the family has no 600 — mockups were s
 | `/tracker/[id]` | **Listing peek** (slide-over; routable for deep links) | — |
 | `/applications` | Pipeline: In progress / Submitted / Closed | Items targeting applications |
 | `/applications/[id]` | Application workspace; dock auto-pins | — |
-| `/chat`, `/chat/[threadId]` | Thread rail (Needs you / Today / This week / Archived) + reader | Threads with ≥1 open item |
+| `/chat`, `/chat/[threadId]` | **Ask Cyclops** — the standalone chat destination for open-ended conversation, independent of any page context: thread rail (Needs you / Today / This week / Archived) + reader | Threads with ≥1 open item |
 | `/memory`, `/memory/[file]` | File rail · document · pending proposals | Items targeting memory |
 | `/settings` | Permissions-as-sentences · profile · extension · answer-bank link | — (via avatar menu + ⌘K) |
 
-Primary nav (every page): **Today · Tracker · Applications · Chat · Memory** + ⌘K search + agent activity pill + avatar (menu: Settings, Sign out). Redirects: `/dashboard→/tracker`, `/saved→/tracker?filter=starred`, `/opportunities/[id]→/tracker/[id]`. Auth + onboarding stay outside the shell; onboarding seeds Memory and lands on `/today` (with designed "no brief yet — I work overnight" state).
+Primary nav (every page): **Today · Tracker · Applications · Ask Cyclops · Memory** + ⌘K search + agent activity pill + avatar (menu: Settings, Sign out). "Ask Cyclops" is the chat pill — always one click away at the top, for users who just want to talk to the agent without any page context; a new thread started there carries no pin by default. Redirects: `/dashboard→/tracker`, `/saved→/tracker?filter=starred`, `/opportunities/[id]→/tracker/[id]`. Auth + onboarding stay outside the shell; onboarding seeds Memory and lands on `/today` (with designed "no brief yet — I work overnight" state).
 
 ### 4.2 Listing lifecycle
 
