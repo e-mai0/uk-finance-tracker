@@ -13,6 +13,16 @@ const APPLICATION_TARGET_TYPES = new Set(["application", "draft"]);
 
 const ZERO: NavBadgeCounts = { today: 0, applications: 0, chat: 0 };
 
+let warnedUnavailable = false;
+function warnOnce(err: unknown): void {
+  if (warnedUnavailable) return;
+  warnedUnavailable = true;
+  console.warn(
+    "[attention] table unavailable — apply prisma/sql/2026-06-11-attention-items.sql",
+    err,
+  );
+}
+
 /** Spec §4.3: every badge is a filtered count over OPEN attention items. */
 export async function getBadgeCounts(userId: string): Promise<NavBadgeCounts> {
   try {
@@ -29,6 +39,7 @@ export async function getBadgeCounts(userId: string): Promise<NavBadgeCounts> {
     return { today: open.length, applications, chat: chatSessions.size };
   } catch (_e) {
     // Table absent until the user applies prisma/sql/2026-06-11-attention-items.sql.
+    warnOnce(_e);
     return ZERO;
   }
 }
@@ -51,6 +62,7 @@ export async function getOpenAttentionByTarget(
     }
   } catch (_e) {
     // Pre-SQL gate: no tags.
+    warnOnce(_e);
   }
   return map;
 }
