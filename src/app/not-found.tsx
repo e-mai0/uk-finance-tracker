@@ -11,7 +11,7 @@ export default function NotFound() {
       <p className="mt-2 max-w-sm text-sm text-muted">
         The page you&apos;re looking for doesn&apos;t exist or may have moved.
       </p>
-      <Link href="/dashboard" className="mt-6">
+      <Link href="/tracker" className="mt-6">
         <Button>Back to tracker</Button>
       </Link>
     </div>

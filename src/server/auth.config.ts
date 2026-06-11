@@ -9,6 +9,8 @@ import type { NextAuthConfig } from "next-auth";
 
 const APP_PREFIXES = [
   "/dashboard",
+  "/tracker",
+  "/today",
   "/saved",
   "/settings",
   "/opportunities",
@@ -35,7 +37,7 @@ export const authConfig = {
           return Response.redirect(new URL("/onboarding", nextUrl));
         }
         if (isOnboarding && onboarded) {
-          return Response.redirect(new URL("/dashboard", nextUrl));
+          return Response.redirect(new URL("/today", nextUrl));
         }
       }
       return true;

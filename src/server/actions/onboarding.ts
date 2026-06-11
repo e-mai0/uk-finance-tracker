@@ -94,7 +94,7 @@ export async function completeOnboarding(raw: unknown): Promise<OnboardingResult
   ]);
 
   await recomputeMatchScores(userId);
-  revalidatePath("/dashboard");
+  revalidatePath("/tracker");
 
   return { ok: true };
 }

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
 
 const NAV = [
-  { href: "/dashboard", label: "Tracker" },
+  { href: "/tracker", label: "Tracker" },
   { href: "/saved", label: "Saved" },
   { href: "/applications", label: "Apps" },
   { href: "/chat", label: "Chat" },
@@ -29,7 +29,7 @@ export function AppHeader({
       <div className="flex h-11 items-center gap-4 px-3">
         {/* Wordmark — light, amber full-stop */}
         <Link
-          href="/dashboard"
+          href="/tracker"
           className="text-[1.1rem] font-extrabold tracking-tight text-white"
         >
           Trackr<span className="text-amber">.</span>

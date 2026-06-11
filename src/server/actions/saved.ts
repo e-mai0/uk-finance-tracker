@@ -51,7 +51,7 @@ export async function toggleSave(
     });
   }
 
-  revalidatePath("/dashboard");
+  revalidatePath("/tracker");
   revalidatePath("/saved");
   revalidatePath(`/opportunities/${opportunityId}`);
   return { saved };

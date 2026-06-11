@@ -10,7 +10,7 @@ export const metadata = { title: "Get started — Trackr" };
 export default async function OnboardingPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.onboarded) redirect("/dashboard");
+  if (session.user.onboarded) redirect("/today");
 
   const employers = await prisma.employer.findMany({
     select: { name: true },
