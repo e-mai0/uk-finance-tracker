@@ -13,20 +13,21 @@ export default async function AppLayout({
   if (!session?.user) redirect("/login");
   if (!session.user.onboarded) redirect("/onboarding");
 
-  const badges = await getBadgeCounts(session.user.id);
-
-  // "worked overnight" while today's brief is still unread; otherwise idle.
-  let activity = "idle";
-  try {
-    const today = new Date().toISOString().slice(0, 10);
-    const brief = await prisma.attentionItem.findUnique({
-      where: { userId_key: { userId: session.user.id, key: `brief:${today}` } },
-      select: { status: true },
-    });
-    if (brief) activity = brief.status === "OPEN" ? "worked overnight" : "worked overnight · read";
-  } catch (_e) {
-    // Pre-SQL gate: table may not exist yet.
-  }
+  const today = new Date().toISOString().slice(0, 10);
+  const [badges, brief] = await Promise.all([
+    getBadgeCounts(session.user.id),
+    prisma.attentionItem
+      .findUnique({
+        where: { userId_key: { userId: session.user.id, key: `brief:${today}` } },
+        select: { status: true },
+      })
+      .catch(() => null), // Pre-SQL gate: table may not exist yet.
+  ]);
+  const activity = !brief
+    ? "idle"
+    : brief.status === "OPEN"
+      ? "worked overnight"
+      : "worked overnight · read";
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
