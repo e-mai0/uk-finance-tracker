@@ -10,6 +10,7 @@ import {
   applyProfileSchema,
   answerBankItemSchema,
 } from "../../lib/validation";
+import { extractCvFactsToMemory } from "../cv/facts";
 
 export interface ActionResult {
   ok?: boolean;
@@ -102,6 +103,9 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
       cvUpdatedAt: new Date(),
     },
   });
+
+  // Best-effort: distill the CV into profile.md facts so Cyclops knows it.
+  if (cvText) await extractCvFactsToMemory(userId, cvText);
 
   revalidatePath("/settings");
   return { ok: true };
