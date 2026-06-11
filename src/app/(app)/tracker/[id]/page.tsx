@@ -22,6 +22,8 @@ export const dynamic = "force-dynamic";
 function pipelineTag(status: string): { glyph: string; label: string; cls: string } {
   if (status === "DRAFT" || status === "AUTOFILLED")
     return { glyph: "◆", label: "drafting", cls: "text-accent" };
+  if (status === "REJECTED" || status === "WITHDRAWN")
+    return { glyph: "✗", label: status.toLowerCase(), cls: "text-subtle" };
   return { glyph: "✓", label: status.toLowerCase(), cls: "text-success" };
 }
 
