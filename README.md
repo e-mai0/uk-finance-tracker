@@ -308,7 +308,7 @@ The ingestion pipeline (`src/ingestion/`):
   `consecutiveFailures`; a source auto-disables after 10 straight failures).
 
 Live syncs run via `GET /api/ingest/sync` (Bearer `CRON_SECRET`), scheduled
-every 6 hours by Vercel Cron (`vercel.json`). Users add new boards themselves
+daily at 07:00 UTC by Vercel Cron (Hobby plan: daily minimum interval) (`vercel.json`). Users add new boards themselves
 through **Firm Scout** on the dashboard — paste a Greenhouse / Lever / Ashby
 URL and the firm is registered, pulled immediately, and kept fresh by the cron.
 

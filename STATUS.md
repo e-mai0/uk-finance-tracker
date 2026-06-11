@@ -132,7 +132,7 @@ The growth engine for niche/boutique coverage. Reads **public ATS JSON feeds onl
 - **Live adapters** (`src/ingestion/adapters/`): Greenhouse, Lever, Ashby — verified against real boards (Point72, Man Group, Wintermute).
 - **Classifier** (`src/ingestion/classify.ts`): deterministic word-boundary rules — internship? summer? UK? which finance role family? — with employer-sector fallback. Pure, 20 unit tests.
 - **Source registry** (`IngestionSource` model): per-board rows with health tracking (`lastStatus`, `lastError`, `consecutiveFailures`; auto-disable after 10 straight failures). Seeded with the evidence-backed Greenhouse boards from `source-plans/` (mangroup, point72).
-- **Cron sync**: `GET /api/ingest/sync` (Bearer `CRON_SECRET`), every 6h via Vercel Cron (`vercel.json`). **Set `CRON_SECRET` in Vercel before deploying.**
+- **Cron sync**: `GET /api/ingest/sync` (Bearer `CRON_SECRET`), daily 07:00 UTC via Vercel Cron (Hobby min interval) (`vercel.json`). **Set `CRON_SECRET` in Vercel before deploying.**
 - **Firm Scout** (dashboard sidebar): any user pastes a Greenhouse/Lever/Ashby URL → ATS auto-detected (`src/lib/source-detect.ts`) → board pulled immediately → roles live for everyone. Workday URLs are recognised and stored disabled as a review queue.
 - **Fresh finds** (dashboard sidebar): roles first seen ≤7 days, newest first; the same 7-day window drives a green **● NEW** flag on grid rows (`isFreshListing` in `signals.tsx`).
 - **Deadline export**: `GET /api/saved/calendar` downloads the user's saved-role deadlines (+ opening dates) as an `.ics` file (button on `/saved`; pure builder in `src/lib/ics.ts`).
