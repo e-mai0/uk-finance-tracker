@@ -230,6 +230,54 @@ export const extPlanRequestSchema = z.object({
 export type FieldSchema = z.infer<typeof fieldSchemaSchema>;
 export type ExtPlanRequest = z.infer<typeof extPlanRequestSchema>;
 
+/**
+ * Coerce an untrusted /api/ext/plan body into something extPlanRequestSchema
+ * will accept: truncate over-long strings, cap option lists, drop fields with a
+ * missing id or unknown type, and limit the batch to 200 fields — so one
+ * malformed field can't 400 the entire form. Mirrors the bounds above.
+ */
+export function sanitizePlanBody(body: unknown): unknown {
+  if (!body || typeof body !== "object") return body;
+  const b = body as Record<string, unknown>;
+  const rawFields = Array.isArray(b.fields) ? b.fields : [];
+
+  const fields = rawFields
+    .filter((f): f is Record<string, unknown> => !!f && typeof f === "object")
+    .map((f) => {
+      const typeOk =
+        typeof f.type === "string" &&
+        (FIELD_TYPES as readonly string[]).includes(f.type);
+      const options = Array.isArray(f.options)
+        ? f.options
+            .filter((o): o is string => typeof o === "string")
+            .slice(0, 80)
+            .map((o) => o.slice(0, 200))
+        : undefined;
+      return {
+        id: typeof f.id === "string" ? f.id.trim().slice(0, 40) : "",
+        label: typeof f.label === "string" ? f.label.slice(0, 400) : "",
+        nearbyText:
+          typeof f.nearbyText === "string" ? f.nearbyText.slice(0, 600) : undefined,
+        type: typeOk ? (f.type as string) : "",
+        options: options && options.length ? options : undefined,
+        required: f.required === true,
+        charLimit:
+          typeof f.charLimit === "number" && f.charLimit > 0
+            ? Math.min(Math.floor(f.charLimit), 20000)
+            : undefined,
+      };
+    })
+    .filter((f) => f.id !== "" && f.type !== "")
+    .slice(0, 200);
+
+  return {
+    fields,
+    employer: typeof b.employer === "string" ? b.employer.slice(0, 160) : undefined,
+    role: typeof b.role === "string" ? b.role.slice(0, 200) : undefined,
+    url: typeof b.url === "string" ? b.url.slice(0, 500) : undefined,
+  };
+}
+
 export type FillAction = "fill" | "ask" | "draft" | "skip";
 
 export interface FillPlanItem {

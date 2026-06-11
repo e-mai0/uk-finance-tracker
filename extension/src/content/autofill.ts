@@ -48,11 +48,24 @@ function fillRadioGroup(radios: HTMLInputElement[], desired: string): boolean {
 }
 
 import type { FillableEl } from "./field-map";
+import { type AriaControl, fillAriaControl } from "./aria-controls";
 import type { FieldSchema, FillPlanItem, PlanSuggestion } from "../shared/types";
+
+/** Anything the planner can target: a native field or a synthetic ARIA widget. */
+export type FillTarget = FillableEl | AriaControl;
+
+function isAria(el: FillTarget): el is AriaControl {
+  return "kind" in el && (el as AriaControl).kind === "aria";
+}
+
+/** Whether a fill target is still attached to the live DOM (ARIA widgets check their root). */
+export function isTargetConnected(el: FillTarget): boolean {
+  return isAria(el) ? el.root.isConnected : el.isConnected;
+}
 
 export interface PlanQuestion {
   fieldId: string;
-  el: FillableEl;          // input, textarea, OR select/radio
+  el: FillTarget;          // native field, OR an ARIA radio/listbox widget
   label: string;
   profileKey?: string;
   charLimit?: number;
@@ -69,7 +82,7 @@ export interface AppliedPlan {
 /** Apply a fill plan to the live form; collect ask/draft items for the panel. */
 export function applyPlan(
   plan: FillPlanItem[],
-  elements: Map<string, FillableEl>,
+  elements: Map<string, FillTarget>,
   schemaById: Map<string, FieldSchema>,
 ): AppliedPlan {
   let filled = 0;
@@ -105,7 +118,8 @@ export function applyPlan(
 }
 
 /** Set a value on ANY fillable element type (text/textarea/select/radio). Public so the panel's ask cards can use it. */
-export function setFieldValue(el: FillableEl, value: string): boolean {
+export function setFieldValue(el: FillTarget, value: string): boolean {
+  if (isAria(el)) return fillAriaControl(el, value);
   if (el instanceof HTMLSelectElement) return fillSelect(el, value);
   if (el instanceof HTMLInputElement && el.type === "radio") {
     const group = el.name

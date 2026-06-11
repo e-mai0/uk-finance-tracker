@@ -4,6 +4,7 @@ import {
   educationSchema,
   onboardingSchema,
   extPlanRequestSchema,
+  sanitizePlanBody,
 } from "../lib/validation";
 
 describe("signupSchema", () => {
@@ -131,5 +132,67 @@ describe("extPlanRequestSchema", () => {
       type: "text",
     }));
     expect(extPlanRequestSchema.safeParse({ fields: many }).success).toBe(false);
+  });
+});
+
+describe("sanitizePlanBody", () => {
+  const field = (over: Record<string, unknown> = {}) => ({
+    id: "f0", label: "Email", type: "email", required: false, ...over,
+  });
+
+  it("truncates an over-long label so the schema accepts it", () => {
+    const clean = sanitizePlanBody({ fields: [field({ label: "x".repeat(900) })] });
+    const parsed = extPlanRequestSchema.safeParse(clean);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.fields[0].label.length).toBe(400);
+  });
+
+  it("drops a field with an unknown type instead of failing the batch", () => {
+    const clean = sanitizePlanBody({
+      fields: [field(), field({ id: "f1", type: "bogus" })],
+    }) as { fields: unknown[] };
+    expect(clean.fields.length).toBe(1);
+  });
+
+  it("caps the batch at 200 fields", () => {
+    const many = Array.from({ length: 250 }, (_, i) => field({ id: `f${i}` }));
+    const clean = sanitizePlanBody({ fields: many }) as { fields: unknown[] };
+    expect(clean.fields.length).toBe(200);
+  });
+
+  it("caps options to 80 entries and 200 chars each", () => {
+    const opts = Array.from({ length: 120 }, () => "o".repeat(300));
+    const clean = sanitizePlanBody({
+      fields: [field({ type: "select", options: opts })],
+    }) as { fields: { options: string[] }[] };
+    expect(clean.fields[0].options.length).toBe(80);
+    expect(clean.fields[0].options[0].length).toBe(200);
+  });
+
+  it("produces a body the strict schema fully accepts", () => {
+    const clean = sanitizePlanBody({
+      fields: [field({ label: "y".repeat(900), charLimit: 99999 })],
+      employer: "z".repeat(500),
+    });
+    expect(extPlanRequestSchema.safeParse(clean).success).toBe(true);
+  });
+
+  it("drops a field whose id is only whitespace", () => {
+    const clean = sanitizePlanBody({
+      fields: [field({ id: "   " }), field({ id: "ok" })],
+    }) as { fields: { id: string }[] };
+    expect(clean.fields.length).toBe(1);
+    expect(clean.fields[0].id).toBe("ok");
+    expect(extPlanRequestSchema.safeParse(clean).success).toBe(true);
+  });
+
+  it("coerces non-string employer/role/url to undefined so the schema accepts them", () => {
+    const clean = sanitizePlanBody({
+      fields: [field()],
+      employer: 42,
+      role: ["x"],
+      url: { nope: true },
+    });
+    expect(extPlanRequestSchema.safeParse(clean).success).toBe(true);
   });
 });
