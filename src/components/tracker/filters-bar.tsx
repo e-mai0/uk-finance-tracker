@@ -127,7 +127,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
             <select
               value={get("sort") || "best_match"}
               onChange={(e) => setParam("sort", e.target.value)}
-              className="h-9 appearance-none border border-border-strong bg-surface pl-3 pr-7 font-mono text-[0.8rem] font-medium uppercase tracking-wide text-ink focus-visible:border-accent focus-visible:outline-none"
+              className="h-9 appearance-none border border-border-strong bg-surface pl-3 pr-7 font-mono text-[0.8rem] uppercase tracking-wide text-ink focus-visible:border-accent focus-visible:outline-none"
             >
               {SORT_OPTIONS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -184,7 +184,7 @@ function FilterDropdown({
     <details className="group relative">
       <summary
         className={cn(
-          "flex h-9 cursor-pointer list-none items-center gap-1.5 border px-3 font-mono text-[0.8rem] font-medium uppercase tracking-wide transition-colors",
+          "flex h-9 cursor-pointer list-none items-center gap-1.5 border px-3 font-mono text-[0.8rem] uppercase tracking-wide transition-colors",
           count > 0
             ? "border-accent bg-accent text-accent-fg"
             : "border-border-strong bg-surface text-ink hover:border-accent hover:text-accent",
@@ -248,7 +248,7 @@ function FlagToggle({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "h-9 border px-3 font-mono text-[0.8rem] font-medium uppercase tracking-wide transition-colors",
+        "h-9 border px-3 font-mono text-[0.8rem] uppercase tracking-wide transition-colors",
         active
           ? "border-accent bg-accent text-accent-fg"
           : "border-border-strong bg-surface text-ink hover:border-accent hover:text-accent",
