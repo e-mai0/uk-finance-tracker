@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { getOpportunityDetail } from "@/server/queries/opportunities";
-import { startApplication } from "@/server/actions/applications";
+import { startApplicationAndGo } from "@/server/actions/applications";
 import { Monogram } from "@/components/ui/monogram";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -25,12 +25,6 @@ function pipelineTag(status: string): { glyph: string; label: string; cls: strin
   if (status === "REJECTED" || status === "WITHDRAWN")
     return { glyph: "✗", label: status.toLowerCase(), cls: "text-subtle" };
   return { glyph: "✓", label: status.toLowerCase(), cls: "text-success" };
-}
-
-async function startAndGo(opportunityId: string) {
-  "use server";
-  const res = await startApplication(opportunityId);
-  if (res.ok) redirect("/applications");
 }
 
 export default async function ListingPeekPage({
@@ -98,10 +92,10 @@ export default async function ListingPeekPage({
 
       {/* Action row */}
       <div className="mt-5 flex flex-wrap items-center gap-2.5">
-        <form action={startAndGo.bind(null, o.id)}>
+        <form action={startApplicationAndGo.bind(null, o.id)}>
           <button
             type="submit"
-            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-pill)] bg-chrome px-4 text-sm font-medium text-chrome-ink transition-colors hover:bg-chrome-2"
+            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-pill)] bg-ink px-4 text-sm font-bold text-canvas transition-colors hover:opacity-90"
           >
             {application ? "Continue application" : "Start application"}
           </button>

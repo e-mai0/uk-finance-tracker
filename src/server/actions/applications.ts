@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { redirect } from "next/navigation";
 import { auth } from "../auth";
 import { prisma } from "../db";
 import { distillOutcomesForUser } from "@/server/engine/outcomes";
@@ -85,4 +86,10 @@ export async function deleteApplication(
   await prisma.application.deleteMany({ where: { id, userId: session.user.id } });
   revalidatePath("/applications");
   return { ok: true };
+}
+
+export async function startApplicationAndGo(opportunityId: string): Promise<never> {
+  const res = await startApplication(opportunityId);
+  if (!res.ok) throw new Error(res.error ?? "Could not start application");
+  redirect("/applications");
 }
