@@ -89,7 +89,7 @@ export async function buildFieldMap(userId: string): Promise<ExtFieldMap> {
   }
 
   // Work-authorisation answers: prefer the user's own statement, else derive.
-  const derived = workAuthAnswers(p?.workAuth);
+  const derived = workAuthAnswers(p?.workAuth ?? undefined);
   put("workAuthorizedUk", ap?.workAuthStatement || derived.workAuthorizedUk);
   put("requiresSponsorship", ap?.sponsorshipStatement || derived.requiresSponsorship);
 

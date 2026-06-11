@@ -28,7 +28,7 @@ export const WEIGHTS = {
 } as const;
 
 export interface ScoreProfile {
-  workAuth: WorkAuth;
+  workAuth: WorkAuth | null;
   graduationYear: number;
   currentYear: number;
   skills: string[];
@@ -136,24 +136,27 @@ export function scoreOpportunity(
   }
 
   // 4. Work authorization ----------------------------------------------------
-  const visaRequired = profile.workAuth === "UK_VISA_REQUIRED";
-  const explicitlyNoSponsorship =
-    mentionsNoSponsorship(opp.sponsorshipInfo) ||
-    mentionsNoSponsorship(opp.eligibilityNotes);
+  // workAuth is optional post-onboarding; unknown → no bonus and no penalty,
+  // so ranking is unaffected until the user answers.
+  if (profile.workAuth !== null) {
+    const visaRequired = profile.workAuth === "UK_VISA_REQUIRED";
+    const explicitlyNoSponsorship =
+      mentionsNoSponsorship(opp.sponsorshipInfo) ||
+      mentionsNoSponsorship(opp.eligibilityNotes);
 
-  if (!visaRequired) {
-    // Citizens / settled / ILR are eligible everywhere here.
-    score += WEIGHTS.workAuth;
-    reasons.push("You're eligible to work in the UK without sponsorship");
-  } else if (explicitlyNoSponsorship) {
-    score += WEIGHTS.eligibilityPenalty;
-    reasons.push("⚠ This employer states it cannot offer visa sponsorship");
-  } else if (offersSponsorship(opp.sponsorshipInfo)) {
-    score += WEIGHTS.workAuth;
-    reasons.push("Employer indicates visa sponsorship is available");
-  } else {
-    score += WEIGHTS.workAuthVisaUnknown;
-    reasons.push("Sponsorship not stated — worth confirming before applying");
+    if (!visaRequired) {
+      score += WEIGHTS.workAuth;
+      reasons.push("You're eligible to work in the UK without sponsorship");
+    } else if (explicitlyNoSponsorship) {
+      score += WEIGHTS.eligibilityPenalty;
+      reasons.push("⚠ This employer states it cannot offer visa sponsorship");
+    } else if (offersSponsorship(opp.sponsorshipInfo)) {
+      score += WEIGHTS.workAuth;
+      reasons.push("Employer indicates visa sponsorship is available");
+    } else {
+      score += WEIGHTS.workAuthVisaUnknown;
+      reasons.push("Sponsorship not stated — worth confirming before applying");
+    }
   }
 
   // 5. Target employer shortlist ---------------------------------------------
