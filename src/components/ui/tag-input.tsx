@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 
 /** Free-text tag entry with optional autocomplete suggestions. */
 export function TagInput({

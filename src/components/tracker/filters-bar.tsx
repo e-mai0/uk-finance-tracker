@@ -50,7 +50,6 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     setQ(params.get("q") ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
   const onSearch = (value: string) => {
     setQ(value);

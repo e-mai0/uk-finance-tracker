@@ -10,6 +10,7 @@ import { formatShortcut } from "@/lib/shortcuts";
 const NAV: { href: string; label: string; badgeKey?: "today" | "applications" | "chat" }[] = [
   { href: "/today", label: "Today", badgeKey: "today" },
   { href: "/tracker", label: "Tracker" },
+  { href: "/radar", label: "Radar" },
   { href: "/applications", label: "Applications", badgeKey: "applications" },
   { href: "/chat", label: "Ask Cyclops", badgeKey: "chat" },
   { href: "/memory", label: "Memory" },

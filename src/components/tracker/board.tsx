@@ -15,6 +15,8 @@ export type BoardRow = {
   daysLeft: number | null;
   score: number | undefined;
   saved: boolean;
+  /** First seen within the last 7 days (isFreshListing) — radar/scout finds. */
+  fresh: boolean;
   agentTags: { kind: string; title: string }[];
 };
 
@@ -192,6 +194,9 @@ export function Board({ rows }: { rows: BoardRow[] }) {
                       {tag.title}
                     </span>
                   ))}
+                  {row.fresh && (
+                    <span className="label ml-2 text-success">NEW</span>
+                  )}
                   {row.saved && (
                     <span className="ml-2 text-[0.75rem] text-warning">
                       <span aria-hidden>★</span>

@@ -7,6 +7,9 @@ import { daysUntil, formatShortDate } from "@/lib/utils";
 import { FiltersBar } from "@/components/tracker/filters-bar";
 import { Board } from "@/components/tracker/board";
 import { TickerTape } from "@/components/tracker/ticker-tape";
+import { FreshFinds } from "@/components/tracker/fresh-finds";
+import { ScoutCard } from "@/components/tracker/scout-card";
+import { isFreshListing } from "@/components/tracker/signals";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Tracker — Trackr" };
@@ -57,6 +60,7 @@ export default async function DashboardPage({
     daysLeft: daysUntil(it.deadlineAt, now),
     score: it.score,
     saved: it.saved === true,
+    fresh: isFreshListing(it.firstSeenAt, now),
     agentTags: (attention.get(it.id) ?? []).map((a) => ({
       kind: a.kind,
       title: a.title,
@@ -97,6 +101,15 @@ export default async function DashboardPage({
           )}
           <span aria-hidden className="text-border-strong">│</span>
           <span>Deterministic · No ML</span>
+          {filters.starred && (
+            <a
+              href="/api/saved/calendar"
+              download
+              className="label rounded-pill border border-border bg-surface px-3 py-1.5 text-subtle hover:text-ink"
+            >
+              ⤓ EXPORT DEADLINES (.ICS)
+            </a>
+          )}
         </div>
       </div>
 
@@ -130,6 +143,16 @@ export default async function DashboardPage({
       {/* The board */}
       <div className="p-4">
         <Board rows={rows} />
+      </div>
+
+      {/* Radar rails — live-source discoveries + the Firm Scout growth loop */}
+      <div className="grid gap-4 p-4 pt-0 lg:grid-cols-2">
+        <div className="overflow-hidden rounded-card border border-border shadow-card">
+          <FreshFinds items={allItems} />
+        </div>
+        <div className="overflow-hidden rounded-card border border-border shadow-card">
+          <ScoutCard />
+        </div>
       </div>
     </div>
   );
