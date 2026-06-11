@@ -49,7 +49,7 @@ const KIND_GLYPH: Record<string, string> = {
 
 const SEC_PILL =
   "rounded-pill border border-border-interactive bg-surface px-3 py-1 text-[0.8125rem] font-bold text-ink transition-colors hover:bg-surface-2";
-const GHOST = "label px-1.5 py-1 text-subtle transition-colors hover:text-ink";
+const GHOST = "label inline-flex min-h-6 items-center px-1.5 py-1 text-subtle transition-colors hover:text-ink";
 
 export default async function TodayPage() {
   const session = await auth();

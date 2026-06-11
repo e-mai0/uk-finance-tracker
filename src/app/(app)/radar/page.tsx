@@ -26,7 +26,7 @@ export default async function RadarPage() {
   return (
     <div className="animate-rise mx-auto max-w-6xl space-y-5 px-4 py-6">
       <div>
-        <div className="label text-[0.6rem] text-subtle">Source intelligence</div>
+        <div className="label text-[0.6875rem] text-subtle">Source intelligence</div>
         <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
           Radar
         </h1>
@@ -94,12 +94,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
-      <div className="flex items-center justify-between border-b border-border-strong bg-surface-2 px-3 py-2">
-        <span className="label text-[0.62rem] text-ink">
+    <div className="overflow-hidden rounded-card border border-border bg-surface">
+      <div className="flex items-center justify-between border-b border-hairline bg-surface-2 px-3 py-2">
+        <span className="label text-ink">
           <span className={glyphTone}>{glyph}</span> {title}
         </span>
-        <span className="tabular label text-[0.62rem] text-subtle">{count}</span>
+        <span className="tabular label text-subtle">{count}</span>
       </div>
       <ul className="divide-y divide-border">{children}</ul>
     </div>
@@ -140,9 +140,9 @@ function SourceRow({
       <span className="min-w-32 text-[0.88rem] font-semibold text-ink">
         {s.employerName}
       </span>
-      <span className="label text-[0.6rem] text-muted">{modeLabel(s)}</span>
+      <span className="label text-[0.6875rem] text-muted">{modeLabel(s)}</span>
       {!s.enabled && s.kind !== "WORKDAY" && (
-        <span className="label text-[0.6rem] text-danger">disabled</span>
+        <span className="label text-[0.6875rem] text-danger">disabled</span>
       )}
       <span className="ml-auto flex items-baseline gap-3 text-[0.72rem]">
         <span className="max-w-md truncate text-muted" title={s.lastStatus ?? ""}>

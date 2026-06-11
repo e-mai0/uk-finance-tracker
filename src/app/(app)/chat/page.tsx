@@ -235,15 +235,23 @@ export default async function ChatPage({
                       aria-current={isActive ? "page" : undefined}
                       className={rowClass}
                     >
-                      <span className="block truncate font-mono text-[0.72rem] text-ink">
-                        {t.title}
-                        {isMorningBrief && (
+                      <span className="flex items-baseline gap-1 truncate">
+                        <span className="block truncate font-mono text-[0.72rem] text-ink">
+                          {t.title}
+                          {isMorningBrief && (
+                            <>
+                              {" "}
+                              <span className="label text-accent" aria-hidden="true">
+                                ◆ AUTO
+                              </span>
+                              <span className="sr-only">automatic</span>
+                            </>
+                          )}
+                        </span>
+                        {isNeedsYou && (
                           <>
-                            {" "}
-                            <span className="label text-accent" aria-hidden="true">
-                              ◆ AUTO
-                            </span>
-                            <span className="sr-only">automatic</span>
+                            <span className="label shrink-0 text-accent" aria-hidden="true">◆</span>
+                            <span className="sr-only">needs you</span>
                           </>
                         )}
                       </span>

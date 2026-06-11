@@ -18,11 +18,11 @@ export function FreshFinds({ items }: { items: TrackerItem[] }) {
 
   return (
     <div className="bg-surface">
-      <div className="flex items-center justify-between border-b border-border-strong bg-surface-2 px-3 py-[0.5625rem]">
-        <span className="label text-[0.62rem] text-ink">
+      <div className="flex items-center justify-between border-b border-hairline bg-surface-2 px-3 py-[0.5625rem]">
+        <span className="label text-ink">
           <span className="text-success">✚</span> Fresh finds
         </span>
-        <span className="label text-[0.62rem] text-subtle">Last 7d</span>
+        <span className="label text-subtle">Last 7d</span>
       </div>
       {fresh.length === 0 ? (
         <p className="px-3 py-4 text-[0.78rem] text-muted">
@@ -37,10 +37,10 @@ export function FreshFinds({ items }: { items: TrackerItem[] }) {
                 className="block border-l-2 border-transparent px-3 py-2 transition-colors hover:border-accent hover:bg-accent-tint"
               >
                 <div className="flex items-baseline gap-2.5">
-                  <span aria-hidden className="text-[0.6rem] text-success">
+                  <span aria-hidden className="text-[0.6875rem] text-success">
                     ●
                   </span>
-                  <span className="tabular shrink-0 text-[0.78rem] font-bold tracking-tight text-accent">
+                  <span className="tabular shrink-0 text-[0.78rem] tracking-tight text-accent">
                     {ticker(item.employerName)}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[0.8rem] leading-snug text-ink">

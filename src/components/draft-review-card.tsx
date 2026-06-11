@@ -8,7 +8,7 @@ const PRI_PILL =
   "rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-bold text-canvas transition-opacity disabled:opacity-60";
 const SEC_PILL =
   "rounded-pill border border-border-interactive bg-surface px-3 py-1 text-[0.8125rem] font-bold text-ink transition-colors hover:bg-surface-2 disabled:opacity-60";
-const GHOST = "label px-1.5 py-1 text-subtle transition-colors hover:text-ink disabled:opacity-40";
+const GHOST = "label inline-flex min-h-6 items-center px-1.5 py-1 text-subtle transition-colors hover:text-ink disabled:opacity-40";
 
 /**
  * Review card for one generated draft (GB+ proposal idiom — agent border,

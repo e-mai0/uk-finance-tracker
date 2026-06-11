@@ -14,11 +14,11 @@ export function ScoutCard() {
 
   return (
     <div className="bg-surface">
-      <div className="flex items-center justify-between border-b border-border-strong bg-surface-2 px-3 py-[0.5625rem]">
-        <span className="label text-[0.62rem] text-ink">
+      <div className="flex items-center justify-between border-b border-hairline bg-surface-2 px-3 py-[0.5625rem]">
+        <span className="label text-ink">
           <span className="text-accent">◎</span> Firm Scout
         </span>
-        <span className="label text-[0.62rem] text-subtle">
+        <span className="label text-subtle">
           Greenhouse · Lever · Ashby
         </span>
       </div>
