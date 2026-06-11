@@ -5,6 +5,7 @@ import { auth } from "../auth";
 import { prisma } from "../db";
 import { recomputeMatchScores } from "../matching";
 import { settingsSchema } from "../../lib/validation";
+import { syncProfileFactsToMemory } from "../memory/sync";
 
 export interface SettingsResult {
   ok?: boolean;
@@ -24,12 +25,6 @@ export async function updateSettings(raw: unknown): Promise<SettingsResult> {
   const d = parsed.data;
   const userId = session.user.id;
 
-  const gradeInfo =
-    d.gradeInfo &&
-    (d.gradeInfo.aLevels || d.gradeInfo.gcseSummary || d.gradeInfo.gpaOrEquivalent)
-      ? d.gradeInfo
-      : undefined;
-
   await prisma.$transaction([
     prisma.profile.update({
       where: { userId },
@@ -39,22 +34,15 @@ export async function updateSettings(raw: unknown): Promise<SettingsResult> {
         degreeType: d.degreeType,
         graduationYear: d.graduationYear,
         currentYear: d.currentYear,
-        workAuth: d.workAuth,
-        skills: d.skills,
-        gradeInfo: gradeInfo ?? undefined,
       },
     }),
     prisma.preferences.update({
       where: { userId },
-      data: {
-        targetRoleFamilies: d.targetRoleFamilies,
-        preferredLocations: d.preferredLocations,
-        openToAnywhereUk: d.openToAnywhereUk,
-        targetEmployers: d.targetEmployers,
-      },
+      data: { targetRoleFamilies: d.targetRoleFamilies },
     }),
   ]);
 
+  await syncProfileFactsToMemory(userId, "settings updated");
   await recomputeMatchScores(userId);
 
   revalidatePath("/dashboard");
