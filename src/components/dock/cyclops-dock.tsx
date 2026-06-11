@@ -89,8 +89,10 @@ export function CyclopsDock({ badge }: { badge: number }) {
     } catch (_e) {
       // storage unavailable — keep default
     }
-    const next: DockState =
-      stored === "expanded" || stored === "docked" ? "docked" : "collapsed";
+    // Docked is the default (per the approved GB+ design) — the rail is
+    // visible until the user explicitly collapses it. Only a stored
+    // "collapsed" keeps it hidden; "expanded" normalizes to docked.
+    const next: DockState = stored === "collapsed" ? "collapsed" : "docked";
     if (stored === "expanded") persist(next);
     stateRef.current = next;
     setState(next);
