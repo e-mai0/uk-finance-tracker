@@ -225,8 +225,7 @@ export default async function ChatPage({
                     rowClass =
                       "block px-3 py-2 bg-accent-tint shadow-[inset_3px_0_0_var(--color-agent-mark)] hover:bg-surface-2";
                   } else {
-                    rowClass =
-                      "block border-l-2 border-transparent px-3 py-2 hover:bg-surface-2";
+                    rowClass = "block px-3 py-2 hover:bg-surface-2";
                   }
 
                   return (
