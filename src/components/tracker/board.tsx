@@ -246,7 +246,7 @@ export function Board({ rows }: { rows: BoardRow[] }) {
                           e.stopPropagation();
                           startTransition(() => void toggleSave(row.id));
                         }}
-                        className="label min-h-6 rounded-pill border border-border bg-surface px-2 text-subtle hover:border-agent-mark hover:text-accent"
+                        className="label min-h-6 rounded-pill border border-border bg-surface px-2 text-subtle hover:border-border-interactive hover:text-ink"
                       >
                         ★
                       </button>
