@@ -7,6 +7,7 @@ import { getTrackerItems } from "@/server/queries/opportunities";
 import { toUIMessages } from "@/server/chat/messages";
 import { resolveAttentionForm, snoozeAttentionForm } from "@/server/actions/attention";
 import { Monogram } from "@/components/ui/monogram";
+import { DraftReviewCard } from "@/components/draft-review-card";
 import { cn, daysUntil, formatShortDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +74,17 @@ export default async function TodayPage() {
     }),
     getTrackerItems(userId),
   ]);
+
+  // Drafts behind the open PROPOSAL rows — the review card needs the content.
+  const draftIds = attention
+    .filter((a) => a.kind === "PROPOSAL" && a.targetType === "draft")
+    .map((a) => a.targetId);
+  const drafts = draftIds.length
+    ? await prisma.generatedDraft.findMany({
+        where: { id: { in: draftIds }, userId },
+      })
+    : [];
+  const draftById = new Map(drafts.map((d) => [d.id, d]));
 
   // The brief text lives in the session's first assistant message; strip the
   // markdown H1 (the card header already says MORNING BRIEF).
@@ -162,7 +174,16 @@ export default async function TodayPage() {
           </p>
         ) : (
           <ul className="divide-y divide-border">
-            {attention.map((item) => (
+            {attention.map((item) => {
+              const draft =
+                item.kind === "PROPOSAL" && item.targetType === "draft"
+                  ? draftById.get(item.targetId)
+                  : undefined;
+              const draftCtx = (draft?.context ?? {}) as {
+                question?: unknown;
+                employer?: unknown;
+              };
+              return (
               <li key={item.id} className="px-4 py-3">
                 <div className="flex items-start gap-3">
                   <span aria-hidden className="w-4 shrink-0 text-center text-agent-mark">
@@ -222,14 +243,34 @@ export default async function TodayPage() {
                       Review ↓
                     </summary>
                     <div className="mt-2">
-                      <p className="rounded-control border border-border bg-surface-2 px-3 py-2 text-[0.8125rem] text-muted">
-                        {item.title}
-                      </p>
+                      {draft ? (
+                        <DraftReviewCard
+                          draftId={draft.id}
+                          question={
+                            typeof draftCtx.question === "string" &&
+                            draftCtx.question.trim()
+                              ? draftCtx.question
+                              : item.title
+                          }
+                          content={draft.content}
+                          meta={
+                            typeof draftCtx.employer === "string" &&
+                            draftCtx.employer
+                              ? `${draft.kind} · ${draftCtx.employer}`
+                              : draft.kind
+                          }
+                        />
+                      ) : (
+                        <p className="rounded-control border border-border bg-surface-2 px-3 py-2 text-[0.8125rem] text-muted">
+                          {item.title}
+                        </p>
+                      )}
                     </div>
                   </details>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </section>
