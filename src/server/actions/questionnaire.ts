@@ -41,8 +41,8 @@ export async function saveQuestionnaire(raw: unknown): Promise<QuestionnaireResu
       prisma.profile.update({
         where: { userId },
         data: {
-          // Never null out an existing answer just because the field was left blank.
-          ...(d.workAuth ? { workAuth: d.workAuth } : {}),
+          // undefined = field omitted (leave as-is); null = explicit clear.
+          ...(d.workAuth !== undefined ? { workAuth: d.workAuth } : {}),
           skills: d.skills,
           gradeInfo: gradeInfo ?? undefined,
         },

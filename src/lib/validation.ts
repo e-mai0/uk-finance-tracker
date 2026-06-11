@@ -76,7 +76,7 @@ export const essentialsSchema = educationSchema.extend({
 // ---------------------------------------------------------------------------
 
 export const questionnaireSchema = z.object({
-  workAuth: z.enum(WORK_AUTH_VALUES).optional(),
+  workAuth: z.enum(WORK_AUTH_VALUES).nullable().optional(),
   gradeInfo: z
     .object({
       aLevels: z.string().trim().max(120).optional().or(z.literal("")),

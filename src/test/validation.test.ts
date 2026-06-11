@@ -113,6 +113,12 @@ describe("questionnaireSchema", () => {
   it("rejects an invalid work auth value", () => {
     expect(questionnaireSchema.safeParse({ workAuth: "MARTIAN" }).success).toBe(false);
   });
+
+  it("accepts an explicit null workAuth (clear)", () => {
+    const r = questionnaireSchema.safeParse({ workAuth: null });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.workAuth).toBeNull();
+  });
 });
 
 describe("extPlanRequestSchema", () => {

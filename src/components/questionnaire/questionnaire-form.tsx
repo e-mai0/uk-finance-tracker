@@ -83,7 +83,7 @@ export function QuestionnaireForm({
     setErrors({});
     setMessage(null);
     const payload = {
-      workAuth: s.workAuth ?? undefined,
+      workAuth: s.workAuth,
       gradeInfo: {
         aLevels: s.aLevels,
         gcseSummary: s.gcseSummary,
@@ -154,16 +154,19 @@ export function QuestionnaireForm({
             value={s.aLevels}
             onChange={(e) => set("aLevels", e.target.value)}
             placeholder="A-levels e.g. A*A*A"
+            maxLength={120}
           />
           <Input
             value={s.gcseSummary}
             onChange={(e) => set("gcseSummary", e.target.value)}
             placeholder="GCSEs e.g. 9 A*/9s"
+            maxLength={120}
           />
           <Input
             value={s.gpaOrEquivalent}
             onChange={(e) => set("gpaOrEquivalent", e.target.value)}
             placeholder="Degree grade / GPA"
+            maxLength={60}
           />
         </div>
       </div>
@@ -180,6 +183,7 @@ export function QuestionnaireForm({
           placeholder="e.g. Excel, valuation, Python"
           max={20}
         />
+        <FieldError message={errors.skills?.[0]} />
       </div>
 
       <div>
@@ -213,7 +217,9 @@ export function QuestionnaireForm({
           onChange={(v) => set("targetEmployers", v)}
           suggestions={employerSuggestions}
           placeholder="e.g. Goldman Sachs, Blackstone"
+          max={40}
         />
+        <FieldError message={errors.targetEmployers?.[0]} />
       </div>
 
       {variant === "onboarding" && (
