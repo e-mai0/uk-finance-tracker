@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { AppNav } from "@/components/app-nav";
+import { CyclopsDock } from "@/components/dock/cyclops-dock";
 import { getBadgeCounts } from "@/server/queries/attention";
 import { prisma } from "@/server/db";
 
@@ -36,7 +37,10 @@ export default async function AppLayout({
         badges={badges}
         activity={activity}
       />
-      <main className="flex-1">{children}</main>
+      <div className="flex min-h-0 flex-1">
+        <main className="min-w-0 flex-1">{children}</main>
+        <CyclopsDock badge={badges.today} />
+      </div>
     </div>
   );
 }
