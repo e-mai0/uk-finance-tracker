@@ -4,6 +4,7 @@ import type { UIMessage } from "ai";
 import { auth } from "../auth";
 import { prisma } from "../db";
 import { toUIMessages } from "@/server/chat/messages";
+import { DOCK_THREAD_TITLE } from "@/lib/dock-context";
 
 /**
  * Find (or lazily create) the per-user persistent "Dock" ChatSession and
@@ -19,12 +20,12 @@ export async function getOrCreateDockThread(): Promise<
   const userId = session.user.id;
 
   let thread = await prisma.chatSession.findFirst({
-    where: { userId, title: "Dock" },
+    where: { userId, title: DOCK_THREAD_TITLE },
     orderBy: { updatedAt: "desc" },
   });
   if (!thread) {
     thread = await prisma.chatSession.create({
-      data: { userId, title: "Dock" },
+      data: { userId, title: DOCK_THREAD_TITLE },
     });
   }
 

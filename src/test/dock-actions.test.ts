@@ -17,6 +17,7 @@ vi.mock("@/server/db", () => ({
 vi.mock("@/server/auth", () => ({ auth: authMock }));
 
 import { getOrCreateDockThread } from "@/server/actions/dock";
+import { DOCK_THREAD_TITLE } from "@/lib/dock-context";
 
 beforeEach(() => {
   sessionFindFirst.mockReset();
@@ -50,7 +51,7 @@ describe("getOrCreateDockThread", () => {
 
     expect(sessionFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { userId: "u1", title: "Dock" },
+        where: { userId: "u1", title: DOCK_THREAD_TITLE },
       }),
     );
     expect(sessionCreate).not.toHaveBeenCalled();
@@ -86,7 +87,7 @@ describe("getOrCreateDockThread", () => {
     const res = await getOrCreateDockThread();
 
     expect(sessionCreate).toHaveBeenCalledWith({
-      data: { userId: "u1", title: "Dock" },
+      data: { userId: "u1", title: DOCK_THREAD_TITLE },
     });
     expect(res).toEqual({ sessionId: "fresh", messages: [] });
   });

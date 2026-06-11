@@ -1,3 +1,5 @@
+export const DOCK_THREAD_TITLE = "◆ Dock";
+
 /** Truthful dock context line per route (spec: the dock never lies about what it sees). */
 export function dockContextLabel(pathname: string): string {
   if (pathname.startsWith("/tracker/")) return "SEES: LISTING";
