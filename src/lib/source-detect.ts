@@ -58,6 +58,39 @@ export function detectSource(rawUrl: string): DetectedSource {
   return null;
 }
 
+const PRIVATE_HOST_PATTERNS = [
+  /^localhost$/i,
+  /\.(local|internal|lan)$/i,
+  /^127\./,
+  /^10\./,
+  /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^169\.254\./,
+  /^0\./,
+  /^\[/, // IPv6 literal — reject wholesale
+];
+
+/**
+ * Guard for fetching a user-supplied URL server-side (Firm Scout probing a
+ * custom careers site): https-or-http only, no credentials, default ports,
+ * and no loopback/private/link-local hosts. Returns the parsed URL or null.
+ */
+export function safePublicUrl(rawUrl: string): URL | null {
+  let url: URL;
+  try {
+    url = new URL(/^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  if (url.username || url.password) return null;
+  if (url.port && url.port !== "80" && url.port !== "443") return null;
+  const host = url.hostname.toLowerCase();
+  if (!host.includes(".")) return null;
+  if (PRIVATE_HOST_PATTERNS.some((p) => p.test(host))) return null;
+  return url;
+}
+
 /** "jane-street" → "Jane Street" — used when the scout doesn't name the firm. */
 export function prettifyIdentifier(identifier: string): string {
   return identifier

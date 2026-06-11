@@ -10,6 +10,7 @@ const NAV = [
   { href: "/dashboard", label: "Tracker" },
   { href: "/saved", label: "Saved" },
   { href: "/applications", label: "Apps" },
+  { href: "/radar", label: "Radar" },
   { href: "/settings", label: "Settings" },
 ];
 

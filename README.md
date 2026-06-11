@@ -46,6 +46,13 @@ affiliated with or endorsed by any employer listed.
   internships go live **for every user**. This is how niche startups and
   boutique funds enter the dataset without a code change. Recognised but
   unsupported boards (Workday) are queued for review.
+- **Custom-ATS coverage** — firms that run their own careers sites (Citadel,
+  Jane Street, Goldman …) are monitored too, in three tiers: verified public
+  JSON feeds (Jane Street's `/jobs/main.json`) ingest fully; pages embedding
+  schema.org **JobPosting JSON-LD** parse like any feed (with real
+  `validThrough` deadlines); opaque SPAs are **watched** — sitemap URL diffs
+  or a content hash — and changes are flagged for review on **/radar**, never
+  auto-published. Scouted custom URLs follow the same ladder automatically.
 - **Fresh finds** — a dashboard rail of roles first seen in the last 7 days,
   so cron- and scout-discovered listings surface the day they appear.
 

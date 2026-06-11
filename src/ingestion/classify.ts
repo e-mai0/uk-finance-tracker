@@ -103,8 +103,9 @@ const UK_LOCATION_SIGNALS = [
   "oxford",
 ];
 
-/** Matches "UK" as a word (avoids "Ukraine"); case-insensitive. */
-const UK_WORD = /\buk\b/i;
+/** Matches "UK" / "GB" as words (avoids "Ukraine"); case-insensitive. "GB" is
+ *  the ISO country code structured-data feeds (JSON-LD JobPosting) report. */
+const UK_WORD = /\b(uk|gb|gbr)\b/i;
 
 export function isUkLocation(location: string): boolean {
   const loc = norm(location);
@@ -120,7 +121,7 @@ export function isUkLocation(location: string): boolean {
 // QUANT before "trading" pulls it into MARKETS; generic tech keywords come
 // last so "Technology Analyst, Investment Banking" lands on IB.
 const ROLE_FAMILY_RULES: [RoleFamily, string[]][] = [
-  ["QUANT", ["quantitative", "quant ", "systematic"]],
+  ["QUANT", ["quantitative", "quant ", "systematic", "machine learning"]],
   [
     "IB",
     ["investment banking", "m&a", "mergers", "corporate finance", "advisory"],
@@ -165,14 +166,7 @@ const ROLE_FAMILY_RULES: [RoleFamily, string[]][] = [
   // Tech-at-a-finance-firm reads as quant/systematic in this product's taxonomy.
   [
     "QUANT",
-    [
-      "software",
-      "technology",
-      "engineer",
-      "developer",
-      "data scien",
-      "machine learning",
-    ],
+    ["software", "technology", "engineer", "developer", "data scien"],
   ],
 ];
 

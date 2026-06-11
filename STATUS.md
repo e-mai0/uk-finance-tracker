@@ -74,7 +74,22 @@ The growth engine for niche/boutique coverage. Reads **public ATS JSON feeds onl
 - **Fresh finds** (dashboard sidebar): roles first seen ≤7 days, newest first; the same 7-day window drives a green **● NEW** flag on grid rows (`isFreshListing` in `signals.tsx`).
 - **Deadline export**: `GET /api/saved/calendar` downloads the user's saved-role deadlines (+ opening dates) as an `.ics` file (button on `/saved`; pure builder in `src/lib/ics.ts`).
 - **Stale-score fix**: tracker items without a cached `MatchScore` (i.e. ingested after the user's last recompute) now get scores computed live in `getTrackerItems`.
-- **Schema change**: `SourceType` gains `ASHBY`; new `IngestionSource` table → run `npm run db:push` (or a migration) on deploy.
+- **Custom-ATS monitoring (2026-06-11)**: three tiers, all verified live.
+  (1) Custom JSON feeds — `JaneStreetAdapter` reads the public `/jobs/main.json`
+  (internships are NOT on their Greenhouse board; found a live London summer
+  internship on first run). (2) JSON-LD — `src/ingestion/jsonld.ts` parses
+  schema.org JobPosting structured data from any careers page (TalentBrew /
+  Avature / boutique sites), incl. real `validThrough` deadlines; used by
+  `JsonLdPageAdapter` and by Firm Scout's probe. (3) Watch mode —
+  `src/ingestion/watch.ts` diffs career-sitemap URL sets (Citadel + Citadel
+  Securities verified: 36/66 role URLs) or page hashes (Goldman higher.gs.com,
+  DB, BlackRock); changes set `lastChangedAt` and surface on **/radar**
+  (new nav page) for review — never auto-published. Scout now handles custom
+  URLs via an SSRF-guarded probe (`safePublicUrl`): JSON-LD found → live feed;
+  else → watcher.
+- **Schema change**: `SourceType` gains `ASHBY`; new `IngestionSource` table
+  (+ `watchOnly`, `watchState`, `lastChangedAt`) → run `npm run db:push` (or a
+  migration) on deploy.
 
 ---
 

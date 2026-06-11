@@ -56,23 +56,83 @@ async function main() {
   });
 
   console.log("→ Registering live ingestion sources…");
-  // Greenhouse boards verified in src/ingestion/source-plans/uk-finance-2027.json
-  // (activation_status auto_publish_with_light_checks). The long tail of
+  // Sources verified against src/ingestion/source-plans/uk-finance-2027.json
+  // and live probes. ATS boards + custom feeds publish automatically; watchOnly
+  // rows are custom-ATS sites we diff for change and flag on /radar (the
+  // plans' monitored_change_detection_only strategy). The long tail of
   // boutique firms enters via Firm Scout rather than this seed.
-  const liveSources = [
+  const liveSources: {
+    kind: "GREENHOUSE" | "CAREERS_PAGE";
+    identifier: string;
+    employerName: string;
+    sector?: string;
+    url: string;
+    watchOnly?: boolean;
+  }[] = [
     {
-      kind: "GREENHOUSE" as const,
+      kind: "GREENHOUSE",
       identifier: "mangroup",
       employerName: "Man Group",
       sector: "Hedge Fund",
       url: "https://job-boards.eu.greenhouse.io/mangroup",
     },
     {
-      kind: "GREENHOUSE" as const,
+      kind: "GREENHOUSE",
       identifier: "point72",
       employerName: "Point72",
       sector: "Hedge Fund",
       url: "https://job-boards.greenhouse.io/point72",
+    },
+    // Jane Street lists internships only on its own site; public JSON feed
+    // verified live (ids resolve to /join-jane-street/position/<id>/).
+    {
+      kind: "CAREERS_PAGE",
+      identifier: "janestreet-jobs-json",
+      employerName: "Jane Street",
+      sector: "Proprietary Trading",
+      url: "https://www.janestreet.com/jobs/main.json",
+    },
+    // Custom-ATS watchers — sitemap URL diffs where the site exposes one
+    // (verified live for both Citadel domains), page-hash otherwise.
+    {
+      kind: "CAREERS_PAGE",
+      identifier: "citadel-career-sitemap",
+      employerName: "Citadel",
+      sector: "Hedge Fund",
+      url: "https://www.citadel.com/career-sitemap.xml",
+      watchOnly: true,
+    },
+    {
+      kind: "CAREERS_PAGE",
+      identifier: "citadel-securities-career-sitemap",
+      employerName: "Citadel Securities",
+      sector: "Market Maker",
+      url: "https://www.citadelsecurities.com/career-sitemap.xml",
+      watchOnly: true,
+    },
+    {
+      kind: "CAREERS_PAGE",
+      identifier: "goldman-higher-gs",
+      employerName: "Goldman Sachs",
+      sector: "Investment Bank",
+      url: "https://higher.gs.com/",
+      watchOnly: true,
+    },
+    {
+      kind: "CAREERS_PAGE",
+      identifier: "blackrock-students-emea",
+      employerName: "BlackRock",
+      sector: "Asset Management",
+      url: "https://careers.blackrock.com/students-and-graduates-emea",
+      watchOnly: true,
+    },
+    {
+      kind: "CAREERS_PAGE",
+      identifier: "db-students-programmes",
+      employerName: "Deutsche Bank",
+      sector: "Investment Bank",
+      url: "https://careers.db.com/students-graduates/search-programmes/index?language_id=1",
+      watchOnly: true,
     },
   ];
   for (const s of liveSources) {

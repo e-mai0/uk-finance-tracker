@@ -27,6 +27,11 @@ describe("isUkLocation", () => {
   it('does not treat "Ukraine" as the word UK', () => {
     expect(isUkLocation("Kyiv, Ukraine")).toBe(false);
   });
+
+  it("accepts the GB country code from structured data", () => {
+    expect(isUkLocation("London, GB")).toBe(true);
+    expect(isUkLocation("Hamburg, DE")).toBe(false);
+  });
 });
 
 describe("inferRoleFamily", () => {
@@ -43,6 +48,16 @@ describe("inferRoleFamily", () => {
         location: "London",
       }),
     ).toBe("IB");
+  });
+
+  it("routes machine-learning titles to QUANT even in a trading department", () => {
+    expect(
+      inferRoleFamily({
+        title: "Machine Learning Researcher",
+        location: "London",
+        departments: ["Trading, Research, and Machine Learning"],
+      }),
+    ).toBe("QUANT");
   });
 
   it("routes engineering at a finance firm to QUANT", () => {

@@ -14,11 +14,14 @@ export function fallbackFamilyFor(employer: AdapterEmployer): RoleFamily | null 
   return roleFamilyFromSector(employer.sector);
 }
 
+// Polite crawler identification on every outbound ingestion request.
+const USER_AGENT = "TrackrBot/1.0 (UK student internship tracker)";
+
 /** Fetch a public ATS JSON endpoint with a hard timeout. Throws on non-2xx so
  *  the sync layer can record the failure against the source. */
 export async function fetchJson(url: string): Promise<unknown> {
   const res = await fetch(url, {
-    headers: { accept: "application/json" },
+    headers: { accept: "application/json", "user-agent": USER_AGENT },
     signal: AbortSignal.timeout(15_000),
     cache: "no-store",
   });
@@ -26,6 +29,19 @@ export async function fetchJson(url: string): Promise<unknown> {
     throw new Error(`GET ${url} → ${res.status} ${res.statusText}`);
   }
   return res.json();
+}
+
+/** Fetch a public page/sitemap as text (same timeout + error contract). */
+export async function fetchText(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: { "user-agent": USER_AGENT },
+    signal: AbortSignal.timeout(15_000),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`GET ${url} → ${res.status} ${res.statusText}`);
+  }
+  return res.text();
 }
 
 /**

@@ -269,6 +269,12 @@ model IngestionSource {
   sector              String?
   url                 String? // the human URL the source was derived from
   enabled             Boolean    @default(true)
+  // Watch-only sources (custom ATS sites with no machine-readable feed) are
+  // monitored for change — sitemap URL diffs or a page content hash — and
+  // flagged for review on /radar rather than auto-published.
+  watchOnly           Boolean    @default(false)
+  watchState          Json? // { kind: "sitemap", urls } | { kind: "page", hash }
+  lastChangedAt       DateTime?
   suggestedById       String? // userId of the scout who added it (informational)
   lastRunAt           DateTime?
   lastStatus          String? // e.g. "ok: 3 created, 1 updated"
