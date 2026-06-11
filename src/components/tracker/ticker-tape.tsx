@@ -3,10 +3,10 @@ import Link from "next/link";
 import type { TrackerItem } from "@/lib/filters";
 import { ticker as tickerCode, daysUntil } from "@/lib/utils";
 
-/* The live tape — open positions scroll past as tickers on the dark command
-   rail: CODE · status glyph · days-to-deadline ("the change"). Pure CSS marquee
-   (globals.css), pauses on hover, halts on reduced-motion. Typographic glyphs
-   only (▲ ▼ ◆ ●). Brighter on-dark semantics for legibility on the chrome. */
+/* The live tape — open positions scroll past as tickers on a light band under
+   the header: CODE · status glyph · days-to-deadline ("the change"). Pure CSS
+   marquee (globals.css), pauses on hover, halts on reduced-motion. Typographic
+   glyphs only (▲ ▼ ◆ ●). Token semantics for legibility on the light surface. */
 
 type Lane = {
   id: string;
@@ -18,8 +18,8 @@ type Lane = {
   days: number | null;
 };
 
-const UP = "text-[#46c178]";
-const DOWN = "text-[#f0584f]";
+const UP = "text-success";
+const DOWN = "text-danger";
 
 function lane(item: TrackerItem, now: Date): Lane {
   const d = daysUntil(item.deadlineAt, now);
@@ -29,9 +29,9 @@ function lane(item: TrackerItem, now: Date): Lane {
       id: item.id,
       code: tickerCode(item.employerName),
       glyph: "◆",
-      tone: "text-amber",
+      tone: "text-accent",
       status: "SOON",
-      statusTone: "text-amber",
+      statusTone: "text-accent",
       days: d,
     };
   }
@@ -41,7 +41,7 @@ function lane(item: TrackerItem, now: Date): Lane {
     glyph: closingHard ? "▼" : "▲",
     tone: closingHard ? DOWN : UP,
     status: "OPEN",
-    statusTone: "text-chrome-dim",
+    statusTone: "text-subtle",
     days: d,
   };
 }
@@ -68,15 +68,15 @@ export function TickerTape({ items }: { items: TrackerItem[] }) {
       className="group inline-flex items-center gap-2 px-4 py-1.5"
       tabIndex={-1}
     >
-      <span className="tabular text-[0.78rem] font-semibold tracking-wide text-amber group-hover:text-amber-2">
+      <span className="tabular text-[0.78rem] tracking-wide text-accent group-hover:text-accent-hover">
         {l.code}
       </span>
       <span className={`text-[0.7rem] leading-none ${l.tone}`}>{l.glyph}</span>
-      <span className={`label text-[0.6rem] ${l.statusTone}`}>{l.status}</span>
+      <span className={`label ${l.statusTone}`}>{l.status}</span>
       {l.days != null && l.days >= 0 && (
-        <span className="tabular text-[0.74rem] text-chrome-ink-2">{l.days}d</span>
+        <span className="tabular text-[0.74rem] text-subtle">{l.days}d</span>
       )}
-      <span aria-hidden className="ml-2 text-chrome-line">
+      <span aria-hidden className="ml-2 text-border-strong">
         │
       </span>
     </Link>
@@ -91,12 +91,12 @@ export function TickerTape({ items }: { items: TrackerItem[] }) {
   );
 
   return (
-    <div className="chrome overflow-hidden">
+    <div className="overflow-hidden border-b border-border bg-surface">
       <div className="flex items-stretch">
         {/* Left tag — the band's identity, like an index label */}
-        <div className="flex shrink-0 items-center gap-2 border-r border-chrome-line px-3.5">
+        <div className="flex shrink-0 items-center gap-2 border-r border-border px-3.5">
           <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-success" />
-          <span className="label text-[0.6rem] text-chrome-ink-2">Live tape</span>
+          <span className="label text-subtle">Live tape</span>
         </div>
         {/* The marquee viewport */}
         <div className="ticker relative min-w-0 flex-1 overflow-hidden">
@@ -108,8 +108,8 @@ export function TickerTape({ items }: { items: TrackerItem[] }) {
             {run("b", true)}
           </div>
           {/* edge fades so cells dissolve rather than clip */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-chrome to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-chrome to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-surface to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent" />
         </div>
       </div>
     </div>

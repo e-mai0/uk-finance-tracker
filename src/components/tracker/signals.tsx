@@ -20,7 +20,7 @@ export function DaysLeft({
   const cls =
     dl <= 7 ? "text-danger" : dl <= 14 ? "text-warning" : "text-subtle";
   return (
-    <span className={cn("tabular font-semibold", cls, className)}>
+    <span className={cn("tabular", cls, className)}>
       {dl === 0 ? "0d" : `${dl}d`}
     </span>
   );

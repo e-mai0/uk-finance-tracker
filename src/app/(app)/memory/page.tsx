@@ -86,13 +86,13 @@ export default async function MemoryPage({
     rawRevisions[0]?.createdAt.toISOString() ?? new Date(0).toISOString();
 
   return (
-    <div className="animate-rise flex h-[calc(100vh-2.75rem)] overflow-hidden">
+    <div className="animate-rise flex h-[calc(100vh-3rem)] overflow-hidden">
       {/* Left rail — file list */}
       <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface sm:flex">
         {/* Heading */}
         <div className="border-b border-border px-3 py-2.5">
-          <p className="label text-[0.6rem] text-subtle">Cyclops</p>
-          <p className="font-mono text-[0.78rem] font-semibold text-ink">
+          <p className="label text-subtle">Cyclops</p>
+          <p className="font-mono text-[0.78rem] text-ink">
             What Cyclops knows
           </p>
         </div>
@@ -106,7 +106,7 @@ export default async function MemoryPage({
           {canonical.length > 0 && (
             <>
               <div className="px-3 pb-0.5 pt-2">
-                <span className="label text-[0.55rem] uppercase tracking-widest text-faint">
+                <span className="label uppercase tracking-widest text-faint">
                   Profile
                 </span>
               </div>
@@ -124,7 +124,7 @@ export default async function MemoryPage({
           {stories.length > 0 && (
             <>
               <div className="px-3 pb-0.5 pt-3">
-                <span className="label text-[0.55rem] uppercase tracking-widest text-faint">
+                <span className="label uppercase tracking-widest text-faint">
                   Stories
                 </span>
               </div>
@@ -142,7 +142,7 @@ export default async function MemoryPage({
           {companies.length > 0 && (
             <>
               <div className="px-3 pb-0.5 pt-3">
-                <span className="label text-[0.55rem] uppercase tracking-widest text-faint">
+                <span className="label uppercase tracking-widest text-faint">
                   Companies
                 </span>
               </div>
@@ -160,7 +160,7 @@ export default async function MemoryPage({
           {other.length > 0 && (
             <>
               <div className="px-3 pb-0.5 pt-3">
-                <span className="label text-[0.55rem] uppercase tracking-widest text-faint">
+                <span className="label uppercase tracking-widest text-faint">
                   Other
                 </span>
               </div>
@@ -177,7 +177,7 @@ export default async function MemoryPage({
 
         {/* Footer */}
         <div className="border-t border-border px-3 py-2">
-          <span className="label text-[0.58rem] text-faint">
+          <span className="label text-faint">
             Memory · {files.length} file{files.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -188,8 +188,8 @@ export default async function MemoryPage({
         {/* Pane header */}
         <div className="flex items-center border-b border-border bg-surface px-4 py-2">
           <div className="flex items-baseline gap-2">
-            <span className="label text-[0.6rem] text-subtle">Memory</span>
-            <span className="truncate font-mono text-[0.78rem] font-semibold text-ink">
+            <span className="label text-subtle">Memory</span>
+            <span className="truncate font-mono text-[0.78rem] text-ink">
               {activePath ?? "—"}
             </span>
           </div>
@@ -236,7 +236,7 @@ function FileLink({ path, isActive }: { path: string; isActive: boolean }) {
         {label}
       </span>
       {path.includes("/") && (
-        <span className="block truncate font-mono text-[0.58rem] text-faint">
+        <span className="block truncate font-mono text-[0.6875rem] text-faint">
           {path}
         </span>
       )}

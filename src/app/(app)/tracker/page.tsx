@@ -55,13 +55,13 @@ export default async function DashboardPage({
       {/* Title strip */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-surface px-3 py-2">
         <div className="flex items-baseline gap-3">
-          <span className="label text-[0.6rem] text-subtle">Trackr Desk</span>
+          <span className="label text-subtle">Trackr Desk</span>
           <span className="text-[0.95rem] font-semibold tracking-tight text-ink">
             Summer 2027{" "}
             <span className="text-subtle">· UK finance internships</span>
           </span>
         </div>
-        <div className="label flex items-center gap-2 text-[0.6rem] text-subtle">
+        <div className="label flex items-center gap-2 text-subtle">
           <span className="tabular text-ink">{allItems.length}</span> positions
           <span aria-hidden className="text-border-strong">
             │
@@ -87,13 +87,13 @@ export default async function DashboardPage({
         <div className="min-w-0 border-border-strong lg:border-r">
           <OpportunityTable items={items} />
         </div>
-        <aside className="border-t border-border-strong lg:sticky lg:top-11 lg:max-h-[calc(100vh-2.75rem)] lg:self-start lg:overflow-auto lg:border-t-0">
+        <aside className="border-t border-border-strong lg:sticky lg:top-12 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-auto lg:border-t-0">
           <TopMatches items={allItems} />
         </aside>
       </div>
 
       {/* Status / legend footer */}
-      <div className="label flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border-strong bg-surface-2 px-3 py-2 text-[0.6rem] text-subtle">
+      <div className="label flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border-strong bg-surface-2 px-3 py-2 text-subtle">
         <Legend tone="text-success" glyph="▲" label="Open" />
         <Legend tone="text-warning" glyph="◆" label="Soon" />
         <Legend tone="text-danger" glyph="▼" label="Closing" />

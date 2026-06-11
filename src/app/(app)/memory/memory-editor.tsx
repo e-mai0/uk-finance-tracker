@@ -70,10 +70,10 @@ export function MemoryEditor({ path, content, revisions }: Props) {
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-mono text-sm font-semibold text-ink truncate">
+          <h2 className="font-mono text-sm text-ink truncate">
             {path}
           </h2>
-          <p className="mt-0.5 font-mono text-[0.62rem] text-subtle">
+          <p className="mt-0.5 font-mono text-[0.6875rem] text-subtle">
             Cyclops reads these files before every conversation. Edit anything;
             every change is recorded below.
           </p>
@@ -83,7 +83,7 @@ export function MemoryEditor({ path, content, revisions }: Props) {
           onClick={handleSave}
           disabled={!isDirty || isPending}
           className={cn(
-            "label shrink-0 border px-3 py-1.5 text-[0.62rem] transition-colors",
+            "label shrink-0 border px-3 py-1.5 transition-colors",
             isDirty && !isPending
               ? "border-accent bg-accent-tint text-accent hover:bg-accent hover:text-canvas"
               : "cursor-not-allowed border-border text-faint opacity-40",
@@ -97,7 +97,7 @@ export function MemoryEditor({ path, content, revisions }: Props) {
       {error && (
         <div
           role="alert"
-          className="border border-danger-soft bg-danger-soft px-3 py-2 font-mono text-[0.62rem] text-danger"
+          className="border border-danger-soft bg-danger-soft px-3 py-2 font-mono text-[0.6875rem] text-danger"
         >
           <span aria-hidden className="mr-1">
             ▲
@@ -115,13 +115,13 @@ export function MemoryEditor({ path, content, revisions }: Props) {
         className={cn(
           "h-96 w-full resize-y border border-border bg-canvas px-3 py-2.5",
           "font-mono text-[0.78rem] leading-relaxed text-ink",
-          "placeholder:text-faint focus:border-accent focus:outline-none",
+          "placeholder:text-faint focus:border-accent",
         )}
       />
 
       {/* Revision history */}
       <div>
-        <p className="label mb-2 text-[0.6rem] text-subtle uppercase tracking-widest">
+        <p className="label mb-2 text-subtle uppercase tracking-widest">
           History
         </p>
         {revisions.length === 0 ? (
@@ -146,15 +146,15 @@ export function MemoryEditor({ path, content, revisions }: Props) {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="font-mono text-[0.68rem] font-semibold text-ink">
+                      <span className="font-mono text-[0.6875rem] text-ink">
                         {who}
                       </span>
-                      <span className="font-mono text-[0.58rem] text-subtle">
+                      <span className="font-mono text-[0.6875rem] text-subtle">
                         {ts}
                       </span>
                     </div>
                     {rev.reason && (
-                      <p className="mt-0.5 truncate font-mono text-[0.62rem] text-muted">
+                      <p className="mt-0.5 truncate font-mono text-[0.6875rem] text-muted">
                         {rev.reason}
                       </p>
                     )}
@@ -165,7 +165,7 @@ export function MemoryEditor({ path, content, revisions }: Props) {
                     onClick={() => handleRestore(rev)}
                     disabled={isPending}
                     className={cn(
-                      "label shrink-0 border border-border px-2.5 py-1 text-[0.58rem] text-subtle transition-colors",
+                      "label shrink-0 border border-border px-2.5 py-1 text-subtle transition-colors",
                       "hover:border-accent hover:text-accent",
                       "disabled:cursor-not-allowed disabled:opacity-40",
                     )}

@@ -50,7 +50,7 @@ export default async function OpportunityDetailPage({
     <div className="mx-auto max-w-5xl px-4 py-6">
       <Link
         href="/tracker"
-        className="label inline-flex items-center gap-1.5 text-[0.62rem] text-subtle transition-colors hover:text-accent"
+        className="label inline-flex items-center gap-1.5 text-subtle transition-colors hover:text-accent"
       >
         <span aria-hidden className="text-sm leading-none">‹</span>
         Back to tracker

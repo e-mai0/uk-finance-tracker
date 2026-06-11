@@ -127,7 +127,7 @@ export default async function ChatPage({
   const initialMessages = activeThread.messages.map(rowToUIMessage);
 
   return (
-    <div className="animate-rise flex h-[calc(100vh-2.75rem)] overflow-hidden">
+    <div className="animate-rise flex h-[calc(100vh-3rem)] overflow-hidden">
       {/* Left rail — thread list */}
       <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface sm:flex">
         {/* New conversation */}
@@ -135,7 +135,7 @@ export default async function ChatPage({
           <form action={createThread}>
             <button
               type="submit"
-              className="label w-full border border-border px-2.5 py-1.5 text-left text-[0.62rem] text-accent transition-colors hover:border-accent hover:bg-accent-tint"
+              className="label w-full border border-border px-2.5 py-1.5 text-left text-accent transition-colors hover:border-accent hover:bg-accent-tint"
             >
               <span aria-hidden className="mr-1 text-accent">
                 +
@@ -163,7 +163,7 @@ export default async function ChatPage({
                 <span className="block truncate font-mono text-[0.72rem] text-ink">
                   {t.title}
                 </span>
-                <span className="block font-mono text-[0.58rem] text-subtle">
+                <span className="block font-mono text-[0.6875rem] text-subtle">
                   {t.updatedAt.toLocaleDateString("en-GB", {
                     day: "numeric",
                     month: "short",
@@ -176,7 +176,7 @@ export default async function ChatPage({
 
         {/* Footer label */}
         <div className="border-t border-border px-3 py-2">
-          <span className="label text-[0.58rem] text-faint">Cyclops · AI</span>
+          <span className="label text-faint">Cyclops · AI</span>
         </div>
       </aside>
 
@@ -185,8 +185,8 @@ export default async function ChatPage({
         {/* Pane header */}
         <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-2">
           <div className="flex items-baseline gap-2">
-            <span className="label text-[0.6rem] text-subtle">Cyclops</span>
-            <span className="truncate font-mono text-[0.78rem] font-semibold text-ink">
+            <span className="label text-subtle">Cyclops</span>
+            <span className="truncate font-mono text-[0.78rem] text-ink">
               {activeThread.title}
             </span>
           </div>
@@ -194,7 +194,7 @@ export default async function ChatPage({
           <form action={createThread} className="sm:hidden">
             <button
               type="submit"
-              className="label px-2 py-1 text-[0.6rem] text-accent hover:underline"
+              className="label px-2 py-1 text-accent hover:underline"
             >
               + New
             </button>

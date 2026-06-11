@@ -87,7 +87,7 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
       <span className="block">
         <span
           className={cn(
-            "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[0.62rem]",
+            "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[0.6875rem]",
             // Bug 2 fix: real finished states per SDK are output-available/output-error/output-denied
             state === "output-available" || state === "output-denied"
               ? "border-border bg-surface-2 text-muted"
@@ -108,10 +108,10 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
         {/* Memory diff surface */}
         {hasDiff && (
           <details className="mt-1 ml-0.5">
-            <summary className="cursor-pointer font-mono text-[0.62rem] text-subtle hover:text-muted">
+            <summary className="cursor-pointer font-mono text-[0.6875rem] text-subtle hover:text-muted">
               memory updated — view diff
             </summary>
-            <pre className="mt-1 overflow-x-auto border border-border bg-surface p-2 font-mono text-[0.6rem] leading-tight text-ink">
+            <pre className="mt-1 overflow-x-auto border border-border bg-surface p-2 font-mono text-[0.6875rem] leading-tight text-ink">
               {String((output as Record<string, unknown>).diff)}
             </pre>
           </details>
@@ -123,7 +123,7 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
             {semanticHits.map((h, i) => (
               <span
                 key={i}
-                className="border border-border-strong bg-surface-2 px-1 py-0.5 font-mono text-[0.58rem] uppercase tracking-wide text-muted"
+                className="border border-border-strong bg-surface-2 px-1 py-0.5 font-mono text-[0.6875rem] uppercase tracking-wide text-muted"
               >
                 {/* Bug 3 fix: confidence is "high"|"medium"|"low" — render uppercased string */}
                 {h.kind.toUpperCase()}
@@ -213,7 +213,7 @@ export function CyclopsChat({
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && !isStreaming && (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <p className="label text-[0.6rem] text-subtle">Cyclops</p>
+            <p className="label text-subtle">Cyclops</p>
             <p className="mt-1 text-sm text-muted">
               Ask me anything about your applications, opportunities, or
               profile.
@@ -256,7 +256,7 @@ export function CyclopsChat({
             className="mt-3 flex items-center gap-1.5"
           >
             <span className="caret text-[0.9rem] text-accent">▌</span>
-            <span className="font-mono text-[0.62rem] text-subtle">
+            <span className="font-mono text-[0.6875rem] text-subtle">
               Cyclops is thinking…
             </span>
           </div>
@@ -266,7 +266,7 @@ export function CyclopsChat({
         {status === "error" && error && (
           <div
             aria-live="polite"
-            className="mt-3 border border-danger-soft bg-danger-soft px-3 py-2 font-mono text-[0.62rem] text-danger"
+            className="mt-3 border border-danger-soft bg-danger-soft px-3 py-2 font-mono text-[0.6875rem] text-danger"
           >
             <span aria-hidden className="mr-1">
               ▲
@@ -300,7 +300,7 @@ export function CyclopsChat({
             maxLength={8000}
             className={cn(
               "flex-1 border border-border bg-canvas px-2.5 py-1.5 font-mono text-[0.8rem] text-ink placeholder:text-faint",
-              "focus:border-accent focus:outline-none",
+              "focus:border-accent",
             )}
             aria-label="Chat input"
           />
@@ -310,7 +310,7 @@ export function CyclopsChat({
               type="button"
               onClick={() => void stop()}
               className={cn(
-                "label border border-border bg-surface px-3 py-1.5 text-[0.62rem] text-danger transition-colors",
+                "label border border-border bg-surface px-3 py-1.5 text-danger transition-colors",
                 "hover:border-danger hover:bg-danger-soft",
               )}
               aria-label="Stop generation"
@@ -322,7 +322,7 @@ export function CyclopsChat({
               type="submit"
               disabled={!input.trim()}
               className={cn(
-                "label border border-border bg-surface px-3 py-1.5 text-[0.62rem] text-accent transition-colors",
+                "label border border-border bg-surface px-3 py-1.5 text-accent transition-colors",
                 "hover:border-accent hover:bg-accent-tint",
                 "disabled:cursor-not-allowed disabled:opacity-40",
               )}
@@ -332,7 +332,7 @@ export function CyclopsChat({
           )}
         </form>
         {input.length > 7500 && (
-          <p className="mt-1 font-mono text-[0.58rem] text-warning">
+          <p className="mt-1 font-mono text-[0.6875rem] text-warning">
             {8000 - input.length} chars remaining
           </p>
         )}

@@ -41,16 +41,16 @@ export function SummaryCards({ stats }: { stats: SummaryStats }) {
         <div key={c.key} className="bg-surface px-4 py-2.5">
           <div className="flex items-center gap-1.5">
             {c.glyph && (
-              <span aria-hidden className={cn("text-[0.66rem] leading-none", c.tone)}>
+              <span aria-hidden className={cn("text-[0.6875rem] leading-none", c.tone)}>
                 {c.glyph}
               </span>
             )}
-            <span className="label text-[0.62rem] text-subtle">{c.label}</span>
+            <span className="label text-subtle">{c.label}</span>
           </div>
           <div className="mt-1.5 flex items-baseline gap-2">
             <span
               className={cn(
-                "tabular text-[1.7rem] font-semibold leading-none",
+                "tabular text-[1.7rem] leading-none",
                 c.tone ?? "text-ink",
               )}
             >

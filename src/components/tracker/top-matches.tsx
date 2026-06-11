@@ -18,10 +18,10 @@ export function TopMatches({ items }: { items: TrackerItem[] }) {
   return (
     <div className="h-full bg-surface">
       <div className="flex items-center justify-between border-b border-border-strong bg-surface-2 px-3 py-[0.5625rem]">
-        <span className="label text-[0.62rem] text-ink">
+        <span className="label text-ink">
           <span className="text-accent">★</span> Watchlist
         </span>
-        <span className="label text-[0.62rem] text-accent">Fit ≥ 75</span>
+        <span className="label text-accent">Fit ≥ 75</span>
       </div>
       {top.length === 0 ? (
         <p className="px-3 py-6 text-sm text-muted">
@@ -42,7 +42,7 @@ export function TopMatches({ items }: { items: TrackerItem[] }) {
                     <span className="tabular text-[0.72rem] text-faint">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="tabular shrink-0 text-[0.84rem] font-bold tracking-tight text-accent">
+                    <span className="tabular shrink-0 text-[0.84rem] tracking-tight text-accent">
                       {ticker(item.employerName)}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[0.88rem] font-semibold leading-snug text-ink">
@@ -50,7 +50,7 @@ export function TopMatches({ items }: { items: TrackerItem[] }) {
                     </span>
                     <FitPill
                       score={item.score}
-                      className="text-[1.05rem] font-bold"
+                      className="text-[1.05rem]"
                     />
                   </div>
 

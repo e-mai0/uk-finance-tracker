@@ -118,7 +118,7 @@ function Row({ item }: { item: AnswerItem }) {
         </div>
       </div>
       <p className="mt-1.5 whitespace-pre-wrap text-sm text-muted">{item.answer}</p>
-      <div className="mt-2 flex gap-2 text-[0.65rem] text-subtle">
+      <div className="mt-2 flex gap-2 text-[0.6875rem] text-subtle">
         {item.employer && (
           <span className="rounded bg-surface-2 px-1.5 py-0.5">{item.employer}</span>
         )}

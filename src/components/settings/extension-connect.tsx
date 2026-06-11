@@ -95,7 +95,7 @@ export function ExtensionConnect({ tokens }: { tokens: TokenRow[] }) {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm text-ink">{t.name}</p>
-                    <p className="text-[0.65rem] text-subtle">
+                    <p className="text-[0.6875rem] text-subtle">
                       Added {t.createdAt}
                       {t.lastUsedAt ? ` · last used ${t.lastUsedAt}` : " · never used"}
                     </p>

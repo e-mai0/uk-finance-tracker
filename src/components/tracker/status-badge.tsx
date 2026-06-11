@@ -26,7 +26,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "tabular text-[0.72rem] font-bold uppercase tracking-wide",
+        "tabular text-[0.72rem] uppercase tracking-wide",
         TONE[status],
         className,
       )}

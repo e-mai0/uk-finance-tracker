@@ -46,7 +46,7 @@ export function ToggleChipGroup<T extends string>({
             <span
               aria-hidden
               className={cn(
-                "flex h-4 w-4 items-center justify-center rounded-[2px] border font-mono text-[0.66rem] leading-none",
+                "flex h-4 w-4 items-center justify-center rounded-[2px] border font-mono text-[0.6875rem] leading-none",
                 active
                   ? "border-accent bg-accent text-accent-fg"
                   : "border-border-strong text-transparent",

@@ -81,7 +81,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
             value={q}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="search firm, role, division, keyword…"
-            className="h-9 w-full bg-transparent pr-3 font-mono text-[0.82rem] text-ink placeholder:text-faint focus:outline-none"
+            className="h-9 w-full bg-transparent pr-3 font-mono text-[0.82rem] text-ink placeholder:text-faint"
           />
         </div>
 
@@ -120,7 +120,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
 
         {/* Sort */}
         <div className="ml-auto flex items-center gap-2">
-          <span className="label hidden text-[0.6rem] text-subtle sm:inline">
+          <span className="label hidden text-subtle sm:inline">
             Sort
           </span>
           <div className="relative">
@@ -146,7 +146,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
       </div>
 
       <div className="mt-2 flex items-center gap-3">
-        <span className="label text-[0.6rem] text-subtle">
+        <span className="label text-subtle">
           <span className="tabular text-ink">{resultCount}</span> rows
         </span>
         {activeCount > 0 && (
@@ -156,7 +156,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
             </span>
             <button
               onClick={() => router.push(pathname, { scroll: false })}
-              className="label text-[0.6rem] text-accent hover:text-accent-hover hover:underline"
+              className="label text-accent hover:text-accent-hover hover:underline"
             >
               × Clear {activeCount} filter{activeCount > 1 ? "s" : ""}
             </button>
@@ -192,13 +192,13 @@ function FilterDropdown({
       >
         {label}
         {count > 0 && (
-          <span className="tabular bg-black/20 px-1 text-[0.62rem] font-bold text-accent-fg">
+          <span className="tabular bg-black/20 px-1 text-[0.6875rem] text-accent-fg">
             {count}
           </span>
         )}
         <span
           aria-hidden
-          className="text-[0.68rem] opacity-70 transition-transform group-open:rotate-180"
+          className="text-[0.6875rem] opacity-70 transition-transform group-open:rotate-180"
         >
           ▾
         </span>
@@ -216,7 +216,7 @@ function FilterDropdown({
               <span
                 aria-hidden
                 className={cn(
-                  "flex h-4 w-4 items-center justify-center border font-mono text-[0.66rem] leading-none",
+                  "flex h-4 w-4 items-center justify-center border font-mono text-[0.6875rem] leading-none",
                   active
                     ? "border-accent bg-accent text-accent-fg"
                     : "border-border-strong text-transparent",

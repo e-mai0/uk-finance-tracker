@@ -25,7 +25,7 @@ export function OpportunityTable({ items }: { items: TrackerItem[] }) {
       {/* Sticky column header (pins beneath the command bar) */}
       <div
         className={cn(
-          "label sticky top-11 z-10 hidden border-b border-border-strong bg-surface-2 text-[0.62rem] text-subtle md:grid",
+          "label sticky top-12 z-10 hidden border-b border-border-strong bg-surface-2 text-subtle md:grid",
           GRID,
         )}
       >
@@ -74,7 +74,7 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
         </span>
 
         <span className={cn(CELL, "flex items-center py-2")}>
-          <span className="tabular truncate text-[0.86rem] font-bold tracking-tight text-accent">
+          <span className="tabular truncate text-[0.86rem] tracking-tight text-accent">
             {ticker(item.employerName)}
           </span>
         </span>
@@ -89,7 +89,7 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
         </span>
 
         <span className={cn(CELL, "flex items-center py-2")}>
-          <span className="label text-[0.62rem] text-muted">
+          <span className="label text-muted">
             {ROLE_FAMILY_SHORT[item.roleFamily]}
           </span>
         </span>
@@ -111,7 +111,7 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
         </span>
 
         <span className={cn(CELL, "flex items-center py-2")}>
-          <FitPill score={item.score} className="text-[1rem] font-bold" />
+          <FitPill score={item.score} className="text-[1rem]" />
         </span>
 
         <span className={cn(CELL, "flex items-center justify-end py-2")}>
@@ -131,7 +131,7 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
       <div className="px-3 py-2.5 md:hidden">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-baseline gap-2">
-            <span className="tabular shrink-0 text-[0.82rem] font-bold text-accent">
+            <span className="tabular shrink-0 text-[0.82rem] text-accent">
               {ticker(item.employerName)}
             </span>
             <span className="min-w-0">
@@ -143,7 +143,7 @@ function Row({ item, index }: { item: TrackerItem; index: number }) {
               </span>
             </span>
           </div>
-          <FitPill score={item.score} className="text-[1.05rem] font-bold" />
+          <FitPill score={item.score} className="text-[1.05rem]" />
         </div>
         <div className="mt-1.5 flex items-center gap-3 text-xs text-muted">
           <StatusBadge status={item.status} />

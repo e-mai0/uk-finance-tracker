@@ -32,7 +32,7 @@ export function FitPill({
   const tier = fitTier(score);
   return (
     <span
-      className={cn("tabular font-semibold", TIER_TEXT[tier], className)}
+      className={cn("tabular", TIER_TEXT[tier], className)}
       title={fitTierLabel(score)}
     >
       {score}
