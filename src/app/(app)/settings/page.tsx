@@ -79,7 +79,7 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-3xl space-y-5 px-4 py-6">
       <div>
         <div className="label text-subtle">Config</div>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
+        <h1 className="mt-1 text-[1.375rem] leading-none text-ink">
           Settings
         </h1>
         <p className="mt-0.5 text-sm text-muted">
@@ -141,7 +141,7 @@ export default async function SettingsPage() {
       />
 
       <div className="space-y-1.5 pt-2">
-        <h2 className="text-lg font-semibold tracking-tight text-ink">Apply copilot</h2>
+        <h2 className="text-[1.0625rem] leading-none text-ink">Apply copilot</h2>
         <p className="text-sm text-muted">
           Set up the autofill extension and the details it uses on application forms.
         </p>

@@ -242,10 +242,11 @@ export function SettingsForm({
                     type="button"
                     onClick={() => set("workAuth", o.value)}
                     className={cn(
-                      "rounded-lg border px-3.5 py-2.5 text-left text-sm font-medium transition-colors",
+                      // Selection is ink — never amber (GB+ contract).
+                      "rounded-[var(--radius-control)] border px-3.5 py-2.5 text-left text-[0.8125rem] font-bold transition-colors",
                       active
-                        ? "border-accent bg-accent-soft text-accent"
-                        : "border-border-strong bg-surface text-muted hover:border-ink/30 hover:text-ink",
+                        ? "border-ink bg-surface-3 text-ink"
+                        : "border-border-interactive bg-surface text-muted hover:bg-surface-2 hover:text-ink",
                     )}
                   >
                     {o.label}
@@ -294,7 +295,7 @@ export function SettingsForm({
                 type="checkbox"
                 checked={s.openToAnywhereUk}
                 onChange={(e) => set("openToAnywhereUk", e.target.checked)}
-                className="h-4 w-4 rounded border-border-strong accent-[var(--color-accent)]"
+                className="h-4 w-4 rounded border-border-interactive accent-[var(--color-ink)]"
               />
               I&apos;m open to roles anywhere in the UK
             </label>

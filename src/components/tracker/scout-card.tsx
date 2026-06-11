@@ -16,7 +16,7 @@ export function ScoutCard() {
     <div className="bg-surface">
       <div className="flex items-center justify-between border-b border-hairline bg-surface-2 px-3 py-[0.5625rem]">
         <span className="label text-ink">
-          <span className="text-accent">◎</span> Firm Scout
+          <span aria-hidden className="text-muted">◎</span> Firm Scout
         </span>
         <span className="label text-subtle">
           Greenhouse · Lever · Ashby
@@ -24,7 +24,7 @@ export function ScoutCard() {
       </div>
 
       <form action={formAction} className="space-y-2 px-3 py-3">
-        <p className="text-[0.78rem] leading-snug text-muted">
+        <p className="text-[0.8125rem] leading-snug text-muted">
           Tracking a boutique fund or startup we don&apos;t list? Paste its job
           board and we&apos;ll watch it — new UK internships go live for
           everyone.
@@ -34,14 +34,14 @@ export function ScoutCard() {
           type="text"
           required
           placeholder="jobs.ashbyhq.com/firm or boards.greenhouse.io/firm"
-          className="h-8 text-[0.78rem]"
+          className="h-8 text-[0.8125rem]"
         />
         <div className="flex gap-2">
           <Input
             name="firm"
             type="text"
             placeholder="Firm name (optional)"
-            className="h-8 flex-1 text-[0.78rem]"
+            className="h-8 flex-1 text-[0.8125rem]"
           />
           <Button
             type="submit"
@@ -57,7 +57,7 @@ export function ScoutCard() {
           <p
             role="status"
             className={cn(
-              "text-[0.74rem] leading-snug",
+              "text-[0.8125rem] leading-snug",
               state.ok ? "text-success" : "text-danger",
             )}
           >

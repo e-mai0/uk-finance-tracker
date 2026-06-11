@@ -9,8 +9,7 @@ export const Select = React.forwardRef<
     <select
       ref={ref}
       className={cn(
-        "h-10 w-full appearance-none rounded-[var(--radius-control)] border border-border-strong bg-surface pl-3 pr-8 text-sm text-ink",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:border-accent",
+        "h-10 w-full appearance-none rounded-[var(--radius-control)] border border-border-interactive bg-surface pl-3 pr-8 text-sm text-ink",
         "disabled:cursor-not-allowed disabled:opacity-60",
         className,
       )}
@@ -20,7 +19,7 @@ export const Select = React.forwardRef<
     </select>
     <span
       aria-hidden
-      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.72rem] text-subtle"
+      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.6875rem] text-subtle"
     >
       ▾
     </span>
