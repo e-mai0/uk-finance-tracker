@@ -45,8 +45,9 @@ function isEditable(target: EventTarget | null): target is HTMLElement {
 
 /**
  * The Cyclops dock — collapsed edge tab ⇄ 286px docked rail ⇄ expanded
- * overlay, on every page except /settings. Reuses CyclopsChat against a
- * lazily-fetched per-user "Dock" ChatSession.
+ * overlay, on every page except /settings and /chat. Reuses CyclopsChat against a
+ * lazily-fetched per-user "Dock" ChatSession. It yields to the full Ask Cyclops
+ * page, which has its own chat UI.
  */
 export function CyclopsDock({ badge }: { badge: number }) {
   const pathname = usePathname();
@@ -60,7 +61,7 @@ export function CyclopsDock({ badge }: { badge: number }) {
   // pattern: useEffect-set state + suppressHydrationWarning.
   const [hints, setHints] = useState({ expand: "Ctrl+J", collapse: "Ctrl+\\" });
 
-  const hidden = pathname.startsWith("/settings");
+  const hidden = pathname.startsWith("/settings") || pathname.startsWith("/chat");
 
   useEffect(() => {
     setHints({
@@ -141,6 +142,7 @@ export function CyclopsDock({ badge }: { badge: number }) {
       // Rule zero: Escape is the only non-modifier key handled, and only
       // while the overlay is up.
       if (e.key === "Escape" && stateRef.current === "expanded") {
+        if (e.defaultPrevented) return;
         const target = e.target;
         // Leave open menus/listboxes to their own Escape handling.
         if (

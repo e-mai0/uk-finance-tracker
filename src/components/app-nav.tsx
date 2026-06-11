@@ -45,6 +45,7 @@ export function AppNav({
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         setMenuOpen(false);
         avatarButtonRef.current?.focus();
       }
