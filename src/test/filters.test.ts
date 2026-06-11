@@ -53,13 +53,18 @@ describe("parseFilters", () => {
   it("falls back to the default sort when invalid", () => {
     expect(parseFilters({ sort: "nonsense" }).sort).toBe("best_match");
   });
+
+  it("parseFilters reads filter=starred", () => {
+    expect(parseFilters({ filter: "starred" }).starred).toBe(true);
+    expect(parseFilters({}).starred).toBe(false);
+  });
 });
 
 describe("applyFilters", () => {
   const items = [
     item({ employerName: "Goldman Sachs", roleFamily: "IB", location: "London", status: "OPEN" }),
-    item({ employerName: "Jane Street", roleFamily: "QUANT", location: "London", status: "OPEN", tags: ["python"] }),
-    item({ employerName: "BlackRock", roleFamily: "ASSET_MGMT", location: "Edinburgh", status: "OPENING_SOON", deadlineAt: null }),
+    item({ employerName: "Jane Street", roleFamily: "QUANT", location: "London", status: "OPEN", tags: ["python"], saved: true }),
+    item({ employerName: "BlackRock", roleFamily: "ASSET_MGMT", location: "Edinburgh", status: "OPENING_SOON", deadlineAt: null, saved: false }),
   ];
 
   it("matches search across employer, family label and tags", () => {
@@ -77,6 +82,11 @@ describe("applyFilters", () => {
   it("filters by deadline availability", () => {
     const withDeadline = applyFilters(items, { ...EMPTY_FILTERS, hasDeadline: true });
     expect(withDeadline).toHaveLength(2);
+  });
+
+  it("filter=starred keeps only saved items", () => {
+    expect(applyFilters(items, { ...EMPTY_FILTERS, starred: true })).toHaveLength(1);
+    expect(applyFilters(items, { ...EMPTY_FILTERS, starred: true })[0].employerName).toBe("Jane Street");
   });
 });
 

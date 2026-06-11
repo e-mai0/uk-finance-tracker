@@ -64,6 +64,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
     getArr("family").length +
     (get("deadline") ? 1 : 0) +
     (get("sponsorship") ? 1 : 0) +
+    (get("filter") === "starred" ? 1 : 0) +
     (get("q") ? 1 : 0);
 
   return (
@@ -116,6 +117,11 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
           label="Sponsors visas"
           active={!!get("sponsorship")}
           onClick={() => setParam("sponsorship", get("sponsorship") ? "" : "1")}
+        />
+        <FlagToggle
+          label="★ Saved"
+          active={get("filter") === "starred"}
+          onClick={() => setParam("filter", get("filter") === "starred" ? "" : "starred")}
         />
 
         {/* Sort */}
