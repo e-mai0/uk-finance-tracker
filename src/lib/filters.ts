@@ -34,6 +34,7 @@ export interface FilterParams {
   roleFamily: RoleFamily[];
   hasDeadline: boolean;
   sponsorshipAvailable: boolean;
+  starred: boolean;
   sort: SortKey;
 }
 
@@ -44,6 +45,7 @@ export const EMPTY_FILTERS: FilterParams = {
   roleFamily: [],
   hasDeadline: false,
   sponsorshipAvailable: false,
+  starred: false,
   sort: DEFAULT_SORT,
 };
 
@@ -71,6 +73,7 @@ export function parseFilters(params: RawParams): FilterParams {
   const sortRaw = (Array.isArray(params.sort) ? params.sort[0] : params.sort) as
     | SortKey
     | undefined;
+  const filterParam = Array.isArray(params.filter) ? params.filter[0] : params.filter;
   return {
     search: (Array.isArray(params.q) ? params.q[0] : params.q ?? "").trim(),
     status: toArray(params.status) as OpportunityStatus[],
@@ -79,6 +82,7 @@ export function parseFilters(params: RawParams): FilterParams {
     hasDeadline: params.deadline === "1" || params.deadline === "true",
     sponsorshipAvailable:
       params.sponsorship === "1" || params.sponsorship === "true",
+    starred: filterParam === "starred",
     sort: sortRaw && VALID_SORTS.includes(sortRaw) ? sortRaw : DEFAULT_SORT,
   };
 }
@@ -90,7 +94,8 @@ export function hasActiveFilters(f: FilterParams): boolean {
     f.location.length > 0 ||
     f.roleFamily.length > 0 ||
     f.hasDeadline ||
-    f.sponsorshipAvailable
+    f.sponsorshipAvailable ||
+    f.starred
   );
 }
 
@@ -153,6 +158,7 @@ export function applyFilters(
     if (f.hasDeadline && !item.deadlineAt) return false;
     if (f.sponsorshipAvailable && !offersSponsorship(item.sponsorshipInfo))
       return false;
+    if (f.starred && !item.saved) return false;
     return true;
   });
 }

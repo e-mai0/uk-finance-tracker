@@ -8,7 +8,7 @@ export const metadata = { title: "Create account — Trackr" };
 export default async function SignupPage() {
   const session = await auth();
   if (session?.user) {
-    redirect(session.user.onboarded ? "/dashboard" : "/onboarding");
+    redirect(session.user.onboarded ? "/today" : "/onboarding");
   }
 
   return (

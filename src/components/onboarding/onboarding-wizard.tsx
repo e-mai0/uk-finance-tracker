@@ -240,7 +240,7 @@ export function OnboardingWizard({
         /* ignore */
       }
       await update({ onboarded: true });
-      router.push("/dashboard");
+      router.push("/today");
       router.refresh();
     });
   }

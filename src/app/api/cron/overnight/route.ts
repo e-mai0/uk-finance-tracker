@@ -3,6 +3,7 @@ import { prisma } from "@/server/db";
 import { checkBudget } from "@/server/ai/budget";
 import { ensureEmployerResearch, STALE_MS } from "@/server/engine/research";
 import { composeBrief, type BriefData } from "@/server/brief/compose";
+import { upsertAttention } from "@/server/attention";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -125,7 +126,7 @@ export async function GET(req: Request) {
         where: { userId: u.id, status: "pending" },
         orderBy: { createdAt: "asc" },
         take: 3,
-        select: { question: true },
+        select: { id: true, question: true },
       });
 
       // Same staleness rule as the chat brain (src/server/ai/brain.ts):
@@ -162,7 +163,7 @@ export async function GET(req: Request) {
           select: { id: true },
         });
         if (!exists) {
-          await prisma.chatSession.create({
+          const created = await prisma.chatSession.create({
             data: {
               userId: u.id,
               title,
@@ -173,8 +174,31 @@ export async function GET(req: Request) {
                 },
               },
             },
+            select: { id: true },
           });
           briefs += 1;
+
+          // (a) BRIEF attention item — one per session, idempotent.
+          await upsertAttention({
+            userId: u.id,
+            kind: "BRIEF",
+            key: `brief:${today}`,
+            targetType: "chat-session",
+            targetId: created.id,
+            title: `Morning brief — ${today}`,
+          });
+
+          // (b) QUESTION attention items — one per included gardener question.
+          for (const q of pending) {
+            await upsertAttention({
+              userId: u.id,
+              kind: "QUESTION",
+              key: `gq:${q.id}`,
+              targetType: "gardener-question",
+              targetId: q.id,
+              title: q.question,
+            });
+          }
         }
       }
     } catch (err) {

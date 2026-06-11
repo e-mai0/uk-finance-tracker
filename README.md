@@ -36,6 +36,25 @@ affiliated with or endorsed by any employer listed.
   a status you can update (submitted → interviewing → offer).
 - **Settings** — edit your profile and preferences; scores recompute on save.
   Manage your apply profile, CV upload, answer bank, and extension connection.
+- **Radar (live ingestion)** — real Greenhouse / Lever / Ashby adapters pull
+  public job-board JSON feeds on a 6-hour cron, classify each posting (UK ·
+  summer internship · finance role family) with deterministic keyword rules,
+  and upsert through the same idempotent import pipeline as the curated
+  dataset. Sources live in a DB registry with per-source health tracking.
+- **Firm Scout** — paste any careers/job-board URL on the dashboard; the ATS
+  is auto-detected, the board is pulled immediately, and that firm's UK
+  internships go live **for every user**. This is how niche startups and
+  boutique funds enter the dataset without a code change. Recognised but
+  unsupported boards (Workday) are queued for review.
+- **Custom-ATS coverage** — firms that run their own careers sites (Citadel,
+  Jane Street, Goldman …) are monitored too, in three tiers: verified public
+  JSON feeds (Jane Street's `/jobs/main.json`) ingest fully; pages embedding
+  schema.org **JobPosting JSON-LD** parse like any feed (with real
+  `validThrough` deadlines); opaque SPAs are **watched** — sitemap URL diffs
+  or a content hash — and changes are flagged for review on **/radar**, never
+  auto-published. Scouted custom URLs follow the same ladder automatically.
+- **Fresh finds** — a dashboard rail of roles first seen in the last 7 days,
+  so cron- and scout-discovered listings surface the day they appear.
 
 ### Scope
 
@@ -46,9 +65,10 @@ quant, corporate banking and research.
 The **apply copilot** (browser extension) assists with real application forms —
 human-in-the-loop only. Intentionally **out of scope**: fully autonomous
 auto-submit (the extension never clicks submit, solves captchas, or scrapes
-employer data), live scraping / ATS ingestion (interface stubs only), spring
-weeks, graduate roles, placements, consulting, general tech roles, employer-side
-tooling, and ML-based matching.
+employer data), scraping of HTML careers sites (only public ATS JSON feeds are
+read; per-employer plans in `src/ingestion/source-plans/` gate everything
+else), spring weeks, graduate roles, placements, consulting, general tech
+roles, employer-side tooling, and ML-based matching.
 
 ---
 
@@ -268,20 +288,33 @@ The seed data is a curated, **original** dataset
 ~24 employers and ~45 opportunities spanning every in-scope role family, with a
 realistic mix of statuses, locations, deadlines and sponsorship flags.
 
-The ingestion pipeline (`src/ingestion/`) is built to extend:
+The ingestion pipeline (`src/ingestion/`):
 
 - `normalize.ts` maps raw records to a normalized shape with a parse-confidence
   score.
 - `import.ts` is an idempotent upsert pipeline (employers → opportunities →
-  tags/sources) wrapped in an `IngestionRun` record.
-- `adapters/` contains typed **interface stubs** for Greenhouse, Lever and
-  Workday implementing a common `SourceAdapter`, so real ATS ingestion can plug
-  in later without touching the rest of the app. **No live scraping is
-  implemented** — and the product uses original summaries to avoid copying
-  protected content.
+  tags/sources) wrapped in an `IngestionRun` record. Both the curated dataset
+  and every live adapter write through this one seam.
+- `classify.ts` is the deterministic gatekeeper for live postings: word-boundary
+  keyword rules decide internship-vs-not, summer-vs-other-season, UK-vs-not and
+  the finance role family (with an employer-sector fallback for generic titles).
+  Pure and unit-tested.
+- `adapters/` contains **live adapters** for Greenhouse, Lever and Ashby that
+  read each ATS's public job-board JSON API (no HTML scraping, no logins) and a
+  typed stub for Workday. Descriptions are used **only** to classify — listing
+  summaries are always original templated text, never copied employer content.
+- `sync.ts` runs every enabled `IngestionSource` registry row through its
+  adapter, recording per-source health (`lastStatus`, `lastError`,
+  `consecutiveFailures`; a source auto-disables after 10 straight failures).
+
+Live syncs run via `GET /api/ingest/sync` (Bearer `CRON_SECRET`), scheduled
+daily at 07:00 UTC by Vercel Cron (Hobby plan: daily minimum interval) (`vercel.json`). Users add new boards themselves
+through **Firm Scout** on the dashboard — paste a Greenhouse / Lever / Ashby
+URL and the firm is registered, pulled immediately, and kept fresh by the cron.
 
 Re-run `npm run seed` any time; it updates existing rows rather than
-duplicating.
+duplicating, and registers the evidence-backed live sources from
+`src/ingestion/source-plans/`.
 
 ---
 

@@ -12,6 +12,39 @@ export const metadata = { title: "Settings — Trackr" };
 const fmtDate = (d: Date) =>
   new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(d);
 
+/**
+ * Static, code-verified product facts — what Cyclops may do and where the
+ * hard limits sit. Each meta sentence is checked against the implementation:
+ * drafting saves only on an explicit user action (save flag in
+ * src/app/api/ext/answer/route.ts, sent by the panel's Save/Accept buttons);
+ * the overnight sweep is a 05:30 cron with per-user budget gates and a global
+ * refresh cap (src/app/api/cron/overnight/route.ts); the extension fills only
+ * after the user clicks the cue and never touches a submit button
+ * (extension/src/content/panel.ts: "Trackr never submits for you").
+ */
+const PERMISSIONS: { title: string; meta: string; chip: "on" | "you" }[] = [
+  {
+    title: "Draft answers in your voice",
+    meta: "USES ANSWER BANK + CV · SAVES ONLY WHEN YOU APPROVE",
+    chip: "on",
+  },
+  {
+    title: "Overnight listing refresh & morning brief",
+    meta: "NIGHTLY CRON 05:30 · BUDGET-CAPPED",
+    chip: "on",
+  },
+  {
+    title: "Fill forms via the extension",
+    meta: "ONLY WITH YOU WATCHING · CONFIRMATION-GATED · NEVER SUBMITS",
+    chip: "on",
+  },
+  {
+    title: "Submit applications",
+    meta: "NEVER AUTOMATIC — THIS CANNOT BE ENABLED",
+    chip: "you",
+  },
+];
+
 export default async function SettingsPage() {
   const session = await auth();
   const userId = session!.user.id;
@@ -45,7 +78,7 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-5 px-4 py-6">
       <div>
-        <div className="label text-[0.6rem] text-subtle">Config</div>
+        <div className="label text-subtle">Config</div>
         <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
           Settings
         </h1>
@@ -54,6 +87,36 @@ export default async function SettingsPage() {
           scores across every role.
         </p>
       </div>
+
+      {/* Cyclops permissions — sentences, not toggles. The submit row is a
+          bedrock fact (ink chip), not a setting that could ever flip. */}
+      <section className="rounded-card border border-border bg-surface shadow-card">
+        <div className="flex items-baseline justify-between border-b border-border px-4 py-2.5">
+          <h2 className="text-[1.0625rem] leading-none text-ink">
+            Cyclops permissions
+          </h2>
+          <span className="label text-faint">WHAT THE AGENT MAY DO</span>
+        </div>
+        <ul className="divide-y divide-hairline">
+          {PERMISSIONS.map((p) => (
+            <li key={p.title} className="flex items-center gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[0.875rem] font-bold text-ink">{p.title}</p>
+                <p className="label mt-0.5 text-subtle">{p.meta}</p>
+              </div>
+              {p.chip === "on" ? (
+                <span className="label shrink-0 rounded-pill bg-success-soft px-2.5 py-0.5 text-success">
+                  ✓ ON
+                </span>
+              ) : (
+                <span className="label shrink-0 rounded-pill bg-ink px-2.5 py-0.5 text-canvas">
+                  ALWAYS YOU
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <SettingsForm
         employerSuggestions={employers.map((e) => e.name)}

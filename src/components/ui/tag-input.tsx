@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 
 /** Free-text tag entry with optional autocomplete suggestions. */
 export function TagInput({
@@ -72,7 +71,7 @@ export function TagInput({
             }
           }}
           placeholder={value.length === 0 ? placeholder : ""}
-          className="h-7 flex-1 border-0 bg-transparent px-1 text-sm text-ink placeholder:text-subtle focus:outline-none"
+          className="h-7 flex-1 border-0 bg-transparent px-1 text-sm text-ink placeholder:text-subtle focus-visible:outline-none"
         />
       </div>
 

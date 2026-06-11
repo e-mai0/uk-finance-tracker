@@ -57,7 +57,7 @@ export async function updateSettings(raw: unknown): Promise<SettingsResult> {
 
   await recomputeMatchScores(userId);
 
-  revalidatePath("/dashboard");
+  revalidatePath("/tracker");
   revalidatePath("/saved");
   revalidatePath("/settings");
 

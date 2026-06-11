@@ -50,7 +50,6 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     setQ(params.get("q") ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
   const onSearch = (value: string) => {
     setQ(value);
@@ -64,6 +63,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
     getArr("family").length +
     (get("deadline") ? 1 : 0) +
     (get("sponsorship") ? 1 : 0) +
+    (get("filter") === "starred" ? 1 : 0) +
     (get("q") ? 1 : 0);
 
   return (
@@ -81,7 +81,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
             value={q}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="search firm, role, division, keyword…"
-            className="h-9 w-full bg-transparent pr-3 font-mono text-[0.82rem] text-ink placeholder:text-faint focus:outline-none"
+            className="h-9 w-full bg-transparent pr-3 font-mono text-[0.82rem] text-ink placeholder:text-faint"
           />
         </div>
 
@@ -117,17 +117,22 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
           active={!!get("sponsorship")}
           onClick={() => setParam("sponsorship", get("sponsorship") ? "" : "1")}
         />
+        <FlagToggle
+          label="★ Saved"
+          active={get("filter") === "starred"}
+          onClick={() => setParam("filter", get("filter") === "starred" ? "" : "starred")}
+        />
 
         {/* Sort */}
         <div className="ml-auto flex items-center gap-2">
-          <span className="label hidden text-[0.6rem] text-subtle sm:inline">
+          <span className="label hidden text-subtle sm:inline">
             Sort
           </span>
           <div className="relative">
             <select
               value={get("sort") || "best_match"}
               onChange={(e) => setParam("sort", e.target.value)}
-              className="h-9 appearance-none border border-border-strong bg-surface pl-3 pr-7 font-mono text-[0.8rem] font-medium uppercase tracking-wide text-ink focus-visible:border-accent focus-visible:outline-none"
+              className="h-9 appearance-none border border-border-strong bg-surface pl-3 pr-7 font-mono text-[0.8rem] uppercase tracking-wide text-ink focus-visible:border-accent focus-visible:outline-none"
             >
               {SORT_OPTIONS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -146,7 +151,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
       </div>
 
       <div className="mt-2 flex items-center gap-3">
-        <span className="label text-[0.6rem] text-subtle">
+        <span className="label text-subtle">
           <span className="tabular text-ink">{resultCount}</span> rows
         </span>
         {activeCount > 0 && (
@@ -156,7 +161,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
             </span>
             <button
               onClick={() => router.push(pathname, { scroll: false })}
-              className="label text-[0.6rem] text-accent hover:text-accent-hover hover:underline"
+              className="label text-accent hover:text-accent-hover hover:underline"
             >
               × Clear {activeCount} filter{activeCount > 1 ? "s" : ""}
             </button>
@@ -184,7 +189,7 @@ function FilterDropdown({
     <details className="group relative">
       <summary
         className={cn(
-          "flex h-9 cursor-pointer list-none items-center gap-1.5 border px-3 font-mono text-[0.8rem] font-medium uppercase tracking-wide transition-colors",
+          "flex h-9 cursor-pointer list-none items-center gap-1.5 border px-3 font-mono text-[0.8rem] uppercase tracking-wide transition-colors",
           count > 0
             ? "border-accent bg-accent text-accent-fg"
             : "border-border-strong bg-surface text-ink hover:border-accent hover:text-accent",
@@ -192,13 +197,13 @@ function FilterDropdown({
       >
         {label}
         {count > 0 && (
-          <span className="tabular bg-black/20 px-1 text-[0.62rem] font-bold text-accent-fg">
+          <span className="tabular bg-black/20 px-1 text-[0.6875rem] text-accent-fg">
             {count}
           </span>
         )}
         <span
           aria-hidden
-          className="text-[0.68rem] opacity-70 transition-transform group-open:rotate-180"
+          className="text-[0.6875rem] opacity-70 transition-transform group-open:rotate-180"
         >
           ▾
         </span>
@@ -216,7 +221,7 @@ function FilterDropdown({
               <span
                 aria-hidden
                 className={cn(
-                  "flex h-4 w-4 items-center justify-center border font-mono text-[0.66rem] leading-none",
+                  "flex h-4 w-4 items-center justify-center border font-mono text-[0.6875rem] leading-none",
                   active
                     ? "border-accent bg-accent text-accent-fg"
                     : "border-border-strong text-transparent",
@@ -248,7 +253,7 @@ function FlagToggle({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "h-9 border px-3 font-mono text-[0.8rem] font-medium uppercase tracking-wide transition-colors",
+        "h-9 border px-3 font-mono text-[0.8rem] uppercase tracking-wide transition-colors",
         active
           ? "border-accent bg-accent text-accent-fg"
           : "border-border-strong bg-surface text-ink hover:border-accent hover:text-accent",

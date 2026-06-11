@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/server/auth";
+import { prisma } from "@/server/db";
 import { memoryService } from "@/server/memory/service";
+import { resolveGardenerQuestionForm } from "@/server/actions/attention";
 import { MemoryEditor } from "./memory-editor";
 import type { MemoryRevision } from "./memory-editor";
 
@@ -54,6 +56,17 @@ export default async function MemoryPage({
   // Seeds canonical files on first visit
   const files = await memoryService.list(userId);
 
+  // Open gardener questions — surfaced above the editor until answered or
+  // dismissed. The table predates the gardener SQL being applied everywhere,
+  // so tolerate its absence.
+  const pendingQuestions = await prisma.gardenerQuestion
+    .findMany({
+      where: { userId, status: "pending" },
+      orderBy: { createdAt: "asc" },
+      take: 5,
+    })
+    .catch(() => []);
+
   const { canonical, stories, companies, other } = groupFiles(files);
   const allOrdered = [...canonical, ...stories, ...companies, ...other];
 
@@ -86,13 +99,55 @@ export default async function MemoryPage({
     rawRevisions[0]?.createdAt.toISOString() ?? new Date(0).toISOString();
 
   return (
-    <div className="animate-rise flex h-[calc(100vh-2.75rem)] overflow-hidden">
+    <div className="animate-rise flex h-[calc(100vh-3rem)] flex-col overflow-hidden">
+      {/* Cyclops wants to know — open gardener questions, agent surface. */}
+      {pendingQuestions.length > 0 && (
+        <section className="shrink-0 border-b border-border bg-canvas px-4 py-3">
+          <div className="rounded-card border border-border border-l-[3px] border-l-agent-mark bg-surface shadow-card">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
+              <span className="label rounded-pill bg-accent-soft px-2.5 py-0.5 text-accent">
+                ◆ CYCLOPS WANTS TO KNOW
+              </span>
+              <span className="tabular label ml-auto text-faint">
+                {pendingQuestions.length}
+              </span>
+            </div>
+            <ul className="divide-y divide-border">
+              {pendingQuestions.map((q) => (
+                <li key={q.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <p className="min-w-0 flex-1 text-[0.875rem] text-ink">
+                    {q.question}
+                  </p>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Link
+                      href={`/chat?prefill=${encodeURIComponent(q.question)}`}
+                      className="rounded-pill border border-border-interactive bg-surface px-3 py-1 text-[0.8125rem] font-bold text-ink transition-colors hover:bg-surface-2"
+                    >
+                      Answer in chat
+                    </Link>
+                    <form action={resolveGardenerQuestionForm.bind(null, q.id)}>
+                      <button
+                        type="submit"
+                        className="label min-h-6 px-1.5 py-1 text-subtle transition-colors hover:text-ink"
+                      >
+                        Dismiss
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      <div className="flex min-h-0 flex-1 overflow-hidden">
       {/* Left rail — file list */}
       <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface sm:flex">
         {/* Heading */}
         <div className="border-b border-border px-3 py-2.5">
-          <p className="label text-[0.6rem] text-subtle">Cyclops</p>
-          <p className="font-mono text-[0.78rem] font-semibold text-ink">
+          <p className="label text-subtle">Cyclops</p>
+          <p className="font-mono text-[0.78rem] text-ink">
             What Cyclops knows
           </p>
         </div>
@@ -106,7 +161,7 @@ export default async function MemoryPage({
           {canonical.length > 0 && (
             <>
               <div className="px-3 pb-0.5 pt-2">
-                <span className="label text-[0.55rem] uppercase tracking-widest text-faint">
+                <span className="label uppercase tracking-widest text-faint">
                   Profile
                 </span>
               </div>
@@ -124,7 +179,7 @@ export default async function MemoryPage({
           {stories.length > 0 && (
             <>
               <div className="px-3 pb-0.5 pt-3">
-                <span className="label text-[0.55rem] uppercase tracking-widest text-faint">
+                <span className="label uppercase tracking-widest text-faint">
                   Stories
                 </span>
               </div>
@@ -142,7 +197,7 @@ export default async function MemoryPage({
           {companies.length > 0 && (
             <>
               <div className="px-3 pb-0.5 pt-3">
-                <span className="label text-[0.55rem] uppercase tracking-widest text-faint">
+                <span className="label uppercase tracking-widest text-faint">
                   Companies
                 </span>
               </div>
@@ -160,7 +215,7 @@ export default async function MemoryPage({
           {other.length > 0 && (
             <>
               <div className="px-3 pb-0.5 pt-3">
-                <span className="label text-[0.55rem] uppercase tracking-widest text-faint">
+                <span className="label uppercase tracking-widest text-faint">
                   Other
                 </span>
               </div>
@@ -177,7 +232,7 @@ export default async function MemoryPage({
 
         {/* Footer */}
         <div className="border-t border-border px-3 py-2">
-          <span className="label text-[0.58rem] text-faint">
+          <span className="label text-faint">
             Memory · {files.length} file{files.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -188,8 +243,8 @@ export default async function MemoryPage({
         {/* Pane header */}
         <div className="flex items-center border-b border-border bg-surface px-4 py-2">
           <div className="flex items-baseline gap-2">
-            <span className="label text-[0.6rem] text-subtle">Memory</span>
-            <span className="truncate font-mono text-[0.78rem] font-semibold text-ink">
+            <span className="label text-subtle">Memory</span>
+            <span className="truncate font-mono text-[0.78rem] text-ink">
               {activePath ?? "—"}
             </span>
           </div>
@@ -210,6 +265,7 @@ export default async function MemoryPage({
             </p>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
@@ -236,7 +292,7 @@ function FileLink({ path, isActive }: { path: string; isActive: boolean }) {
         {label}
       </span>
       {path.includes("/") && (
-        <span className="block truncate font-mono text-[0.58rem] text-faint">
+        <span className="block truncate font-mono text-[0.6875rem] text-faint">
           {path}
         </span>
       )}

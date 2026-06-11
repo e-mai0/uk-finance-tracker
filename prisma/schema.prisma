@@ -45,6 +45,7 @@ enum SourceType {
   CAREERS_PAGE
   GREENHOUSE
   LEVER
+  ASHBY
   WORKDAY
   MANUAL
 }
@@ -103,8 +104,9 @@ model User {
   answerBank    AnswerBankItem[]
   applications  Application[]
   drafts        GeneratedDraft[]
-  memoryFiles   MemoryFile[]
-  chatSessions  ChatSession[]
+  memoryFiles     MemoryFile[]
+  chatSessions    ChatSession[]
+  attentionItems  AttentionItem[]
 }
 
 model Profile {
@@ -256,6 +258,39 @@ model IngestionRun {
   notes      String?
 }
 
+// A live ingestion source the sync job polls — one row per public ATS job
+// board (Greenhouse / Lever / Ashby). Rows are seeded for known employers and
+// created by users through Firm Scout ("paste a careers URL"), which is how
+// niche/boutique firms enter the dataset without a code change. `identifier`
+// is the ATS-specific board key (Greenhouse board token, Lever site name,
+// Ashby job-board name). Unsupported-but-recognised boards (e.g. Workday) are
+// stored disabled as a review queue.
+model IngestionSource {
+  id                  String     @id @default(cuid())
+  kind                SourceType
+  identifier          String
+  employerName        String
+  sector              String?
+  url                 String? // the human URL the source was derived from
+  enabled             Boolean    @default(true)
+  // Watch-only sources (custom ATS sites with no machine-readable feed) are
+  // monitored for change — sitemap URL diffs or a page content hash — and
+  // flagged for review on /radar rather than auto-published.
+  watchOnly           Boolean    @default(false)
+  watchState          Json? // { kind: "sitemap", urls } | { kind: "page", hash }
+  lastChangedAt       DateTime?
+  suggestedById       String? // userId of the scout who added it (informational)
+  lastRunAt           DateTime?
+  lastStatus          String? // e.g. "ok: 3 created, 1 updated"
+  lastError           String?
+  consecutiveFailures Int        @default(0)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  @@unique([kind, identifier])
+  @@index([enabled])
+}
+
 // ---------------------------------------------------------------------------
 // Apply copilot — application profile, answer bank, tokens, tracking
 // ---------------------------------------------------------------------------
@@ -381,6 +416,19 @@ model ApiToken {
 // Cyclops — memory, chat, gardener, usage (Phase 1)
 // ---------------------------------------------------------------------------
 
+enum AttentionKind {
+  PROPOSAL
+  FLAG
+  QUESTION
+  BRIEF
+}
+
+enum AttentionStatus {
+  OPEN
+  SNOOZED
+  RESOLVED
+}
+
 enum MemoryAuthor {
   USER
   CYCLOPS
@@ -437,6 +485,30 @@ model ChatMessage {
 
   @@unique([sessionId, clientId])
   @@index([sessionId, createdAt])
+}
+
+/// One canonical "pending decision" store (spec §4.3). Every nav badge is a
+/// filtered count over OPEN rows; resolving anywhere decrements all views.
+model AttentionItem {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind         AttentionKind
+  status       AttentionStatus @default(OPEN)
+  /// Stable dedupe key so cron re-runs upsert instead of duplicating,
+  /// e.g. "brief:2026-06-11", "gq:<id>", "draft:<id>".
+  key          String
+  /// "chat-session" | "draft" | "opportunity" | "application" | "gardener-question"
+  targetType   String
+  targetId     String
+  title        String
+  meta         Json?
+  snoozedUntil DateTime?
+  createdAt    DateTime        @default(now())
+  resolvedAt   DateTime?
+
+  @@unique([userId, key])
+  @@index([userId, status])
 }
 
 model GardenerQuestion {

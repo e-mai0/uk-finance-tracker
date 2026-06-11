@@ -10,7 +10,7 @@ import type { CSSProperties } from "react";
 export default async function LandingPage() {
   const session = await auth();
   if (session?.user) {
-    redirect(session.user.onboarded ? "/dashboard" : "/onboarding");
+    redirect(session.user.onboarded ? "/today" : "/onboarding");
   }
 
   const [employers, opportunities] = await Promise.all([

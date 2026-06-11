@@ -1,8 +1,13 @@
 # Trackr — Project Status
 
-_Last updated: 2026-06-10_
+_Last updated: 2026-06-11_
 
-> **IN FLIGHT — Cyclops Phases 1–4 (branch `cyclopslevelup`, not yet merged).**
+> **SHIPPED 2026-06-11 — Cyclops Phases 1–4 are merged to `main` and live in
+> production**, together with the universal-forms extension hardening
+> (`fix/copilot-universal-forms`) and Radar (§3). The notes below predate the
+> merge and are kept for context.
+
+> **Cyclops Phases 1–4 (developed on branch `cyclopslevelup`).**
 > Trackr is being overhauled into **Cyclops**, an AI "application OS"
 > (spec: `docs/superpowers/specs/2026-06-09-cyclops-application-os-design.md`).
 > All four phases are fully implemented and reviewed on the branch:
@@ -121,6 +126,34 @@ Human-in-the-loop. **Hard rule: never auto-submits, solves captchas, or scrapes*
 - **AI generation**: cover-letter draft button on opportunity pages; on-page answer drafts in the extension. Grounded in the user's CV, UK English, finance tone — not boilerplate.
 - **Applications tracker** (`/applications`): every autofilled/submitted role recorded with an editable status (Draft → Submitted → Interviewing → Offer …).
 - **Browser extension** (`extension/`): autofills Greenhouse / Lever / Ashby forms (Workday best-effort) and drafts answers in an on-page Shadow-DOM panel. Records the application back to the dashboard.
+
+### Radar — live ingestion + Firm Scout (new — built 2026-06-10)
+The growth engine for niche/boutique coverage. Reads **public ATS JSON feeds only** (no HTML scraping, no logins); listing summaries stay original templated text.
+- **Live adapters** (`src/ingestion/adapters/`): Greenhouse, Lever, Ashby — verified against real boards (Point72, Man Group, Wintermute).
+- **Classifier** (`src/ingestion/classify.ts`): deterministic word-boundary rules — internship? summer? UK? which finance role family? — with employer-sector fallback. Pure, 20 unit tests.
+- **Source registry** (`IngestionSource` model): per-board rows with health tracking (`lastStatus`, `lastError`, `consecutiveFailures`; auto-disable after 10 straight failures). Seeded with the evidence-backed Greenhouse boards from `source-plans/` (mangroup, point72).
+- **Cron sync**: `GET /api/ingest/sync` (Bearer `CRON_SECRET`), daily 07:00 UTC via Vercel Cron (Hobby min interval) (`vercel.json`). **Set `CRON_SECRET` in Vercel before deploying.**
+- **Firm Scout** (dashboard sidebar): any user pastes a Greenhouse/Lever/Ashby URL → ATS auto-detected (`src/lib/source-detect.ts`) → board pulled immediately → roles live for everyone. Workday URLs are recognised and stored disabled as a review queue.
+- **Fresh finds** (dashboard sidebar): roles first seen ≤7 days, newest first; the same 7-day window drives a green **● NEW** flag on grid rows (`isFreshListing` in `signals.tsx`).
+- **Deadline export**: `GET /api/saved/calendar` downloads the user's saved-role deadlines (+ opening dates) as an `.ics` file (button on `/saved`; pure builder in `src/lib/ics.ts`).
+- **Stale-score fix**: tracker items without a cached `MatchScore` (i.e. ingested after the user's last recompute) now get scores computed live in `getTrackerItems`.
+- **Custom-ATS monitoring (2026-06-11)**: three tiers, all verified live.
+  (1) Custom JSON feeds — `JaneStreetAdapter` reads the public `/jobs/main.json`
+  (internships are NOT on their Greenhouse board; found a live London summer
+  internship on first run). (2) JSON-LD — `src/ingestion/jsonld.ts` parses
+  schema.org JobPosting structured data from any careers page (TalentBrew /
+  Avature / boutique sites), incl. real `validThrough` deadlines; used by
+  `JsonLdPageAdapter` and by Firm Scout's probe. (3) Watch mode —
+  `src/ingestion/watch.ts` diffs career-sitemap URL sets (Citadel + Citadel
+  Securities verified: 36/66 role URLs) or page hashes (Goldman higher.gs.com,
+  DB, BlackRock); changes set `lastChangedAt` and surface on **/radar**
+  (new nav page) for review — never auto-published. Scout now handles custom
+  URLs via an SSRF-guarded probe (`safePublicUrl`): JSON-LD found → live feed;
+  else → watcher.
+- **Schema change**: `SourceType` gains `ASHBY`; new `IngestionSource` table
+  (+ `watchOnly`, `watchState`, `lastChangedAt`) → additive SQL in
+  `prisma/sql/2026-06-11-radar-ingestion.sql`, applied to Supabase (never
+  `db push` — see AGENTS/memory convention).
 
 ---
 

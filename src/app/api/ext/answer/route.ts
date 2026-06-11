@@ -7,6 +7,7 @@ import { draftText } from "../../../../server/engine/draft";
 import { maybeDistill } from "../../../../server/engine/distill";
 import { recordStoryUsage } from "../../../../server/engine/story-usage";
 import { indexContent } from "../../../../server/ai/embed";
+import { saveAnswerToBank } from "../../../../server/answers";
 import { normalizeQuestion, bestAnswerMatch } from "../../../../lib/answers";
 import { extAnswerSchema } from "../../../../lib/validation";
 import { json, unauthorized, preflight } from "../../../../server/ext-http";
@@ -39,31 +40,15 @@ export async function POST(req: Request) {
   const userId = auth.userId;
 
   // 0. Explicit save of an edited answer (panel "Save to bank"): update the
-  //    matching bank item or create one — no generation.
+  //    matching bank item or create one — no generation. Shared with draft
+  //    review's Accept (src/server/actions/drafts.ts).
   if (d.answer && d.save) {
-    const normalized = normalizeQuestion(d.questionText);
-    const existing = await prisma.answerBankItem.findFirst({
-      where: { userId, questionNormalized: normalized },
-      select: { id: true },
+    await saveAnswerToBank({
+      userId,
+      questionText: d.questionText,
+      answer: d.answer,
+      employer: d.employer,
     });
-    if (existing) {
-      const updated = await prisma.answerBankItem.update({
-        where: { id: existing.id },
-        data: { answer: d.answer, employer: d.employer || null },
-      });
-      after(() => indexContent({ userId, kind: "answer", sourceId: updated.id, content: `${updated.questionText}\n${updated.answer}` }));
-    } else {
-      const item = await prisma.answerBankItem.create({
-        data: {
-          userId,
-          questionText: d.questionText,
-          questionNormalized: normalized,
-          answer: d.answer,
-          employer: d.employer || null,
-        },
-      });
-      after(() => indexContent({ userId, kind: "answer", sourceId: item.id, content: `${item.questionText}\n${item.answer}` }));
-    }
 
     // Capture edit for learning: if the user edited an AI draft before saving.
     if (d.original && d.draftId && d.original !== d.answer) {

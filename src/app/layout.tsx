@@ -1,38 +1,37 @@
 import type { Metadata } from "next";
-import { Libre_Franklin, JetBrains_Mono, Newsreader } from "next/font/google";
-import { StatusBar } from "@/components/status-bar";
+import { Karla, Fragment_Mono, Zilla_Slab } from "next/font/google";
 import "./globals.css";
 
-// UI grotesque — Franklin Gothic lineage, an institutional / financial-press
-// voice. (Variable kept as --font-geist-sans so the globals.css mapping stands.)
-const sans = Libre_Franklin({
+// GB+ UI sans — humanist grotesque with quiet character (Granola's "Melange" role).
+// Variable kept as --font-geist-sans so the globals.css mapping stands.
+const sans = Karla({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700", "800"],
   display: "swap",
 });
 
-// Finance-grade monospace for every numeric, code and the data grid. JetBrains
-// Mono — tall x-height + open apertures stay legible at dense terminal sizes.
-const mono = JetBrains_Mono({
+// GB+ data mono — single weight by design; the family has no bold and we never
+// synthesize one. Emphasis in mono = color tier or size, never weight.
+const mono = Fragment_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400",
   display: "swap",
 });
 
-// Editorial display serif — marketing headlines only (incl. italic emphasis).
-const display = Newsreader({
-  variable: "--font-display",
+// GB+ display slab — page titles, greetings, card heads.
+const display = Zilla_Slab({
+  variable: "--font-display-slab",
   subsets: ["latin"],
-  style: ["normal", "italic"],
+  weight: ["500", "600"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Trackr — UK Finance Summer Internships",
+  title: "Cyclops — your application OS",
   description:
-    "A disciplined tracker for UK finance summer internships — browse openings, see personalized fit scores, and run a focused application workflow.",
+    "Cyclops tracks UK internship listings, drafts answers in your voice overnight, and brings you only the decisions that need you.",
 };
 
 export default function RootLayout({
@@ -47,7 +46,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <div className="flex flex-1 flex-col">{children}</div>
-        <StatusBar />
       </body>
     </html>
   );
