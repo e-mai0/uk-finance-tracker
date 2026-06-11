@@ -1,21 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { updateMany, authMock, revalidateMock } = vi.hoisted(() => ({
-  updateMany: vi.fn(),
-  authMock: vi.fn(),
-  revalidateMock: vi.fn(),
-}));
+const { updateMany, gqUpdateMany, resolveByKeyMock, authMock, revalidateMock } =
+  vi.hoisted(() => ({
+    updateMany: vi.fn(),
+    gqUpdateMany: vi.fn(),
+    resolveByKeyMock: vi.fn(),
+    authMock: vi.fn(),
+    revalidateMock: vi.fn(),
+  }));
 
 vi.mock("@/server/db", () => ({
-  prisma: { attentionItem: { updateMany } },
+  prisma: {
+    attentionItem: { updateMany },
+    gardenerQuestion: { updateMany: gqUpdateMany },
+  },
 }));
 vi.mock("@/server/auth", () => ({ auth: authMock }));
+vi.mock("@/server/attention", () => ({ resolveAttentionByKey: resolveByKeyMock }));
 vi.mock("next/cache", () => ({ revalidatePath: revalidateMock }));
 
-import { resolveAttention, snoozeAttention } from "@/server/actions/attention";
+import {
+  resolveAttention,
+  snoozeAttention,
+  resolveGardenerQuestion,
+} from "@/server/actions/attention";
 
 beforeEach(() => {
   updateMany.mockReset();
+  gqUpdateMany.mockReset();
+  resolveByKeyMock.mockReset();
   authMock.mockReset();
   revalidateMock.mockReset();
   authMock.mockResolvedValue({ user: { id: "u1" } });
@@ -91,5 +104,42 @@ describe("snoozeAttention", () => {
 
     expect(res).toEqual({ error: "Your session has expired. Sign in again." });
     expect(updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("resolveGardenerQuestion", () => {
+  it("resolves an owned question, its attention item, and revalidates /memory + /today", async () => {
+    gqUpdateMany.mockResolvedValue({ count: 1 });
+
+    const res = await resolveGardenerQuestion("g1");
+
+    expect(gqUpdateMany).toHaveBeenCalledWith({
+      where: { id: "g1", userId: "u1" },
+      data: { status: "resolved" },
+    });
+    expect(resolveByKeyMock).toHaveBeenCalledWith("u1", "gq:g1");
+    expect(revalidateMock).toHaveBeenCalledWith("/memory");
+    expect(revalidateMock).toHaveBeenCalledWith("/today");
+    expect(res).toEqual({ ok: true });
+  });
+
+  it("errors on a foreign or missing id (count 0) without side effects", async () => {
+    gqUpdateMany.mockResolvedValue({ count: 0 });
+
+    const res = await resolveGardenerQuestion("not-mine");
+
+    expect(res).toEqual({ error: "Not found." });
+    expect(resolveByKeyMock).not.toHaveBeenCalled();
+    expect(revalidateMock).not.toHaveBeenCalled();
+  });
+
+  it("errors when unauthenticated and touches no data", async () => {
+    authMock.mockResolvedValue(null);
+
+    const res = await resolveGardenerQuestion("g1");
+
+    expect(res).toEqual({ error: "Your session has expired. Sign in again." });
+    expect(gqUpdateMany).not.toHaveBeenCalled();
+    expect(resolveByKeyMock).not.toHaveBeenCalled();
   });
 });

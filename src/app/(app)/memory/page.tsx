@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/server/auth";
+import { prisma } from "@/server/db";
 import { memoryService } from "@/server/memory/service";
+import { resolveGardenerQuestionForm } from "@/server/actions/attention";
 import { MemoryEditor } from "./memory-editor";
 import type { MemoryRevision } from "./memory-editor";
 
@@ -54,6 +56,17 @@ export default async function MemoryPage({
   // Seeds canonical files on first visit
   const files = await memoryService.list(userId);
 
+  // Open gardener questions — surfaced above the editor until answered or
+  // dismissed. The table predates the gardener SQL being applied everywhere,
+  // so tolerate its absence.
+  const pendingQuestions = await prisma.gardenerQuestion
+    .findMany({
+      where: { userId, status: "pending" },
+      orderBy: { createdAt: "asc" },
+      take: 5,
+    })
+    .catch(() => []);
+
   const { canonical, stories, companies, other } = groupFiles(files);
   const allOrdered = [...canonical, ...stories, ...companies, ...other];
 
@@ -86,7 +99,49 @@ export default async function MemoryPage({
     rawRevisions[0]?.createdAt.toISOString() ?? new Date(0).toISOString();
 
   return (
-    <div className="animate-rise flex h-[calc(100vh-3rem)] overflow-hidden">
+    <div className="animate-rise flex h-[calc(100vh-3rem)] flex-col overflow-hidden">
+      {/* Cyclops wants to know — open gardener questions, agent surface. */}
+      {pendingQuestions.length > 0 && (
+        <section className="shrink-0 border-b border-border bg-canvas px-4 py-3">
+          <div className="rounded-card border border-border border-l-[3px] border-l-agent-mark bg-surface shadow-card">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
+              <span className="label rounded-pill bg-accent-soft px-2.5 py-0.5 text-accent">
+                ◆ CYCLOPS WANTS TO KNOW
+              </span>
+              <span className="tabular label ml-auto text-faint">
+                {pendingQuestions.length}
+              </span>
+            </div>
+            <ul className="divide-y divide-border">
+              {pendingQuestions.map((q) => (
+                <li key={q.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <p className="min-w-0 flex-1 text-[0.875rem] text-ink">
+                    {q.question}
+                  </p>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Link
+                      href={`/chat?prefill=${encodeURIComponent(q.question)}`}
+                      className="rounded-pill border border-border-interactive bg-surface px-3 py-1 text-[0.8125rem] font-bold text-ink transition-colors hover:bg-surface-2"
+                    >
+                      Answer in chat
+                    </Link>
+                    <form action={resolveGardenerQuestionForm.bind(null, q.id)}>
+                      <button
+                        type="submit"
+                        className="label min-h-6 px-1.5 py-1 text-subtle transition-colors hover:text-ink"
+                      >
+                        Dismiss
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      <div className="flex min-h-0 flex-1 overflow-hidden">
       {/* Left rail — file list */}
       <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface sm:flex">
         {/* Heading */}
@@ -210,6 +265,7 @@ export default async function MemoryPage({
             </p>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
