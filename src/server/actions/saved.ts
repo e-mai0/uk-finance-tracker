@@ -53,7 +53,7 @@ export async function toggleSave(
 
   revalidatePath("/tracker");
   revalidatePath("/saved");
-  revalidatePath(`/opportunities/${opportunityId}`);
+  revalidatePath(`/tracker/${opportunityId}`);
   return { saved };
 }
 
@@ -71,7 +71,7 @@ export async function updateSavedNotes(
     create: { userId, opportunityId, notes: notes.trim() || null },
   });
 
-  revalidatePath(`/opportunities/${opportunityId}`);
+  revalidatePath(`/tracker/${opportunityId}`);
   revalidatePath("/saved");
   return { ok: true };
 }

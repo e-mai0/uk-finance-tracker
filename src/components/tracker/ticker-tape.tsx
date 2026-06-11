@@ -64,7 +64,7 @@ export function TickerTape({ items }: { items: TrackerItem[] }) {
 
   const Cell = ({ item, lane: l }: { item: TrackerItem; lane: Lane }) => (
     <Link
-      href={`/opportunities/${item.id}`}
+      href={`/tracker/${item.id}`}
       className="group inline-flex items-center gap-2 px-4 py-1.5"
       tabIndex={-1}
     >

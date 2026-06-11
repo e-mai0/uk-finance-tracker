@@ -39,6 +39,43 @@ export async function updateApplicationStatus(
   return { ok: true };
 }
 
+export async function startApplication(
+  opportunityId: string,
+): Promise<{ ok?: boolean; applicationId?: string; error?: string }> {
+  const session = await auth();
+  if (!session?.user) return { error: "Your session has expired. Sign in again." };
+  const userId = session.user.id;
+
+  const opportunity = await prisma.opportunity.findUnique({
+    where: { id: opportunityId },
+    include: { employer: true },
+  });
+  if (!opportunity) return { error: "Opportunity not found." };
+
+  const existing = await prisma.application.findFirst({
+    where: { userId, opportunityId },
+    select: { id: true },
+  });
+  if (existing) return { ok: true, applicationId: existing.id };
+
+  const created = await prisma.application.create({
+    data: {
+      userId,
+      opportunityId,
+      status: "DRAFT",
+      source: "MANUAL",
+      employerName: opportunity.employer.name,
+      roleTitle: opportunity.title,
+      // externalUrl is unique per [userId, externalUrl]; fall back to a
+      // synthetic tracker URL when the opportunity has no application link.
+      externalUrl: opportunity.applicationUrl ?? `tracker:${opportunityId}`,
+    },
+  });
+
+  revalidatePath("/applications");
+  return { ok: true, applicationId: created.id };
+}
+
 export async function deleteApplication(
   id: string,
 ): Promise<{ ok?: boolean; error?: string }> {
