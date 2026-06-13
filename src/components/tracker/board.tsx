@@ -247,7 +247,6 @@ export function Board({ rows }: { rows: BoardRow[] }) {
       </table>
       <div className="flex gap-4 border-t border-hairline px-4 py-2">
         <span className="label text-faint">◆ = CYCLOPS · ▼ = CLOSING ≤14D · ★ = SAVED</span>
-        <span className="label ml-auto text-faint">J/K MOVE · ⏎ OPEN · S SAVE · A ASK</span>
       </div>
     </div>
   );

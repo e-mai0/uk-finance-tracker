@@ -144,8 +144,13 @@ export function AnswerBankManager({ items }: { items: AnswerItem[] }) {
           </p>
         </div>
         {!adding && (
-          <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
-            Add answer
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            onClick={() => setAdding(true)}
+          >
+            Add
           </Button>
         )}
       </CardHeader>
