@@ -25,6 +25,8 @@ export interface TrackerItem {
   tags: string[];
   score?: number;
   saved?: boolean;
+  deadlineEstimated?: boolean;
+  isRolling?: boolean;
 }
 
 export interface FilterParams {

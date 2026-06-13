@@ -47,6 +47,11 @@ enum SourceType {
   LEVER
   ASHBY
   WORKDAY
+  ORACLE_CLOUD
+  EIGHTFOLD
+  AVATURE
+  RADANCY
+  TALNET
   MANUAL
 }
 
@@ -176,6 +181,11 @@ model Opportunity {
   eligibilityNotes   String?
   sponsorshipInfo    String?
   confidence         Float             @default(1.0)
+  deadlineEstimated  Boolean           @default(false)
+  isRolling          Boolean           @default(false)
+  consecutiveMisses  Int               @default(0)
+  closedAt           DateTime?
+  closeReason        String?
 
   tags         OpportunityTag[]
   sources      OpportunitySource[]
@@ -278,6 +288,8 @@ model IngestionSource {
   // flagged for review on /radar rather than auto-published.
   watchOnly           Boolean    @default(false)
   watchState          Json? // { kind: "sitemap", urls } | { kind: "page", hash }
+  config                Json?
+  lastSuccessfulFetchAt  DateTime?
   lastChangedAt       DateTime?
   suggestedById       String? // userId of the scout who added it (informational)
   lastRunAt           DateTime?

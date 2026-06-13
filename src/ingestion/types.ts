@@ -70,6 +70,8 @@ export interface NormalizedOpportunity {
   sourceType: SourceType;
   tags: string[];
   confidence: number;
+  deadlineEstimated: boolean;
+  isRolling: boolean;
 }
 
 /** Common interface every future ingestion source (ATS adapter) implements. */
@@ -79,3 +81,13 @@ export interface SourceAdapter {
   /** Pull raw opportunities from the source. */
   fetch(): Promise<RawDataset>;
 }
+
+/** Per-ATS config carried on an IngestionSource.config (Json) row, decoded by
+ *  adapterFor and handed to the matching adapter. */
+export type SourceConfig =
+  | { ats: "workday"; host: string; tenant: string; site: string }
+  | { ats: "oracle"; host: string; site: string }
+  | { ats: "eightfold"; host: string; domain: string; endpoint: "apply" | "pcsx" }
+  | { ats: "avature"; variant: "ubs" | "macquarie"; base: string; siteid?: string }
+  | { ats: "radancy"; base: string }
+  | { ats: "talnet"; host: string; board: number };

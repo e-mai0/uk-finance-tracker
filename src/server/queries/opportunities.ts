@@ -76,6 +76,8 @@ export async function getTrackerItems(userId: string): Promise<TrackerItem[]> {
     status: o.status,
     opensAt: o.opensAt,
     deadlineAt: o.deadlineAt,
+    deadlineEstimated: o.deadlineEstimated,
+    isRolling: o.isRolling,
     lastSeenAt: o.lastSeenAt,
     firstSeenAt: o.firstSeenAt,
     applicationUrl: o.applicationUrl,

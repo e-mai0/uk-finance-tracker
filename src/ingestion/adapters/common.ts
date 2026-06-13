@@ -76,3 +76,69 @@ export function buildDataset(
   };
   return { source: sourceId, employers: [rawEmployer], opportunities };
 }
+
+/** Parse an HTTP Retry-After header (delay-seconds form) into milliseconds. */
+export function parseRetryAfter(header: string | null): number | null {
+  if (!header) return null;
+  const secs = Number(header.trim());
+  return Number.isFinite(secs) && secs >= 0 ? secs * 1000 : null;
+}
+
+/** Detect an Imperva/Incapsula challenge served with a 200 (disguised block). */
+export function isImpervaBlocked(body: string): boolean {
+  const head = body.slice(0, 4000).toLowerCase();
+  return (
+    head.includes("incapsula incident id") ||
+    head.includes("_incapsula_resource") ||
+    head.includes("request unsuccessful")
+  );
+}
+
+/** Deterministic exponential backoff schedule (no jitter — caller adds it). */
+export function backoffDelays(attempts: number, base: number, cap: number): number[] {
+  return Array.from({ length: attempts }, (_, i) => Math.min(base * 2 ** i, cap));
+}
+
+/**
+ * Fetch text with retry/backoff. Retries only 429/502/503/504 + network errors,
+ * honors Retry-After, and treats an Imperva interstitial (200-disguised) as a
+ * failure. Throws ImpervaBlockedError on a persistent interstitial so the sync
+ * layer can mark the host unreachable rather than publishing garbage.
+ */
+export class ImpervaBlockedError extends Error {}
+
+export async function fetchTextRobust(
+  url: string,
+  opts: { attempts?: number; headers?: Record<string, string> } = {},
+): Promise<string> {
+  const attempts = opts.attempts ?? 3;
+  const delays = backoffDelays(attempts, 600, 8000);
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, {
+        headers: { "user-agent": USER_AGENT, ...opts.headers },
+        signal: AbortSignal.timeout(15_000),
+        cache: "no-store",
+      });
+      if ([429, 502, 503, 504].includes(res.status)) {
+        const wait = parseRetryAfter(res.headers.get("retry-after")) ?? delays[i];
+        if (i < attempts - 1) { await sleep(wait); continue; }
+        throw new Error(`GET ${url} → ${res.status} after ${attempts} attempts`);
+      }
+      if (!res.ok) throw new Error(`GET ${url} → ${res.status} ${res.statusText}`);
+      const body = await res.text();
+      if (isImpervaBlocked(body)) throw new ImpervaBlockedError(`Imperva interstitial at ${url}`);
+      return body;
+    } catch (err) {
+      lastErr = err;
+      if (err instanceof ImpervaBlockedError) throw err; // don't retry a challenge
+      if (i < attempts - 1) await sleep(delays[i]);
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
