@@ -14,6 +14,8 @@ const NAV: { href: string; label: string; badgeKey?: "today" | "applications" | 
   { href: "/applications", label: "Applications", badgeKey: "applications" },
   { href: "/chat", label: "Ask Cyclops", badgeKey: "chat" },
   { href: "/memory", label: "Memory" },
+  { href: "/cv-builder", label: "CV Builder" },
+  { href: "/my-cv", label: "My CV" },
 ];
 
 export type NavBadges = { today: number; applications: number; chat: number };

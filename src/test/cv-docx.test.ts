@@ -1,7 +1,7 @@
 // src/test/cv-docx.test.ts
 import { describe, it, expect } from "vitest";
 import { renderCvDocx } from "@/server/cv/docx";
-import { cvDataSchema } from "@/lib/cv";
+import { cvDataSchema, slugifyName } from "@/lib/cv";
 
 describe("renderCvDocx", () => {
   it("returns a .docx buffer (zip → starts with PK)", async () => {
@@ -23,5 +23,24 @@ describe("renderCvDocx", () => {
   it("handles an empty CV without throwing", async () => {
     const buf = await renderCvDocx(cvDataSchema.parse({ fullName: "Nobody" }));
     expect(buf.subarray(0, 2).toString("latin1")).toBe("PK");
+  });
+});
+
+describe("slugifyName", () => {
+  it("replaces spaces with underscores", () => {
+    expect(slugifyName("Eric Mai")).toBe("Eric_Mai");
+  });
+
+  it("strips special characters", () => {
+    expect(slugifyName("O'Brien-Smith")).toBe("OBrienSmith");
+  });
+
+  it("collapses multiple spaces", () => {
+    expect(slugifyName("  Jane   Doe  ")).toBe("Jane_Doe");
+  });
+
+  it("returns CV for an empty or whitespace-only string", () => {
+    expect(slugifyName("")).toBe("CV");
+    expect(slugifyName("   ")).toBe("CV");
   });
 });

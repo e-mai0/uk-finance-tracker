@@ -196,6 +196,16 @@ export function formInputToCvData(formInput: CvFormInput, prefill: CvPrefill): C
   });
 }
 
+/** Slugify a user name for use in a download filename, e.g. "Eric Mai" → "Eric_Mai". */
+export function slugifyName(name: string): string {
+  return (
+    name
+      .trim()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_]/g, "") || "CV"
+  );
+}
+
 /** Flatten CvData to plain text for grounding (mirrors what an uploaded CV's text looks like). */
 export function cvToPlainText(cv: CvData): string {
   const out: string[] = [];
