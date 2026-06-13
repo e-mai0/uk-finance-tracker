@@ -65,7 +65,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
     (get("q") ? 1 : 0);
 
   return (
-    <div className="bg-surface px-3 py-2">
+    <div className="px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
         {/* Command-line search */}
         <div className="flex min-w-[220px] flex-1 items-center rounded-pill border border-border bg-surface focus-within:border-border-interactive">

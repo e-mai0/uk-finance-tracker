@@ -44,19 +44,7 @@ export function Board({ rows }: { rows: BoardRow[] }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [focusIdx, setFocusIdx] = useState(-1);
-  const [density, setDensity] = useState<"compact" | "comfy">("compact");
   const tbodyRef = useRef<HTMLTableSectionElement>(null);
-
-  // Density: persisted; comfy is the default on coarse pointers (spec §7).
-  useEffect(() => {
-    const stored = localStorage.getItem("tracker-density");
-    if (stored === "compact" || stored === "comfy") setDensity(stored);
-    else if (window.matchMedia("(pointer: coarse)").matches) setDensity("comfy");
-  }, []);
-  const setAndStoreDensity = (d: "compact" | "comfy") => {
-    setDensity(d);
-    localStorage.setItem("tracker-density", d);
-  };
 
   // Clamp focusIdx when rows shrink (e.g. filter applied).
   useEffect(() => {
@@ -104,29 +92,10 @@ export function Board({ rows }: { rows: BoardRow[] }) {
       [focusIdx]?.scrollIntoView({ block: "nearest" });
   }, [focusIdx]);
 
-  const rowH = density === "compact" ? "h-[2.125rem]" : "h-11";
+  const rowH = "h-[2.125rem]"; // compact, always
 
   return (
-    <div className="rounded-card border border-border bg-surface shadow-card">
-      <div className="flex items-center gap-3 px-4 py-2">
-        <span className="label text-faint">{rows.length} shown</span>
-        <div className="ml-auto flex overflow-hidden rounded-pill border border-border">
-          {(["comfy", "compact"] as const).map((d) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={density === d}
-              onClick={() => setAndStoreDensity(d)}
-              className={cn(
-                "label px-3 py-1",
-                density === d ? "bg-ink text-canvas" : "text-faint hover:text-ink",
-              )}
-            >
-              {d.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b border-border-strong bg-surface-3 text-left">

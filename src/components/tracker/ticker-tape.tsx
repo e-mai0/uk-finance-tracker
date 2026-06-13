@@ -91,7 +91,7 @@ export function TickerTape({ items }: { items: TrackerItem[] }) {
   );
 
   return (
-    <div className="overflow-hidden border-b border-border bg-surface">
+    <div className="overflow-hidden border-b border-border bg-canvas">
       <div className="flex items-stretch">
         {/* Left tag — the band's identity, like an index label */}
         <div className="flex shrink-0 items-center gap-2 border-r border-border px-3.5">
@@ -108,8 +108,8 @@ export function TickerTape({ items }: { items: TrackerItem[] }) {
             {run("b", true)}
           </div>
           {/* edge fades so cells dissolve rather than clip */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-surface to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-canvas to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-canvas to-transparent" />
         </div>
       </div>
     </div>
