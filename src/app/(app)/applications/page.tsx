@@ -52,27 +52,51 @@ export default async function ApplicationsPage() {
     opportunityId: a.opportunityId,
   }));
 
-  const submitted = apps.filter(
-    (a) => a.status !== "DRAFT" && a.status !== "AUTOFILLED",
+  const inProgress = apps.filter(
+    (a) => a.status === "DRAFT" || a.status === "AUTOFILLED",
   ).length;
+  const submitted = apps.length - inProgress; // left the draft stage
+  const pct = apps.length ? Math.round((submitted / apps.length) * 100) : 0;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto max-w-5xl space-y-5 px-5 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div>
-          <div className="label text-subtle">Pipeline</div>
-          <h1 className="mt-1 text-[1.375rem] leading-none text-ink">
-            Applications
-          </h1>
-          <p className="mt-0.5 text-sm text-muted">
+          <p className="label text-faint">Pipeline</p>
+          <h1 className="mt-1 text-[1.75rem] text-ink">Applications</h1>
+          <p className="mt-1 text-[0.875rem] text-muted">
             Roles you’ve started or submitted with the apply copilot. Update the
             status as you progress.
           </p>
         </div>
+        {/* Completion meter — ink, not amber: this is your progress, not the
+            agent's. Fill = applications that have left the draft stage. */}
         {apps.length > 0 && (
-          <p className="text-sm text-muted tabular">
-            {apps.length} tracked · {submitted} submitted+
-          </p>
+          <div className="w-full sm:w-56">
+            <div className="flex items-baseline justify-between">
+              <span className="label text-faint">Submitted</span>
+              <span className="tabular text-[0.75rem] text-ink">
+                {submitted}
+                <span className="text-faint">/{apps.length}</span>
+              </span>
+            </div>
+            <div
+              className="mt-1.5 h-1.5 w-full overflow-hidden rounded-bar bg-surface-3"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Applications submitted"
+            >
+              <div
+                className="h-full rounded-bar bg-ink transition-[width]"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="label mt-1 text-faint">
+              {inProgress} in progress
+            </p>
+          </div>
         )}
       </div>
 

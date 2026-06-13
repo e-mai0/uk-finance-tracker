@@ -58,7 +58,7 @@ export default async function ApplicationWorkspacePage({
   const dl = opportunity ? daysUntil(opportunity.deadlineAt) : null;
 
   return (
-    <div className="mx-auto max-w-5xl animate-rise px-4 py-6">
+    <div className="mx-auto max-w-5xl animate-rise px-5 py-8">
       <Link
         href="/applications"
         className="label inline-flex items-center gap-1.5 text-subtle transition-colors hover:text-ink"
