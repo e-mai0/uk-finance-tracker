@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
+import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { QuestionnaireForm } from "@/components/questionnaire/questionnaire-form";
 import { ApplyProfileForm } from "@/components/settings/apply-profile-form";
@@ -77,13 +78,11 @@ export default async function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 px-4 py-6">
+    <div className="mx-auto max-w-3xl space-y-5 px-5 py-8">
       <div>
-        <div className="label text-subtle">Config</div>
-        <h1 className="mt-1 text-[1.375rem] leading-none text-ink">
-          Settings
-        </h1>
-        <p className="mt-0.5 text-sm text-muted">
+        <p className="label text-faint">Config</p>
+        <h1 className="mt-1 text-[1.75rem] text-ink">Settings</h1>
+        <p className="mt-1 text-[0.875rem] text-muted">
           Update your profile and preferences. Saving recalculates your fit
           scores across every role.
         </p>
@@ -93,7 +92,7 @@ export default async function SettingsPage() {
           bedrock fact (ink chip), not a setting that could ever flip. */}
       <section className="rounded-card border border-border bg-surface shadow-card">
         <div className="flex items-baseline justify-between border-b border-border px-4 py-2.5">
-          <h2 className="text-[1.0625rem] leading-none text-ink">
+          <h2 className="text-[1rem] font-semibold text-ink">
             Cyclops permissions
           </h2>
           <span className="label text-faint">WHAT THE AGENT MAY DO</span>
@@ -132,28 +131,30 @@ export default async function SettingsPage() {
         }}
       />
 
-      <div className="rounded-[var(--radius-card)] border border-border bg-surface p-5">
-        <h2 className="text-base font-semibold tracking-tight text-ink">
-          Questionnaire
-        </h2>
-        <p className="mt-0.5 mb-5 text-sm text-muted">
-          Optional details that sharpen your matches and drafts.
-        </p>
-        <QuestionnaireForm
-          variant="settings"
-          employerSuggestions={employers.map((e) => e.name)}
-          initial={{
-            workAuth: profile.workAuth,
-            aLevels: grade.aLevels ?? "",
-            gcseSummary: grade.gcseSummary ?? "",
-            gpaOrEquivalent: grade.gpaOrEquivalent ?? "",
-            skills: profile.skills,
-            preferredLocations: prefs.preferredLocations,
-            openToAnywhereUk: prefs.openToAnywhereUk,
-            targetEmployers: prefs.targetEmployers,
-          }}
-        />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Questionnaire</CardTitle>
+          <p className="mt-0.5 text-xs text-muted">
+            Optional details that sharpen your matches and drafts.
+          </p>
+        </CardHeader>
+        <CardBody>
+          <QuestionnaireForm
+            variant="settings"
+            employerSuggestions={employers.map((e) => e.name)}
+            initial={{
+              workAuth: profile.workAuth,
+              aLevels: grade.aLevels ?? "",
+              gcseSummary: grade.gcseSummary ?? "",
+              gpaOrEquivalent: grade.gpaOrEquivalent ?? "",
+              skills: profile.skills,
+              preferredLocations: prefs.preferredLocations,
+              openToAnywhereUk: prefs.openToAnywhereUk,
+              targetEmployers: prefs.targetEmployers,
+            }}
+          />
+        </CardBody>
+      </Card>
 
       <div className="space-y-1.5 pt-2">
         <h2 className="text-[1.0625rem] leading-none text-ink">Apply copilot</h2>
