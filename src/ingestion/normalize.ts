@@ -27,6 +27,9 @@ export function normalizeOpportunity(
   now: Date,
 ): NormalizedOpportunity {
   const realDeadline = parseDate(raw.deadlineAt);
+  // No published deadline → infer one from the cycle. Today `isRolling` tracks
+  // exactly this inferred case; a published deadline that is itself rolling
+  // can't yet be flagged independently (no signal for it in RawOpportunity).
   const inferred = realDeadline ? null : inferDeadline(parseDate(raw.firstSeen) ?? now);
   return {
     employer: raw.employer.trim(),

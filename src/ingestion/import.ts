@@ -151,6 +151,14 @@ export async function importDataset(
   // run, mark roles absent from this (healthy) feed as missed/closed, reopen
   // reappearances, and close roles past a REAL deadline. `healthy` is true here
   // because importDataset only runs after a successful adapter fetch.
+  //
+  // INVARIANT: at most one ENABLED source per (employer, sourceType). The seed
+  // enforces this by picking a single feed per firm (e.g. Citi→Eightfold only,
+  // Barclays→Workday only — see prisma/seed.ts dedupe rules). If that invariant
+  // is ever broken, two sources of the same kind would treat each other's roles
+  // as "absent" and flap them OPEN/CLOSED. The robust fix if multi-source-per-
+  // type becomes real is to scope the cohort to the originating source id
+  // (would require persisting ingestionSourceId on Opportunity).
   const presentByCohort = new Map<string, Set<string>>(); // `${employerId}:${sourceType}` -> keys
   for (const n of normalized) {
     const employerId = employerIdByName.get(n.employer)!;
