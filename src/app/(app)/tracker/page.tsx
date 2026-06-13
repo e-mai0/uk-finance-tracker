@@ -76,7 +76,7 @@ export default async function DashboardPage({
       {/* Filter line — no hard full-width rule (it used to ram the dock edge);
           the board card below provides the separation. */}
       <Suspense fallback={null}>
-        <FiltersBar resultCount={items.length} />
+        <FiltersBar />
       </Suspense>
 
       {/* The board */}

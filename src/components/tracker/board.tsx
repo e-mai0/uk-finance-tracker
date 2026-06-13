@@ -100,7 +100,9 @@ export function Board({ rows }: { rows: BoardRow[] }) {
         <thead>
           <tr className="border-b border-border-strong bg-surface-3 text-left">
             <th scope="col" className="label w-9 px-4 py-1.5 text-faint" aria-label="Monogram" />
-            <th scope="col" className="label py-1.5 text-faint">Firm · Role</th>
+            <th scope="col" className="label py-1.5 text-faint">
+              <span className="tabular text-subtle">{rows.length}</span> · Firm · Role
+            </th>
             <th scope="col" className="label w-24 py-1.5 text-right text-faint">Deadline</th>
             <th scope="col" className="label w-16 py-1.5 text-right text-faint">Days</th>
             <th scope="col" className="label w-28 py-1.5 text-right text-faint">Fit</th>

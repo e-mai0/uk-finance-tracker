@@ -236,7 +236,7 @@ export function CyclopsDock({ badge }: { badge: number }) {
           expanded
             ? "fixed right-0 top-[3.25rem] bottom-3 z-50 flex w-full max-w-2xl flex-col overflow-hidden rounded-l-[0.875rem] border border-border-agent bg-canvas shadow-pop"
             : belowTape
-              ? "sticky top-[5.25rem] flex h-[calc(100vh-5.25rem-0.75rem)] flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card"
+              ? "sticky top-[5.75rem] flex h-[calc(100vh-5.75rem-0.75rem)] flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card"
               : "sticky top-[3.25rem] flex h-[calc(100vh-3.25rem-0.75rem)] flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card"
         }
       >

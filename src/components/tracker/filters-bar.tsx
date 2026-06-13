@@ -13,7 +13,7 @@ import {
 /* The desk filter line — a terminal command strip. Typographic glyphs only
    (› ▾ ✓ ×), no drawn icons. */
 
-export function FiltersBar({ resultCount }: { resultCount: number }) {
+export function FiltersBar() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -111,8 +111,16 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
           onClick={() => setParam("filter", get("filter") === "starred" ? "" : "starred")}
         />
 
-        {/* Sort */}
-        <div className="ml-auto flex items-center gap-2">
+        {/* Clear filters + Sort, right-aligned */}
+        <div className="ml-auto flex items-center gap-3">
+          {activeCount > 0 && (
+            <button
+              onClick={() => router.push(pathname, { scroll: false })}
+              className="label text-subtle transition-colors hover:text-ink hover:underline"
+            >
+              × Clear {activeCount}
+            </button>
+          )}
           <span className="label hidden text-subtle sm:inline">
             Sort
           </span>
@@ -136,25 +144,6 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
             </span>
           </div>
         </div>
-      </div>
-
-      <div className="mt-2 flex items-center gap-3">
-        <span className="label text-subtle">
-          <span className="tabular text-ink">{resultCount}</span> rows
-        </span>
-        {activeCount > 0 && (
-          <>
-            <span aria-hidden className="text-border-strong">
-              │
-            </span>
-            <button
-              onClick={() => router.push(pathname, { scroll: false })}
-              className="label text-subtle hover:text-ink hover:underline"
-            >
-              × Clear {activeCount} filter{activeCount > 1 ? "s" : ""}
-            </button>
-          </>
-        )}
       </div>
     </div>
   );
