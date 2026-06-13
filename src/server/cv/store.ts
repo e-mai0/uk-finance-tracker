@@ -1,6 +1,6 @@
 // src/server/cv/store.ts
 import { prisma } from "@/server/db";
-import { cvDataSchema, type CvData } from "@/lib/cv";
+import { cvDataSchema, cvFormInputSchema, type CvData, type CvFormInput } from "@/lib/cv";
 
 /** Upsert the user's built CV. Validates the data before persisting.
  *  Returns the parsed CvData that was saved. */
@@ -17,12 +17,17 @@ export async function persistCv(userId: string, cv: CvData, formInput?: unknown)
 /** Read the user's built CV, or null if they haven't built one yet. */
 export async function getBuiltCv(
   userId: string,
-): Promise<{ cv: CvData; chatSessionId: string | null } | null> {
+): Promise<{ cv: CvData; formInput: CvFormInput | null; chatSessionId: string | null } | null> {
   const row = await prisma.builtCv.findUnique({ where: { userId } });
   if (!row) return null;
   const result = cvDataSchema.safeParse(row.data);
   if (!result.success) return null;
-  return { cv: result.data, chatSessionId: row.chatSessionId ?? null };
+  const formInputResult = cvFormInputSchema.safeParse(row.formInput);
+  return {
+    cv: result.data,
+    formInput: formInputResult.success ? formInputResult.data : null,
+    chatSessionId: row.chatSessionId ?? null,
+  };
 }
 
 /** Get or create the dedicated "cv-builder" ChatSession for this user,

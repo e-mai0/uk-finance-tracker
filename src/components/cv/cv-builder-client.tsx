@@ -3,7 +3,7 @@
 // the CV-chat assistant, and the live CV preview side-by-side.
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea, FieldError } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { CvChat } from "@/components/cv/cv-chat";
 import { CvDocument } from "@/components/cv/cv-document";
 import { buildCv } from "@/server/actions/cv";
 import { cvFormInputSchema, type CvData, type CvFormInput } from "@/lib/cv";
+
+const CV_STORAGE_KEY = "trackr.cv-builder.v1";
 import type { UIMessage } from "ai";
 
 // ---------------------------------------------------------------------------
@@ -354,21 +356,24 @@ export function CvBuilderClient({
   sessionId,
   initialMessages,
   initialCv,
+  initialFormInput,
 }: {
   sessionId: string;
   initialMessages: UIMessage[];
   initialCv: CvData;
+  initialFormInput?: CvFormInput | null;
 }) {
   const [step, setStep] = useState(0);
-  const [education, setEducation] = useState<EducationRow[]>([
-    { ...EMPTY_EDU },
-  ]);
-  const [accomplishments, setAccomplishments] = useState<AccomplishmentRow[]>([
-    { ...EMPTY_ACCOMPLISHMENT },
-  ]);
-  const [projects, setProjects] = useState<ProjectRow[]>([
-    { ...EMPTY_PROJECT },
-  ]);
+  const [education, setEducation] = useState<EducationRow[]>(
+    initialFormInput?.education?.length ? initialFormInput.education : [{ ...EMPTY_EDU }],
+  );
+  const [accomplishments, setAccomplishments] = useState<AccomplishmentRow[]>(
+    initialFormInput?.accomplishments?.length ? initialFormInput.accomplishments : [{ ...EMPTY_ACCOMPLISHMENT }],
+  );
+  const [projects, setProjects] = useState<ProjectRow[]>(
+    initialFormInput?.projects?.length ? initialFormInput.projects : [{ ...EMPTY_PROJECT }],
+  );
+  const [hydrated, setHydrated] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -379,6 +384,56 @@ export function CvBuilderClient({
 
   // Active pane: "form" | "chat" | "preview"
   const [pane, setPane] = useState<"form" | "chat" | "preview">("form");
+
+  // ---------------------------------------------------------------------------
+  // localStorage autosave (mirrors onboarding-wizard pattern).
+  // On first mount: restore draft from localStorage only when there is no
+  // server-side formInput (i.e. the user hasn't submitted before).
+  // On every change: persist current answers so they survive tab close.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (initialFormInput) {
+      // Server already has saved form data — don't overwrite with a stale draft.
+      setHydrated(true);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(CV_STORAGE_KEY);
+      if (raw) {
+        const parsed = cvFormInputSchema.safeParse(JSON.parse(raw));
+        if (parsed.success) {
+          if (parsed.data.education.length) setEducation(parsed.data.education);
+          if (parsed.data.accomplishments.length) setAccomplishments(parsed.data.accomplishments);
+          if (parsed.data.projects.length) setProjects(parsed.data.projects);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    setHydrated(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (submitSuccess) {
+      // Draft submitted — clear localStorage so the next visit starts fresh.
+      try {
+        localStorage.removeItem(CV_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    try {
+      localStorage.setItem(
+        CV_STORAGE_KEY,
+        JSON.stringify({ education, accomplishments, projects }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [education, accomplishments, projects, hydrated, submitSuccess]);
 
   function handleCvUpdate(cv: CvData) {
     setLiveCv(cv);

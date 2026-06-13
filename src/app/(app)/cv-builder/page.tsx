@@ -24,6 +24,7 @@ export default async function CvBuilderPage() {
   // Load the current CV (or start with an empty one).
   const built = await getBuiltCv(userId);
   const initialCv = built?.cv ?? EMPTY_CV;
+  const initialFormInput = built?.formInput ?? null;
 
   // Load the last 30 messages from the cv-builder chat thread.
   const rows = await prisma.chatMessage.findMany({
@@ -38,6 +39,7 @@ export default async function CvBuilderPage() {
       sessionId={sessionId}
       initialMessages={initialMessages}
       initialCv={initialCv}
+      initialFormInput={initialFormInput}
     />
   );
 }
