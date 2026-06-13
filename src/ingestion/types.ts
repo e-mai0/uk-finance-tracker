@@ -70,6 +70,8 @@ export interface NormalizedOpportunity {
   sourceType: SourceType;
   tags: string[];
   confidence: number;
+  deadlineEstimated: boolean;
+  isRolling: boolean;
 }
 
 /** Common interface every future ingestion source (ATS adapter) implements. */

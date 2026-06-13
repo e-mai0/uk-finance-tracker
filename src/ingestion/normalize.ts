@@ -1,4 +1,5 @@
 import type { NormalizedOpportunity, RawOpportunity } from "./types";
+import { inferDeadline } from "./deadline-infer";
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null;
@@ -25,6 +26,8 @@ export function normalizeOpportunity(
   raw: RawOpportunity,
   now: Date,
 ): NormalizedOpportunity {
+  const realDeadline = parseDate(raw.deadlineAt);
+  const inferred = realDeadline ? null : inferDeadline(parseDate(raw.firstSeen) ?? now);
   return {
     employer: raw.employer.trim(),
     title: raw.title.trim(),
@@ -37,7 +40,7 @@ export function normalizeOpportunity(
     isSummerInternship: true,
     status: raw.status,
     opensAt: parseDate(raw.opensAt),
-    deadlineAt: parseDate(raw.deadlineAt),
+    deadlineAt: realDeadline ?? inferred!.deadlineAt,
     firstSeenAt: parseDate(raw.firstSeen) ?? now,
     lastSeenAt: parseDate(raw.lastSeen) ?? now,
     descriptionSummary: raw.summary.trim(),
@@ -47,6 +50,8 @@ export function normalizeOpportunity(
     sourceUrl: raw.sourceUrl?.trim() || null,
     sourceType: raw.sourceType ?? "MANUAL",
     tags: (raw.tags ?? []).map((t) => t.trim()).filter(Boolean),
+    deadlineEstimated: inferred !== null,
+    isRolling: inferred !== null,
     confidence: computeConfidence(raw),
   };
 }
