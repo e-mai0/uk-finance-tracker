@@ -46,6 +46,30 @@ function MessagePart({
   part: UIMessagePart<never, never>;
   onCvUpdate?: (cv: CvData) => void;
 }) {
+  const toolPart = isToolUIPart(part)
+    ? (part as ToolUIPart | DynamicToolUIPart)
+    : null;
+  const toolName = toolPart ? getToolName(toolPart) : null;
+  const state = toolPart?.state;
+  const output =
+    toolPart?.state === "output-available" ? toolPart.output : undefined;
+
+  // Lift update_cv output to parent for live preview — must run in an effect
+  // to avoid 'Cannot update a component while rendering a different component'.
+  useEffect(() => {
+    if (
+      toolName === "update_cv" &&
+      state === "output-available" &&
+      output != null &&
+      typeof output === "object"
+    ) {
+      const out = output as { ok?: boolean; cv?: CvData };
+      if (out.ok && out.cv && onCvUpdate) {
+        onCvUpdate(out.cv);
+      }
+    }
+  }, [toolName, state, output, onCvUpdate]);
+
   if (isTextUIPart(part)) {
     return (
       <span className="whitespace-pre-wrap leading-relaxed">{part.text}</span>
@@ -53,30 +77,7 @@ function MessagePart({
   }
 
   if (isToolUIPart(part)) {
-    const toolPart = part as ToolUIPart | DynamicToolUIPart;
-    const toolName = getToolName(toolPart);
-    const state = toolPart.state;
-    const output =
-      toolPart.state === "output-available" ? toolPart.output : undefined;
-
-    // Lift update_cv output to parent for live preview — must run in an effect
-    // to avoid 'Cannot update a component while rendering a different component'.
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
-      if (
-        toolName === "update_cv" &&
-        state === "output-available" &&
-        output != null &&
-        typeof output === "object"
-      ) {
-        const out = output as { ok?: boolean; cv?: CvData };
-        if (out.ok && out.cv && onCvUpdate) {
-          onCvUpdate(out.cv);
-        }
-      }
-    }, [toolName, state, output, onCvUpdate]);
-
-    const label = TOOL_LABELS[toolName] ?? toolName;
+    const label = TOOL_LABELS[toolName!] ?? toolName!;
     const isError =
       state === "output-error" ||
       (state === "output-available" &&

@@ -11,9 +11,9 @@ import { CvChat } from "@/components/cv/cv-chat";
 import { CvDocument } from "@/components/cv/cv-document";
 import { buildCv } from "@/server/actions/cv";
 import { cvFormInputSchema, type CvData, type CvFormInput } from "@/lib/cv";
+import type { UIMessage } from "ai";
 
 const CV_STORAGE_KEY = "trackr.cv-builder.v1";
-import type { UIMessage } from "ai";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,7 +44,6 @@ const EMPTY_PROJECT: ProjectRow = {
 };
 
 const STEPS = ["Education", "Accomplishments", "Projects"] as const;
-type Step = (typeof STEPS)[number];
 
 // ---------------------------------------------------------------------------
 // Sub-step forms
@@ -169,9 +168,11 @@ function EducationStep({
 function AccomplishmentsStep({
   rows,
   onChange,
+  errors,
 }: {
   rows: AccomplishmentRow[];
   onChange: (rows: AccomplishmentRow[]) => void;
+  errors?: Record<string, string>;
 }) {
   function setRow(i: number, patch: Partial<AccomplishmentRow>) {
     onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -214,6 +215,9 @@ function AccomplishmentsStep({
                 onChange={(e) => setRow(i, { title: e.target.value })}
                 placeholder="e.g. Dean's List, British Physics Olympiad Gold"
               />
+              {errors?.[`accomplishments.${i}.title`] && (
+                <FieldError message={errors[`accomplishments.${i}.title`]} />
+              )}
             </div>
             <div>
               <Label htmlFor={`acc-date-${i}`}>Date (optional)</Label>
@@ -223,6 +227,9 @@ function AccomplishmentsStep({
                 onChange={(e) => setRow(i, { date: e.target.value })}
                 placeholder="e.g. 2026"
               />
+              {errors?.[`accomplishments.${i}.date`] && (
+                <FieldError message={errors[`accomplishments.${i}.date`]} />
+              )}
             </div>
             <div>
               <Label htmlFor={`acc-desc-${i}`}>Description (optional)</Label>
@@ -232,6 +239,9 @@ function AccomplishmentsStep({
                 onChange={(e) => setRow(i, { description: e.target.value })}
                 placeholder="Short description"
               />
+              {errors?.[`accomplishments.${i}.description`] && (
+                <FieldError message={errors[`accomplishments.${i}.description`]} />
+              )}
             </div>
           </div>
         </div>
@@ -250,9 +260,11 @@ function AccomplishmentsStep({
 function ProjectsStep({
   rows,
   onChange,
+  errors,
 }: {
   rows: ProjectRow[];
   onChange: (rows: ProjectRow[]) => void;
+  errors?: Record<string, string>;
 }) {
   function setRow(i: number, patch: Partial<ProjectRow>) {
     onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -295,6 +307,9 @@ function ProjectsStep({
                 onChange={(e) => setRow(i, { name: e.target.value })}
                 placeholder="e.g. Oxbridge AI Hackathon"
               />
+              {errors?.[`projects.${i}.name`] && (
+                <FieldError message={errors[`projects.${i}.name`]} />
+              )}
             </div>
             <div>
               <Label htmlFor={`proj-dates-${i}`}>Dates (optional)</Label>
@@ -304,6 +319,9 @@ function ProjectsStep({
                 onChange={(e) => setRow(i, { dates: e.target.value })}
                 placeholder="e.g. Nov 2026"
               />
+              {errors?.[`projects.${i}.dates`] && (
+                <FieldError message={errors[`projects.${i}.dates`]} />
+              )}
             </div>
             <div>
               <Label htmlFor={`proj-skills-${i}`}>
@@ -315,6 +333,9 @@ function ProjectsStep({
                 onChange={(e) => setRow(i, { skills: e.target.value })}
                 placeholder="e.g. Python, FastAPI, PostgreSQL"
               />
+              {errors?.[`projects.${i}.skills`] && (
+                <FieldError message={errors[`projects.${i}.skills`]} />
+              )}
             </div>
             <div>
               <Label htmlFor={`proj-desc-${i}`}>Description (optional)</Label>
@@ -325,6 +346,9 @@ function ProjectsStep({
                 placeholder="One bullet per line, e.g.&#10;Built a real-time application tracker&#10;Won 1st place out of 40 teams"
                 rows={3}
               />
+              {errors?.[`projects.${i}.description`] && (
+                <FieldError message={errors[`projects.${i}.description`]} />
+              )}
             </div>
             <div>
               <Label htmlFor={`proj-link-${i}`}>Link (optional)</Label>
@@ -334,6 +358,9 @@ function ProjectsStep({
                 onChange={(e) => setRow(i, { link: e.target.value })}
                 placeholder="https://github.com/…"
               />
+              {errors?.[`projects.${i}.link`] && (
+                <FieldError message={errors[`projects.${i}.link`]} />
+              )}
             </div>
           </div>
         </div>
@@ -551,10 +578,15 @@ export function CvBuilderClient({
                 <AccomplishmentsStep
                   rows={accomplishments}
                   onChange={setAccomplishments}
+                  errors={fieldErrors}
                 />
               )}
               {step === 2 && (
-                <ProjectsStep rows={projects} onChange={setProjects} />
+                <ProjectsStep
+                  rows={projects}
+                  onChange={setProjects}
+                  errors={fieldErrors}
+                />
               )}
 
               {submitError && (
