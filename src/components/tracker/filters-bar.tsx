@@ -61,8 +61,6 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
     getArr("status").length +
     getArr("location").length +
     getArr("family").length +
-    (get("deadline") ? 1 : 0) +
-    (get("sponsorship") ? 1 : 0) +
     (get("filter") === "starred" ? 1 : 0) +
     (get("q") ? 1 : 0);
 
@@ -107,16 +105,6 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
           onToggle={(v) => toggleInArray("family", v)}
         />
 
-        <FlagToggle
-          label="Has deadline"
-          active={!!get("deadline")}
-          onClick={() => setParam("deadline", get("deadline") ? "" : "1")}
-        />
-        <FlagToggle
-          label="Sponsors visas"
-          active={!!get("sponsorship")}
-          onClick={() => setParam("sponsorship", get("sponsorship") ? "" : "1")}
-        />
         <FlagToggle
           label="★ Saved"
           active={get("filter") === "starred"}

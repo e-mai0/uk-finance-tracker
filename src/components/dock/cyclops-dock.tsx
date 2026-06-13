@@ -215,7 +215,7 @@ export function CyclopsDock({ badge }: { badge: number }) {
 
   return (
     <aside
-      className="hidden w-[360px] shrink-0 py-4 pl-1 pr-5 lg:block"
+      className="hidden w-[360px] shrink-0 py-4 pl-3 pr-5 lg:block"
       aria-label="Cyclops assistant"
     >
       {expanded && (

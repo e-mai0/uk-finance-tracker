@@ -73,12 +73,11 @@ export default async function DashboardPage({
         </div>
       )}
 
-      {/* Filter line */}
-      <div className="border-b border-border-strong">
-        <Suspense fallback={null}>
-          <FiltersBar resultCount={items.length} />
-        </Suspense>
-      </div>
+      {/* Filter line — no hard full-width rule (it used to ram the dock edge);
+          the board card below provides the separation. */}
+      <Suspense fallback={null}>
+        <FiltersBar resultCount={items.length} />
+      </Suspense>
 
       {/* The board */}
       <div className="p-4">
