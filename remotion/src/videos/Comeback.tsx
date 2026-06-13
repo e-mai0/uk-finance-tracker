@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Sequence } from "remotion";
-import { ED, Eyebrow, Ghost, Display, Kicker, Card, Stamp, Lockup, Music, Vo } from "../editorial";
+import { ED, Eyebrow, Ghost, Display, Kicker, Card, Stamp, Lockup, Music, Vo, NarratorCam } from "../editorial";
 import { WaveSwoosh, Confetti } from "../kit";
 import { fonts } from "../fonts";
 
@@ -70,6 +70,10 @@ export const Comeback: React.FC = () => (
     <Sequence from={255} durationInFrames={165}><Rewrite /></Sequence>
     <Sequence from={420} durationInFrames={90}>
       <AbsoluteFill style={{ background: ED.linen }}><Confetti from={4} originY={760} count={40} burst={0.9} /><Lockup tagline="Ws only." /></AbsoluteFill>
+    </Sequence>
+
+    <Sequence from={0} durationInFrames={414}>
+      <NarratorCam corner="bl" eqWindows={[[10, 87], [128, 259], [262, 414]]} />
     </Sequence>
 
     <WaveSwoosh from={114} idSuffix="cb1" />

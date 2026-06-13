@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Sequence, useCurrentFrame, interpolate } from "remotion";
-import { ED, Eyebrow, Ghost, Display, Kicker, Card, Lockup, Music, Vo } from "../editorial";
+import { ED, Eyebrow, Ghost, Display, Kicker, Card, Lockup, Music, Vo, NarratorCam } from "../editorial";
 import { WaveSwoosh, beatBump } from "../kit";
 import { fonts } from "../fonts";
 
@@ -90,6 +90,10 @@ export const Countdown: React.FC = () => (
     <Sequence from={255} durationInFrames={210}><Working /></Sequence>
     <Sequence from={465} durationInFrames={120}><Day /></Sequence>
     <Sequence from={585} durationInFrames={75}><Lockup tagline="Ws only." /></Sequence>
+
+    <Sequence from={0} durationInFrames={582}>
+      <NarratorCam corner="bl" eqWindows={[[10, 107], [142, 251], [262, 468], [472, 572]]} />
+    </Sequence>
 
     <WaveSwoosh from={129} idSuffix="cd1" />
     <WaveSwoosh from={249} idSuffix="cd2" />

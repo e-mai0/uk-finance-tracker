@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Sequence, useCurrentFrame, interpolate } from "remotion";
-import { ED, Eyebrow, Ghost, Display, Kicker, Card, Lockup, Music, Vo } from "../editorial";
+import { ED, Eyebrow, Ghost, Display, Kicker, Card, Lockup, Music, Vo, NarratorCam } from "../editorial";
 import { WaveSwoosh, Confetti, beatBump } from "../kit";
 import { fonts } from "../fonts";
 
@@ -92,6 +92,10 @@ export const TheOdds: React.FC = () => (
     <Sequence from={270} durationInFrames={135}><Specific /></Sequence>
     <Sequence from={405} durationInFrames={75}>
       <AbsoluteFill style={{ background: ED.linen }}><Confetti from={4} originY={760} count={36} burst={0.85} /><Lockup tagline="Be the 1." /></AbsoluteFill>
+    </Sequence>
+
+    <Sequence from={0} durationInFrames={402}>
+      <NarratorCam corner="bl" eqWindows={[[10, 110], [140, 222], [278, 402]]} />
     </Sequence>
 
     <WaveSwoosh from={129} idSuffix="od1" />

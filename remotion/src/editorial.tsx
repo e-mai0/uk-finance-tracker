@@ -293,4 +293,65 @@ export const Lockup: React.FC<{ tagline: string; from?: number }> = ({ tagline, 
   );
 };
 
+// ---- Narrator cam: "Cyclops is narrating" reaction-cam tile -----------------
+// Frames the synthetic voice as the product talking. eqWindows = [from,to] frame
+// ranges where VO is actually speaking, so the waveform only dances on speech.
+export const NarratorCam: React.FC<{ corner?: "bl" | "tl" | "br" | "tr"; dark?: boolean; eqWindows?: [number, number][] }> = ({
+  corner = "bl",
+  dark,
+  eqWindows = [],
+}) => {
+  const frame = useCurrentFrame();
+  const speaking = eqWindows.some(([a, b]) => frame >= a && frame <= b);
+  const pos: React.CSSProperties =
+    corner === "bl" ? { left: 56, bottom: 64 } : corner === "br" ? { right: 56, bottom: 64 } : corner === "tl" ? { left: 56, top: 200 } : { right: 56, top: 200 };
+  const ink = dark ? ED.nightInk : ED.ink;
+  const cardBg = dark ? ED.nightCard : ED.card;
+  const line = dark ? ED.nightLine : ED.cardLine;
+  // occasional blink
+  const blinkPhase = frame % 95;
+  const blink = blinkPhase > 88 ? Math.sin(((blinkPhase - 88) / 7) * Math.PI) : 0;
+  const bars = [0, 1, 2, 3, 4, 5, 6];
+  return (
+    <div
+      style={{
+        position: "absolute",
+        ...pos,
+        display: "flex",
+        alignItems: "center",
+        gap: 18,
+        background: cardBg,
+        border: `1px solid ${line}`,
+        borderRadius: 20,
+        padding: "16px 22px 16px 16px",
+        boxShadow: dark ? "0 18px 40px rgba(0,0,0,0.45)" : "0 18px 40px rgba(33,30,25,0.14)",
+      }}
+    >
+      {/* eye avatar */}
+      <div style={{ width: 76, height: 76, borderRadius: 16, background: dark ? ED.night : ED.amberSoft, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+        <svg width="60" height="40" viewBox="0 0 220 140">
+          <path d="M10 70 Q110 0 210 70 Q110 140 10 70 Z" fill="none" stroke={ED.amber} strokeWidth="9" />
+          <circle cx="110" cy="70" r="32" fill={ED.amber} />
+          <circle cx="110" cy="70" r="13" fill={dark ? ED.night : ED.amberSoft} />
+          <rect x="6" y={70 - 66 * blink} width="208" height={132 * blink} fill={dark ? ED.night : ED.amberSoft} />
+        </svg>
+      </div>
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <span style={{ fontFamily: fonts.display, fontWeight: 700, fontSize: 30, color: ink }}>cyclops<span style={{ color: ED.amber }}>.</span></span>
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: ED.green, opacity: 0.55 + 0.45 * Math.abs(Math.sin(frame / 6)) }} />
+          <span style={{ fontFamily: fonts.mono, fontSize: 17, letterSpacing: "0.12em", color: dark ? ED.nightSub : ED.faint }}>LIVE</span>
+        </div>
+        {/* equalizer */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 28 }}>
+          {bars.map((i) => {
+            const amp = speaking ? 0.25 + 0.75 * Math.abs(Math.sin(frame / (2.4 + i * 0.5) + i * 1.7)) : 0.16 + 0.06 * Math.abs(Math.sin(frame / 8 + i));
+            return <div key={i} style={{ width: 7, height: 28 * amp, borderRadius: 4, background: ED.amber }} />;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export { Trail };
