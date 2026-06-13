@@ -30,12 +30,7 @@ function client(): Anthropic {
 }
 
 export function aiConfigured(): boolean {
-  // Writing can run on the gateway alone; chat/agent still need Anthropic.
-  return Boolean(
-    process.env.ANTHROPIC_API_KEY ||
-      process.env.AI_GATEWAY_API_KEY ||
-      process.env.VERCEL_OIDC_TOKEN,
-  );
+  return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
 export interface ApplicantContext {

@@ -141,20 +141,9 @@ describe("draftText", () => {
     expect(out.provenance.storiesUsed).not.toContain("rowing");
   });
 
-  it("records the model used in provenance (Sonnet by default)", async () => {
+  it("records the model used in provenance (Sonnet)", async () => {
     mocks.generateText.mockResolvedValueOnce({ text: "Clean answer.", usage: {} });
     const out = await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?" });
-    expect(out.provenance.model).toBe("claude-sonnet-4-6");
-  });
-
-  it("falls back to a working model when the first draft call errors", async () => {
-    // First generateText call (the draft model) throws; draftText must retry and
-    // return the fallback call's text rather than failing the whole draft.
-    mocks.generateText
-      .mockRejectedValueOnce(new Error("model unavailable"))
-      .mockResolvedValueOnce({ text: "Recovered clean answer.", usage: {} });
-    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?" });
-    expect(out.text).toContain("Recovered clean answer");
     expect(out.provenance.model).toBe("claude-sonnet-4-6");
   });
 

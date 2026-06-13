@@ -1,12 +1,12 @@
 import { generateText } from "ai";
-import { modelFor } from "@/server/ai/models";
+import { haiku } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 import { writingSkill } from "@/server/engine/skills";
 import type { VoiceProfile } from "@/server/engine/types";
 
 /**
- * Global AI-tells blacklist. Canonical source is the YAML frontmatter of
- * src/server/engine/skills/writing.md (so the prompt and this check never drift).
+ * Global AI-tells blacklist. Canonical source is the writing-craft skill in
+ * src/server/engine/skills (so the draft prompt and this check never drift).
  * Em dash is character-checked separately below.
  */
 export const GLOBAL_TELLS = writingSkill.bannedTells;
@@ -46,7 +46,7 @@ export async function critiqueAndRevise(
   if (!failed.length) return { text: draft, checksFailed: [], revised: false, residualTells: [] };
 
   const { text: revisedText, usage } = await generateText({
-    model: modelFor("critique"),
+    model: haiku,
     prompt: `Rewrite this application-answer draft to remove the listed problems while keeping meaning, length, facts, and the writer's plain style. Do not add new claims. British English, contractions fine, no em dashes.
 
 Problems found: ${failed.join("; ")}

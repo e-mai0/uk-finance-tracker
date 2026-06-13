@@ -1,5 +1,5 @@
 /**
- * Claude-vs-OSS writing eval harness. Requires ANTHROPIC_API_KEY in .env or environment.
+ * Old-vs-new writing eval harness. Requires ANTHROPIC_API_KEY in .env or environment.
  * No DB needed — fixtures only. DB calls inside draftText/critiqueAndRevise are caught
  * with .catch(() => {}) and will not crash the runner (prisma rejects without a live DB).
  *
@@ -27,15 +27,11 @@ if (!process.env.ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
-const CANDIDATE_MODEL = process.env.EVAL_CANDIDATE_MODEL ?? "meta-llama/llama-3.3-70b-instruct";
-if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
-  console.warn("[eval] AI_GATEWAY_API_KEY not set — the candidate arm will fail. Set it to test an OSS model.");
-}
-
 import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import Anthropic from "@anthropic-ai/sdk";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { createAnthropic } from "@ai-sdk/anthropic";
@@ -78,9 +74,71 @@ const fixturesSources = [
   ...stories.map((s) => (s.finalVersions || s.rawNotes)),
 ].join("\n\n");
 
+// ─── Old pipeline (inlined to avoid `import "server-only"` in generate.ts) ───
+const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
 // Label strings for the report header. The new arm's actual model comes from
 // src/server/ai/models.ts via draftText; keep these imports in sync with it.
 import { HAIKU_ID, SONNET_ID } from "../src/server/ai/models";
+
+const OLD_STYLE = [
+  "Write in the first person as the applicant.",
+  "Use British English and a professional, specific tone suited to UK finance recruiting.",
+  "Only use facts present in the applicant's profile or CV — never invent experience, grades, or employers.",
+  "Avoid generic filler and clichés; be concrete and concise.",
+  "Return only the answer text — no preamble, quotes, labels, or sign-off unless asked.",
+].join(" ");
+
+function applicantBlock(a: typeof profileRaw): string {
+  const lines: string[] = [];
+  if (a.name) lines.push(`Name: ${a.name}`);
+  if (a.university) lines.push(`University: ${a.university}`);
+  if (a.degreeSubject) lines.push(`Degree: ${(a.degreeType ?? "") + " " + a.degreeSubject}`.trim());
+  if (a.graduationYear) lines.push(`Graduates: ${a.graduationYear}`);
+  if (a.skills?.length) lines.push(`Skills: ${a.skills.join(", ")}`);
+  if (a.workAuthStatement) lines.push(`Work authorisation: ${a.workAuthStatement}`);
+  if (a.cvText) lines.push(`\nCV:\n${a.cvText}`);
+  return lines.join("\n") || "(no profile details provided)";
+}
+
+async function generateAnswerOld(args: {
+  question: string;
+  charLimit: number;
+  employer: string;
+}): Promise<string> {
+  const limit = args.charLimit
+    ? `\n\nHard limit: keep the answer under ${args.charLimit} characters.`
+    : "";
+  const ctx = `Employer: ${args.employer}`;
+  const user = [
+    "Draft an answer to this job-application question.",
+    `\n${ctx}`,
+    `\nQuestion: ${args.question}`,
+    `\n\nApplicant:\n${applicantBlock(profileRaw)}`,
+    limit,
+  ].join("");
+
+  const maxTokens = args.charLimit ? Math.min(1024, Math.ceil(args.charLimit / 2)) : 700;
+  const res = await anthropicClient.messages.create({
+    model: HAIKU_ID,
+    max_tokens: maxTokens,
+    system: OLD_STYLE,
+    messages: [{ role: "user", content: user }],
+  });
+  let out = res.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+  if (args.charLimit && out.length > args.charLimit) {
+    const slice = out.slice(0, args.charLimit);
+    const lastStop = Math.max(slice.lastIndexOf(". "), slice.lastIndexOf("! "), slice.lastIndexOf("? "));
+    const lastSpace = slice.lastIndexOf(" ");
+    const cut = lastStop > args.charLimit * 0.6 ? lastStop + 1 : lastSpace > 0 ? lastSpace : args.charLimit;
+    out = slice.slice(0, cut).trim();
+  }
+  return out;
+}
 
 // ─── New engine context builder ───────────────────────────────────────────────
 function buildNewContext() {
@@ -180,14 +238,12 @@ async function main() {
 
   const rows: string[] = [];
   const key: string[] = [];
-  let candWins = 0;
-  let claudeWins = 0;
+  let newWins = 0;
+  let oldWins = 0;
   let ties = 0;
   let judgeFailures = 0;
-  let totalInventedCand = 0;
-  let totalInventedClaude = 0;
-  let totalCandTells = 0;
-  let totalClaudeTells = 0;
+  let totalInventedNew = 0;
+  let totalInventedOld = 0;
   let callCount = 0;
 
   console.log(`[eval] Running ${subset.length} questions...`);
@@ -196,45 +252,36 @@ async function main() {
   for (const q of subset) {
     console.log(`  ${q.id}: generating...`);
 
-    const args = {
-      kind: "ANSWER" as const,
-      question: q.question,
-      employerName: q.employer,
-      charLimit: q.charLimit,
-    };
-
-    // Claude arm: force the draft role to Sonnet (env unset → Claude default).
-    let claudeText = "(claude arm error)";
-    let claudeTells = 0;
+    // Old pipeline
+    let oldText: string;
     try {
-      delete process.env.MODEL_DRAFT;
-      const r = await draftText("eval", newCtx, args);
-      claudeText = r.text;
-      claudeTells = r.provenance.residualTells.length;
-      callCount += 2;
+      oldText = await generateAnswerOld({ question: q.question, charLimit: q.charLimit, employer: q.employer });
+      callCount++;
     } catch (err) {
-      console.error(`  ${q.id}: claude arm failed:`, err);
+      console.error(`  ${q.id}: old pipeline failed:`, err);
+      oldText = "(old pipeline error)";
     }
 
-    // Candidate arm: force the draft role to the OSS model under test.
-    let candText = "(candidate arm error)";
-    let candTells = 0;
+    // New engine
+    let newText: string;
     try {
-      process.env.MODEL_DRAFT = CANDIDATE_MODEL;
-      const r = await draftText("eval", newCtx, args);
-      candText = r.text;
-      candTells = r.provenance.residualTells.length;
-      callCount += 2;
+      const result = await draftText("eval", newCtx, {
+        kind: "ANSWER",
+        question: q.question,
+        employerName: q.employer,
+        charLimit: q.charLimit,
+      });
+      newText = result.text;
+      callCount += 2; // draft + critique
     } catch (err) {
-      console.error(`  ${q.id}: candidate arm failed:`, err);
-    } finally {
-      delete process.env.MODEL_DRAFT;
+      console.error(`  ${q.id}: new engine failed:`, err);
+      newText = "(new engine error)";
     }
 
     // Blind A/B — randomise which is A (no fixed seed)
-    const candIsA = Math.random() < 0.5;
-    const [a, b] = candIsA ? [candText, claudeText] : [claudeText, candText];
-    key.push(`${q.id}: A=${candIsA ? "candidate" : "claude"}, B=${candIsA ? "claude" : "candidate"}`);
+    const newIsA = Math.random() < 0.5;
+    const [a, b] = newIsA ? [newText, oldText] : [oldText, newText];
+    key.push(`${q.id}: A=${newIsA ? "new" : "old"}, B=${newIsA ? "old" : "new"}`);
 
     // Faithfulness pre-check for both arms
     console.log(`  ${q.id}: faithfulness check...`);
@@ -247,22 +294,18 @@ async function main() {
     const inventedA = faithA.inventedSpecifics;
     const inventedB = faithB.inventedSpecifics;
 
-    // Map back to candidate/claude
-    const inventedCand = candIsA ? inventedA : inventedB;
-    const inventedClaude = candIsA ? inventedB : inventedA;
-    totalInventedCand += inventedCand.length;
-    totalInventedClaude += inventedClaude.length;
-
-    // Accumulate tells
-    totalCandTells += candTells;
-    totalClaudeTells += claudeTells;
+    // Map back to new/old
+    const inventedNew = newIsA ? inventedA : inventedB;
+    const inventedOld = newIsA ? inventedB : inventedA;
+    totalInventedNew += inventedNew.length;
+    totalInventedOld += inventedOld.length;
 
     // Judge
     console.log(`  ${q.id}: judging...`);
     const judge = await judgeBlind(q.question, a, b);
     callCount++;
 
-    let winner: "candidate" | "claude" | "tie" | "FAILED";
+    let winner: "new" | "old" | "tie" | "FAILED";
     let judgeDisplay: string;
 
     if (judge === "FAILED") {
@@ -273,18 +316,18 @@ async function main() {
       winner =
         judge.better === "tie"
           ? "tie"
-          : (judge.better === "a") === candIsA
-          ? "candidate"
-          : "claude";
+          : (judge.better === "a") === newIsA
+          ? "new"
+          : "old";
 
-      if (winner === "candidate") candWins++;
-      else if (winner === "claude") claudeWins++;
+      if (winner === "new") newWins++;
+      else if (winner === "old") oldWins++;
       else ties++;
 
       judgeDisplay = `A voice ${judge.a.voice}/5 detail ${judge.a.detail}/5 tells ${judge.a.tells} | B voice ${judge.b.voice}/5 detail ${judge.b.detail}/5 tells ${judge.b.tells} | better: **${judge.better}**`;
     }
 
-    console.log(`  ${q.id}: judge=${judgeDisplay} (${winner}) | inventedCand=${inventedCand.length} inventedClaude=${inventedClaude.length}`);
+    console.log(`  ${q.id}: judge=${judgeDisplay} (${winner}) | inventedNew=${inventedNew.length} inventedOld=${inventedOld.length}`);
 
     const faithSection = [
       `_Faithfulness — A invented: ${inventedA.length > 0 ? inventedA.join("; ") : "none"}_`,
@@ -317,29 +360,23 @@ async function main() {
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
 
   const report = [
-    `# Writing eval — Claude vs candidate OSS model`,
+    `# Writing eval — old pipeline vs new engine`,
     `_Run: ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC | Questions: ${subset.length} | Elapsed: ${elapsed}s | Approx API calls: ${callCount}_`,
-    `_Models: claude arm = ${SONNET_ID} | candidate arm = ${CANDIDATE_MODEL} | judge = ${HAIKU_ID} | A/B assignment is random per run (no fixed seed)_`,
+    `_Models: old arm = ${HAIKU_ID} | new arm = ${SONNET_ID} | judge = ${HAIKU_ID} | A/B assignment is random per run (no fixed seed)_`,
     "",
     `## LLM pre-judge summary`,
     `| | Count |`,
     `|---|---|`,
-    `| Candidate (OSS) wins | ${candWins} |`,
-    `| Claude wins | ${claudeWins} |`,
+    `| New engine wins | ${newWins} |`,
+    `| Old pipeline wins | ${oldWins} |`,
     `| Ties | ${ties} |`,
     `| Judge failures (excluded from totals) | ${judgeFailures} |`,
     "",
     `## Faithfulness (invented specifics)`,
     `| Arm | Total invented specifics across all questions |`,
     `|---|---|`,
-    `| Candidate (OSS) | ${totalInventedCand} |`,
-    `| Claude | ${totalInventedClaude} |`,
-    "",
-    `## Residual AI-tells (lower is better)`,
-    `| Arm | Total residual tells across all questions |`,
-    `|---|---|`,
-    `| Candidate (OSS) | ${totalCandTells} |`,
-    `| Claude | ${totalClaudeTells} |`,
+    `| New engine | ${totalInventedNew} |`,
+    `| Old pipeline | ${totalInventedOld} |`,
     "",
     `**THE USER IS THE FINAL JUDGE** — read each pair against \`rubric.md\`, record verdict in docs/MANUAL-TASKS.md Gate B.`,
     `_Note: The LLM pre-judge is a pre-filter only; judge failures are excluded from totals and do not count for or against either arm._`,
@@ -359,9 +396,8 @@ async function main() {
   writeFileSync(join(ROOT, "REPORT.md"), report, "utf8");
 
   console.log(`\n[eval] Done in ${elapsed}s`);
-  console.log(`[eval] Pre-judge: candidate=${candWins} claude=${claudeWins} ties=${ties} failures=${judgeFailures}`);
-  console.log(`[eval] Invented specifics: candidate=${totalInventedCand} claude=${totalInventedClaude}`);
-  console.log(`[eval] Residual tells: candidate=${totalCandTells} claude=${totalClaudeTells}`);
+  console.log(`[eval] Pre-judge: new=${newWins} old=${oldWins} ties=${ties} failures=${judgeFailures}`);
+  console.log(`[eval] Invented specifics: new=${totalInventedNew} old=${totalInventedOld}`);
   console.log(`[eval] Report written to src/eval/REPORT.md`);
 }
 

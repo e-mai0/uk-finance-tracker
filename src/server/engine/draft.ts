@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { modelFor, modelIdFor, sonnet, SONNET_ID } from "@/server/ai/models";
+import { sonnet, SONNET_ID } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 import { classifyQuestion, selectStories, employerSlugOf } from "@/server/engine/stories";
 import { critiqueAndRevise, checkTells } from "@/server/engine/critique";
@@ -137,18 +137,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
   const system = buildSystem(ctx);
   const prompt = parts.join("\n");
 
-  // Route to the configured draft model; fall back to Sonnet once on failure
-  // (gateway/OSS outage) so a draft is never lost. Record what actually ran.
-  let usedModel = modelIdFor("draft");
-  let text: string;
-  let usage: Awaited<ReturnType<typeof generateText>>["usage"];
-  try {
-    ({ text, usage } = await generateText({ model: modelFor("draft"), system, prompt, maxOutputTokens }));
-  } catch (err) {
-    console.error("[draft] primary model failed, falling back to Sonnet", err);
-    usedModel = SONNET_ID;
-    ({ text, usage } = await generateText({ model: sonnet, system, prompt, maxOutputTokens }));
-  }
+  const { text, usage } = await generateText({ model: sonnet, system, prompt, maxOutputTokens });
   recordUsage(userId, usage?.totalTokens ?? 0).catch(() => {});
 
   const trimmed = trimToLimit(text.trim(), args.charLimit);
@@ -172,7 +161,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
       checksFailed: critiqued.checksFailed,
       revised: critiqued.revised,
       questionKind,
-      model: usedModel,
+      model: SONNET_ID,
       residualTells,
       thinGrounding,
     },
