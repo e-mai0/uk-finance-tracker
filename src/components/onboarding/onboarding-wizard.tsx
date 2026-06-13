@@ -115,13 +115,20 @@ export function OnboardingWizard({
       } catch {
         /* ignore */
       }
-      // Session flips to onboarded now; user is done even if they bail here.
-      await update({ onboarded: true });
+      // The account is already valid in the DB (completeOnboarding set
+      // onboardedAt). We deliberately do NOT flip the session `onboarded` flag
+      // yet — the optional CV and questionnaire steps still live on
+      // /onboarding, and flipping it now would make the route guards (middleware
+      // + page) bounce the user to /today mid-wizard. The flag flips in
+      // goToDashboard, as the user actually leaves the wizard.
       setStep(1);
     });
   }
 
-  function goToDashboard() {
+  async function goToDashboard() {
+    // Now that the wizard is done, claim onboarded so the app routes open and
+    // /onboarding redirects away on any future visit.
+    await update({ onboarded: true });
     router.push("/today");
     router.refresh();
   }

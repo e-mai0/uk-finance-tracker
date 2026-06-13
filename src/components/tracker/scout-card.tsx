@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { scoutFirm, SCOUT_IDLE } from "@/server/actions/sources";
+import { scoutFirm } from "@/server/actions/sources";
+import { SCOUT_IDLE } from "@/server/actions/scout-state";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
