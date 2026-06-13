@@ -1,33 +1,28 @@
 // src/server/cv/grounding.ts
-// Best-effort: never throws. Syncs BuiltCv.data → ApplyProfile.cvText
-// and distils CV facts to profile.md memory.
+import "server-only";
 import { prisma } from "@/server/db";
-import { cvDataSchema, cvToPlainText } from "@/lib/cv";
+import { cvToPlainText } from "@/lib/cv";
+import { getBuiltCv } from "@/server/cv/store";
 import { extractCvFactsToMemory } from "@/server/cv/facts";
 
 /**
- * Sync the user's built CV into grounding (ApplyProfile.cvText + profile.md).
- * Best-effort: swallows all errors — never blocks a save or a chat response.
+ * Best-effort: serialise the built CV to plain text, set it as the grounding
+ * text (ApplyProfile.cvText) and refresh profile.md facts. Never throws.
+ * Leaves any uploaded CV file record (cvStoragePath/cvFileName) untouched.
  */
 export async function syncCvGrounding(userId: string): Promise<void> {
   try {
-    const row = await prisma.builtCv.findUnique({ where: { userId } });
-    if (!row) return;
+    const built = await getBuiltCv(userId);
+    if (!built) return;
+    const text = cvToPlainText(built.cv);
+    if (!text) return;
 
-    const parsed = cvDataSchema.safeParse(row.data);
-    if (!parsed.success) return;
-
-    const text = cvToPlainText(parsed.data);
-    if (!text.trim()) return;
-
-    // Upsert ApplyProfile.cvText without touching file-upload fields.
     await prisma.applyProfile.upsert({
       where: { userId },
-      create: { userId, cvText: text },
-      update: { cvText: text },
+      create: { userId, cvText: text, cvUpdatedAt: new Date() },
+      update: { cvText: text, cvUpdatedAt: new Date() },
     });
 
-    // Distil facts into profile.md (also best-effort internally).
     await extractCvFactsToMemory(userId, text);
   } catch (err) {
     console.error("[cv grounding] sync failed:", err);

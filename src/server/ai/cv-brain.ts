@@ -106,5 +106,5 @@ export async function streamCvBuilder(args: { userId: string; messages: UIMessag
     },
   });
 
-  return result;
+  return { result };
 }
