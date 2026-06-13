@@ -35,6 +35,76 @@ function friendlyError(error: Error): string {
 }
 
 // ---------------------------------------------------------------------------
+// CvToolPart — renders an update_cv tool chip and fires onCvUpdate via effect
+// ---------------------------------------------------------------------------
+function CvToolPart({
+  toolPart,
+  onCvUpdate,
+}: {
+  toolPart: ToolUIPart | DynamicToolUIPart;
+  onCvUpdate?: (cv: CvData) => void;
+}) {
+  const toolName = getToolName(toolPart);
+  const state = toolPart.state;
+  const output =
+    toolPart.state === "output-available" ? toolPart.output : undefined;
+
+  const label = TOOL_LABELS[toolName] ?? toolName;
+
+  // Derive the new CvData (undefined when the tool hasn't finished or failed)
+  const newCv =
+    toolName === "update_cv" &&
+    state === "output-available" &&
+    output != null &&
+    typeof output === "object" &&
+    "cv" in (output as Record<string, unknown>)
+      ? ((output as Record<string, unknown>).cv as CvData)
+      : undefined;
+
+  // Defer the parent state update to after render — avoids the React warning
+  // "Cannot update a component while rendering a different component".
+  useEffect(() => {
+    if (newCv !== undefined) {
+      onCvUpdate?.(newCv);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  return (
+    <span className="block">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[0.6875rem]",
+          state === "output-available" || state === "output-denied"
+            ? "border-border bg-surface-2 text-muted"
+            : state === "output-error"
+              ? "border-danger-soft bg-danger-soft text-danger"
+              : "border-border-strong bg-surface text-subtle",
+        )}
+      >
+        <span aria-hidden className="text-accent">
+          ▸
+        </span>
+        {label}
+        {(state === "input-streaming" || state === "input-available") && (
+          <span className="caret text-accent">▌</span>
+        )}
+      </span>
+
+      {/* Error output chip */}
+      {state === "output-error" &&
+        output != null &&
+        typeof output === "object" &&
+        "error" in (output as Record<string, unknown>) && (
+          <span className="ml-1 font-mono text-[0.6875rem] text-danger">
+            {String((output as Record<string, unknown>).error)}
+          </span>
+        )}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // MessagePart sub-component
 // ---------------------------------------------------------------------------
 function MessagePart({
@@ -52,58 +122,7 @@ function MessagePart({
 
   if (isToolUIPart(part)) {
     const toolPart = part as ToolUIPart | DynamicToolUIPart;
-    const toolName = getToolName(toolPart);
-    const state = toolPart.state;
-    const output =
-      toolPart.state === "output-available" ? toolPart.output : undefined;
-
-    const label = TOOL_LABELS[toolName] ?? toolName;
-
-    // Lift the new CvData to the parent when update_cv completes successfully
-    if (
-      toolName === "update_cv" &&
-      state === "output-available" &&
-      output != null &&
-      typeof output === "object" &&
-      "cv" in (output as Record<string, unknown>)
-    ) {
-      const cv = (output as Record<string, unknown>).cv as CvData;
-      // Fire once via useEffect equivalent — do it inline, guarded by state
-      onCvUpdate?.(cv);
-    }
-
-    return (
-      <span className="block">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[0.6875rem]",
-            state === "output-available" || state === "output-denied"
-              ? "border-border bg-surface-2 text-muted"
-              : state === "output-error"
-                ? "border-danger-soft bg-danger-soft text-danger"
-                : "border-border-strong bg-surface text-subtle",
-          )}
-        >
-          <span aria-hidden className="text-accent">
-            ▸
-          </span>
-          {label}
-          {(state === "input-streaming" || state === "input-available") && (
-            <span className="caret text-accent">▌</span>
-          )}
-        </span>
-
-        {/* Error output chip */}
-        {state === "output-error" &&
-          output != null &&
-          typeof output === "object" &&
-          "error" in (output as Record<string, unknown>) && (
-            <span className="ml-1 font-mono text-[0.6875rem] text-danger">
-              {String((output as Record<string, unknown>).error)}
-            </span>
-          )}
-      </span>
-    );
+    return <CvToolPart toolPart={toolPart} onCvUpdate={onCvUpdate} />;
   }
 
   // Ignore step-start, reasoning, etc.
