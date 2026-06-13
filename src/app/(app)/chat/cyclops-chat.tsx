@@ -330,10 +330,7 @@ export function CyclopsChat({
       <div className={cn(compact ? "px-3 pb-3" : "px-4 pb-4")}>
         <form
           onSubmit={handleSubmit}
-          className={cn(
-            "flex items-center gap-2 rounded-[16px] border border-border bg-surface px-2.5 py-1.5 transition-colors focus-within:border-border-interactive",
-            !compact && "shadow-pop",
-          )}
+          className="flex items-center gap-2 rounded-[16px] border border-border bg-surface px-2.5 py-1.5 transition-colors focus-within:border-border-interactive"
         >
           <span aria-hidden className="select-none pl-1 font-mono text-accent">
             ›

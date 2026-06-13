@@ -185,17 +185,17 @@ export default async function ChatPage({
   }
 
   return (
-    <div className="animate-rise flex h-[calc(100vh-3rem)] overflow-hidden">
-      {/* Left rail — thread list */}
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface sm:flex">
-        {/* New conversation */}
-        <div className="border-b border-border px-3 py-2.5">
+    <div className="animate-rise flex h-[calc(100vh-3rem)] gap-4 overflow-hidden px-5 py-4">
+      {/* Left rail — thread list (floating card) */}
+      <aside className="hidden w-60 shrink-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card sm:flex">
+        {/* New conversation — ink pill (amber means agent, not buttons) */}
+        <div className="border-b border-hairline px-3 py-2.5">
           <form action={createThread}>
             <button
               type="submit"
-              className="label w-full border border-border px-2.5 py-1.5 text-left text-accent transition-colors hover:border-accent hover:bg-accent-tint"
+              className="w-full rounded-pill bg-ink px-3 py-1.5 text-[0.8125rem] font-extrabold text-canvas transition-opacity hover:opacity-90"
             >
-              <span aria-hidden className="mr-1 text-accent">
+              <span aria-hidden className="mr-1">
                 +
               </span>
               New conversation
@@ -236,7 +236,7 @@ export default async function ChatPage({
                       className={rowClass}
                     >
                       <span className="flex items-baseline gap-1 truncate">
-                        <span className="block truncate font-mono text-[0.72rem] text-ink">
+                        <span className="block truncate text-[0.8125rem] font-extrabold text-ink">
                           {t.title}
                           {isMorningBrief && (
                             <>
@@ -270,18 +270,17 @@ export default async function ChatPage({
         </nav>
 
         {/* Footer label */}
-        <div className="border-t border-border px-3 py-2">
+        <div className="border-t border-hairline px-3 py-2">
           <span className="label text-faint">Cyclops · AI</span>
         </div>
       </aside>
 
-      {/* Main chat pane */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* Main chat pane (floating card) */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
         {/* Pane header */}
-        <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-2">
-          <div className="flex items-baseline gap-2">
-            <span className="label text-subtle">Cyclops</span>
-            <span className="truncate font-mono text-[0.78rem] text-ink">
+        <div className="flex items-center justify-between border-b border-hairline bg-surface-2 px-4 py-2.5">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="truncate font-display text-[1.0625rem] font-semibold text-ink">
               {activeThread.title}
             </span>
           </div>
