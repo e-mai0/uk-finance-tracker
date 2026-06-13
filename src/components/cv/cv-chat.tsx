@@ -214,7 +214,7 @@ export function CvChat({
               >
                 {msg.parts.map((part, i) => (
                   <MessagePart
-                    key={i}
+                    key={`${msg.id}-${i}`}
                     part={part as UIMessagePart<never, never>}
                     onCvUpdate={onCvUpdate}
                   />

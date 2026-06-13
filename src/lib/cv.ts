@@ -210,7 +210,14 @@ export function slugifyName(name: string): string {
 export function cvToPlainText(cv: CvData): string {
   const out: string[] = [];
   if (cv.fullName) out.push(cv.fullName);
-  const contact = [cv.contact.email, cv.contact.phone, cv.contact.linkedin, cv.contact.website]
+  const contact = [
+    cv.contact.email,
+    cv.contact.phone,
+    cv.contact.location,
+    cv.contact.linkedin,
+    cv.contact.github,
+    cv.contact.website,
+  ]
     .filter(Boolean)
     .join(" | ");
   if (contact) out.push(contact);

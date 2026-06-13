@@ -3,7 +3,7 @@
 // the CV-chat assistant, and the live CV preview side-by-side.
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea, FieldError } from "@/components/ui/input";
@@ -462,9 +462,10 @@ export function CvBuilderClient({
     }
   }, [education, accomplishments, projects, hydrated, submitSuccess]);
 
-  function handleCvUpdate(cv: CvData) {
+  // Stable reference so CvChat's lift-effect deps don't change every render.
+  const handleCvUpdate = useCallback((cv: CvData) => {
     setLiveCv(cv);
-  }
+  }, []);
 
   function handleSubmitForm() {
     setFieldErrors({});

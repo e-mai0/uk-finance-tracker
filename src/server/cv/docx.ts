@@ -46,7 +46,14 @@ export async function renderCvDocx(cv: CvData): Promise<Buffer> {
       children: [new TextRun({ text: cv.fullName || "Your Name", bold: true, size: 36 })],
     }),
   );
-  const contactBits = [cv.contact.email, cv.contact.phone, cv.contact.linkedin, cv.contact.website].filter(Boolean);
+  const contactBits = [
+    cv.contact.email,
+    cv.contact.phone,
+    cv.contact.location,
+    cv.contact.linkedin,
+    cv.contact.github,
+    cv.contact.website,
+  ].filter(Boolean);
   if (contactBits.length) {
     body.push(
       new Paragraph({
