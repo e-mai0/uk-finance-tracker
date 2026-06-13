@@ -96,7 +96,7 @@ export async function POST(req: Request) {
 
   // --- Validate session ownership ---
   const chatSession = await prisma.chatSession.findFirst({
-    where: { id: body.sessionId, userId },
+    where: { id: body.sessionId, userId, kind: "cyclops" },
   });
   if (!chatSession) return new Response("Not found", { status: 404 });
 

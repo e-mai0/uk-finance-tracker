@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { getBuiltCv } from "@/server/cv/store";
 import { CvDocument } from "@/components/cv/cv-document";
-import { PrintTrigger } from "./print-trigger";
+import { PrintTrigger } from "@/components/cv/print-trigger";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "CV — Print" };
@@ -16,14 +16,14 @@ export default async function CvPrintPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const cv = await getBuiltCv(session.user.id);
-  if (!cv) redirect("/cv-builder");
+  const built = await getBuiltCv(session.user.id);
+  if (!built) redirect("/cv-builder");
 
   return (
     <>
       <PrintTrigger />
       <div className="cv-print-wrapper">
-        <CvDocument cv={cv} />
+        <CvDocument cv={built.cv} />
       </div>
     </>
   );

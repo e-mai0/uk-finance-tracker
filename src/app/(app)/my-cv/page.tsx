@@ -16,9 +16,9 @@ export default async function MyCvPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const cv = await getBuiltCv(session.user.id);
+  const built = await getBuiltCv(session.user.id);
 
-  if (!cv) {
+  if (!built) {
     return (
       <div className="animate-rise flex flex-col items-center justify-center gap-4 px-6 py-24 text-center">
         <h1 className="text-xl font-bold text-ink">No CV yet</h1>
@@ -66,12 +66,12 @@ export default async function MyCvPage() {
 
       {/* Grounding notice */}
       <p className="mb-4 text-[0.8125rem] text-muted">
-        Your built CV now grounds Cyclops&rsquo; drafting.
+        This built CV is what Cyclops uses to ground your cover letters and answers.
       </p>
 
       {/* CV Preview */}
       <div className="rounded-card border border-border bg-surface p-6 shadow-card">
-        <CvDocument cv={cv} />
+        <CvDocument cv={built.cv} />
       </div>
     </div>
   );

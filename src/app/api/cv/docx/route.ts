@@ -15,14 +15,15 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const cv = await getBuiltCv(session.user.id);
-  if (!cv) {
+  const built = await getBuiltCv(session.user.id);
+  if (!built) {
     return Response.json(
       { error: "No CV found. Build your CV at /cv-builder first." },
       { status: 404 },
     );
   }
 
+  const { cv } = built;
   const nodeBuffer = await renderCvDocx(cv);
   const buffer = nodeBuffer.buffer.slice(
     nodeBuffer.byteOffset,

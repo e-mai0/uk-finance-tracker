@@ -15,11 +15,14 @@ export async function persistCv(userId: string, cv: CvData, formInput?: unknown)
 }
 
 /** Read the user's built CV, or null if they haven't built one yet. */
-export async function getBuiltCv(userId: string): Promise<CvData | null> {
+export async function getBuiltCv(
+  userId: string,
+): Promise<{ cv: CvData; chatSessionId: string | null } | null> {
   const row = await prisma.builtCv.findUnique({ where: { userId } });
   if (!row) return null;
   const result = cvDataSchema.safeParse(row.data);
-  return result.success ? result.data : null;
+  if (!result.success) return null;
+  return { cv: result.data, chatSessionId: row.chatSessionId ?? null };
 }
 
 /** Get or create the dedicated "cv-builder" ChatSession for this user,
