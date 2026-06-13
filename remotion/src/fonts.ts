@@ -8,6 +8,9 @@ import "@fontsource/hanken-grotesk/800.css";
 import "@fontsource/geist-mono/400.css";
 import "@fontsource/geist-mono/600.css";
 import "@fontsource/geist-mono/700.css";
+import "@fontsource/newsreader/400.css";
+import "@fontsource/newsreader/600.css";
+import "@fontsource/newsreader/700.css";
 import "@fontsource/newsreader/400-italic.css";
 import "@fontsource/newsreader/600-italic.css";
 
@@ -26,6 +29,8 @@ export const FONT_SPECS = [
   '400 16px "Geist Mono"',
   '600 16px "Geist Mono"',
   '700 16px "Geist Mono"',
+  '600 16px "Newsreader"',
+  '700 16px "Newsreader"',
   'italic 400 16px "Newsreader"',
   'italic 600 16px "Newsreader"',
 ];
