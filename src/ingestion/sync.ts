@@ -12,6 +12,7 @@ import { OracleCloudAdapter } from "./adapters/oracle-cloud";
 import { TalNetAdapter } from "./adapters/talnet";
 import { WorkdayAdapter } from "./adapters/workday";
 import { EightfoldAdapter } from "./adapters/eightfold";
+import { RadancyAdapter } from "./adapters/radancy";
 import { fetchText, ImpervaBlockedError } from "./adapters/common";
 import { evaluateWatch, type WatchState } from "./watch";
 
@@ -71,6 +72,10 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
     case "EIGHTFOLD": {
       const c = source.config as unknown as Extract<SourceConfig, { ats: "eightfold" }>;
       return new EightfoldAdapter(c, employer);
+    }
+    case "RADANCY": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "radancy" }>;
+      return new RadancyAdapter(c, employer);
     }
     default:
       return null;
