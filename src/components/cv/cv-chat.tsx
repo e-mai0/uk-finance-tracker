@@ -59,18 +59,22 @@ function MessagePart({
     const output =
       toolPart.state === "output-available" ? toolPart.output : undefined;
 
-    // Lift update_cv output to parent for live preview
-    if (
-      toolName === "update_cv" &&
-      state === "output-available" &&
-      output != null &&
-      typeof output === "object"
-    ) {
-      const out = output as { ok?: boolean; cv?: CvData };
-      if (out.ok && out.cv && onCvUpdate) {
-        onCvUpdate(out.cv);
+    // Lift update_cv output to parent for live preview — must run in an effect
+    // to avoid 'Cannot update a component while rendering a different component'.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      if (
+        toolName === "update_cv" &&
+        state === "output-available" &&
+        output != null &&
+        typeof output === "object"
+      ) {
+        const out = output as { ok?: boolean; cv?: CvData };
+        if (out.ok && out.cv && onCvUpdate) {
+          onCvUpdate(out.cv);
+        }
       }
-    }
+    }, [toolName, state, output, onCvUpdate]);
 
     const label = TOOL_LABELS[toolName] ?? toolName;
     const isError =
