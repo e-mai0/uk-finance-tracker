@@ -6,7 +6,7 @@ import { LeverAdapter } from "./adapters/lever";
 import { AshbyAdapter } from "./adapters/ashby";
 import { JaneStreetAdapter } from "./adapters/janestreet";
 import { JsonLdPageAdapter } from "./adapters/jsonld-page";
-import { fetchText } from "./adapters/common";
+import { fetchText, ImpervaBlockedError } from "./adapters/common";
 import { evaluateWatch, type WatchState } from "./watch";
 
 /**
@@ -157,6 +157,7 @@ export async function syncSource(
         lastStatus: `ok: ${result.created} created, ${result.updated} updated`,
         lastError: null,
         consecutiveFailures: 0,
+        lastSuccessfulFetchAt: new Date(),
       },
     });
     return {
@@ -168,6 +169,13 @@ export async function syncSource(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (err instanceof ImpervaBlockedError) {
+      await prisma.ingestionSource.update({
+        where: { id: source.id },
+        data: { lastRunAt: new Date(), lastStatus: "unreachable (bot challenge)", lastError: message.slice(0, 500) },
+      });
+      return { sourceId: source.id, employerName: source.employerName, ok: false, created: 0, updated: 0, error: message };
+    }
     await recordFailure(prisma, source, message);
     return {
       sourceId: source.id,
