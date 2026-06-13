@@ -1,11 +1,13 @@
 import type { IngestionSource, PrismaClient } from "@prisma/client";
 import type { SourceAdapter } from "./types";
+import type { SourceConfig } from "./types";
 import { importDataset } from "./import";
 import { GreenhouseAdapter } from "./adapters/greenhouse";
 import { LeverAdapter } from "./adapters/lever";
 import { AshbyAdapter } from "./adapters/ashby";
 import { JaneStreetAdapter } from "./adapters/janestreet";
 import { JsonLdPageAdapter } from "./adapters/jsonld-page";
+import { OracleCloudAdapter } from "./adapters/oracle-cloud";
 import { fetchText, ImpervaBlockedError } from "./adapters/common";
 import { evaluateWatch, type WatchState } from "./watch";
 
@@ -46,6 +48,10 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
         return new JaneStreetAdapter(employer);
       }
       return new JsonLdPageAdapter(source.url, source.identifier, employer);
+    }
+    case "ORACLE_CLOUD": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "oracle" }>;
+      return new OracleCloudAdapter(c, employer);
     }
     default:
       return null;
