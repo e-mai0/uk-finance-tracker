@@ -11,7 +11,6 @@ import { ensureEmployerResearch } from "@/server/engine/research";
 import { gatherSubstance } from "@/server/engine/substance";
 import { draftText } from "@/server/engine/draft";
 import { distillOutcomesForUser } from "@/server/engine/outcomes";
-import { SONNET_ID } from "@/server/ai/models";
 import { slugify } from "@/ingestion/import";
 
 const MAX_FILE_COUNT = 100;
@@ -255,7 +254,7 @@ export function buildTools(userId: string) {
             kind: input.kind === "COVER_LETTER" ? "COVER_LETTER" : "ANSWER",
             context: { question: input.question, employer: input.employerName ?? null },
             content: result.text,
-            model: SONNET_ID,
+            model: result.provenance.model,
             provenance: JSON.stringify(result.provenance),
           },
         });
