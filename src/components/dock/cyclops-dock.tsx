@@ -4,34 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { UIMessage } from "ai";
-import { cn } from "@/lib/utils";
 import { CyclopsChat } from "@/app/(app)/chat/cyclops-chat";
 import { getOrCreateDockThread } from "@/server/actions/dock";
 import { dockContextLabel, dockSuggestions } from "@/lib/dock-context";
 import { formatShortcut, matchesShortcut } from "@/lib/shortcuts";
 
-type DockState = "collapsed" | "docked" | "expanded";
+type DockState = "docked" | "expanded";
 
 type ThreadState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "ready"; sessionId: string; messages: UIMessage[] }
   | { status: "error"; message: string };
-
-const STORAGE_KEY = "dock-state";
-
-/**
- * Persistence law: "expanded" is NEVER written to storage — an overlay must
- * not resurrect itself on reload, so while expanded we store "docked" (the
- * state Escape returns to). Leaving expanded persists the real target state.
- */
-function persist(value: DockState) {
-  try {
-    localStorage.setItem(STORAGE_KEY, value === "expanded" ? "docked" : value);
-  } catch (_e) {
-    // storage unavailable (private mode) — state stays session-local
-  }
-}
 
 function isEditable(target: EventTarget | null): target is HTMLElement {
   if (!(target instanceof HTMLElement)) return false;
@@ -44,59 +28,38 @@ function isEditable(target: EventTarget | null): target is HTMLElement {
 }
 
 /**
- * The Cyclops dock — collapsed edge tab ⇄ 286px docked rail ⇄ expanded
- * overlay, on every page except /settings and /chat. Reuses CyclopsChat against a
- * lazily-fetched per-user "Dock" ChatSession. It yields to the full Ask Cyclops
- * page, which has its own chat UI.
+ * The Cyclops dock — a permanent Granola-style right rail.
  *
- * Granola law: every state floats OVER the page (fixed). Opening the dock
- * never reflows the page content underneath it.
+ * It is ALWAYS docked on shell pages that have room for it (Today, Tracker,
+ * Applications, Workspace): a real layout column that reserves its own width so
+ * page content sits BESIDE it, never under it. There is no collapsed edge-tab
+ * state — the rail is always there. ⌘J toggles a focus overlay (the one other
+ * state); Esc returns it to docked.
+ *
+ * Hidden entirely on Memory and Settings (no room / the agent stays out) and on
+ * the full Ask Cyclops page (it would be redundant). Reuses CyclopsChat against
+ * a per-user "Dock" ChatSession.
  */
 export function CyclopsDock({ badge }: { badge: number }) {
   const pathname = usePathname();
-  const [state, setState] = useState<DockState>("collapsed");
-  const stateRef = useRef<DockState>("collapsed");
-  // Where ⌘J returns to when toggled while expanded.
-  const prevRef = useRef<DockState>("docked");
-  const panelRef = useRef<HTMLElement>(null);
+  const [state, setState] = useState<DockState>("docked");
+  const stateRef = useRef<DockState>("docked");
+  const panelRef = useRef<HTMLDivElement>(null);
   const [thread, setThread] = useState<ThreadState>({ status: "idle" });
-  // Platform-aware hints must render client-side (navigator) — app-nav kHint
-  // pattern: useEffect-set state + suppressHydrationWarning.
-  const [hints, setHints] = useState({ expand: "Ctrl+J", collapse: "Ctrl+\\" });
+  // Platform-aware hint (navigator) — set client-side to avoid hydration drift.
+  const [hint, setHint] = useState("Ctrl+J");
 
-  const hidden = pathname.startsWith("/settings") || pathname.startsWith("/chat");
+  const hidden =
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/chat") ||
+    pathname.startsWith("/memory");
 
   useEffect(() => {
-    setHints({
-      expand: formatShortcut("mod+J"),
-      collapse: formatShortcut("collapse"),
-    });
+    setHint(formatShortcut("mod+J"));
   }, []);
 
   const transition = useCallback((next: DockState) => {
-    const current = stateRef.current;
-    if (next === current) return;
-    if (next === "expanded") prevRef.current = current;
-    persist(next);
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  // Read persisted state after mount (avoids hydration mismatch with the
-  // server-rendered "collapsed" default). A stored "expanded" normalizes to
-  // "docked" — see persist() — and the normalized value is written back.
-  useEffect(() => {
-    let stored: string | null = null;
-    try {
-      stored = localStorage.getItem(STORAGE_KEY);
-    } catch (_e) {
-      // storage unavailable — keep default
-    }
-    // Docked is the default (per the approved GB+ design) — the rail is
-    // visible until the user explicitly collapses it. Only a stored
-    // "collapsed" keeps it hidden; "expanded" normalizes to docked.
-    const next: DockState = stored === "collapsed" ? "collapsed" : "docked";
-    if (stored === "expanded") persist(next);
+    if (next === stateRef.current) return;
     stateRef.current = next;
     setState(next);
   }, []);
@@ -115,19 +78,17 @@ export function CyclopsDock({ badge }: { badge: number }) {
           });
         }
       })
-      .catch((_e) =>
+      .catch(() =>
         setThread({ status: "error", message: "Couldn't reach Cyclops." }),
       );
   }, []);
 
-  // Lazy thread fetch: the first time the dock opens (state leaves collapsed).
+  // Always-open: load the dock thread on mount wherever the rail is shown.
   useEffect(() => {
-    if (!hidden && state !== "collapsed" && thread.status === "idle") {
-      loadThread();
-    }
-  }, [hidden, state, thread.status, loadThread]);
+    if (!hidden && thread.status === "idle") loadThread();
+  }, [hidden, thread.status, loadThread]);
 
-  // Keyboard: mod+J expand-toggle, collapse chord, Escape (expanded only).
+  // ⌘J toggles the focus overlay; Esc returns to docked (esc stack).
   useEffect(() => {
     if (hidden) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -135,21 +96,12 @@ export function CyclopsDock({ badge }: { badge: number }) {
         // Always claim the chord (Ctrl+J opens browser downloads). Mod chords
         // fire even from editable targets — rule zero exempts them.
         e.preventDefault();
-        const current = stateRef.current;
-        transition(current === "expanded" ? prevRef.current : "expanded");
+        transition(stateRef.current === "expanded" ? "docked" : "expanded");
         return;
       }
-      if (matchesShortcut(e, "collapse")) {
-        e.preventDefault();
-        transition(stateRef.current === "collapsed" ? "docked" : "collapsed");
-        return;
-      }
-      // Rule zero: Escape is the only non-modifier key handled, and only
-      // while the overlay is up.
       if (e.key === "Escape" && stateRef.current === "expanded") {
         if (e.defaultPrevented) return;
         const target = e.target;
-        // Leave open menus/listboxes to their own Escape handling.
         if (
           target instanceof Element &&
           target.closest('[role="menu"], [role="listbox"]')
@@ -157,8 +109,7 @@ export function CyclopsDock({ badge }: { badge: number }) {
           return;
         }
         if (isEditable(target)) {
-          // Editable target: act only when it's the dock's own composer —
-          // first Escape blurs it; the next Escape (body target) docks.
+          // First Esc blurs the dock's own composer; the next docks.
           if (!panelRef.current?.contains(target)) return;
           e.preventDefault();
           target.blur();
@@ -179,21 +130,17 @@ export function CyclopsDock({ badge }: { badge: number }) {
   if (hidden) return null;
 
   const expanded = state === "expanded";
-  const open = state !== "collapsed";
   const chatHref =
     thread.status === "ready" ? `/chat?t=${thread.sessionId}` : "/chat";
 
   const header = (
     <div className="flex items-center gap-2 border-b border-border-agent bg-surface-2 px-3 py-2">
-      {/* Click the header to expand; the chrome (⌘J labels) is gone — shortcuts
-          still fire silently. Only a quiet collapse affordance remains. */}
+      {/* Click the header to expand to the focus overlay; shortcuts fire silently. */}
       <button
         type="button"
         onClick={() => transition(expanded ? "docked" : "expanded")}
         aria-label={
-          expanded
-            ? `Dock Cyclops (${hints.expand})`
-            : `Expand Cyclops (${hints.expand})`
+          expanded ? `Dock Cyclops (${hint})` : `Expand Cyclops (${hint})`
         }
         className="flex min-w-0 flex-1 items-center gap-2 text-left"
       >
@@ -207,14 +154,14 @@ export function CyclopsDock({ badge }: { badge: number }) {
           {dockContextLabel(pathname)}
         </span>
       </button>
-      <button
-        type="button"
-        onClick={() => transition("collapsed")}
-        aria-label={`Hide Cyclops (${hints.collapse})`}
-        className="label shrink-0 px-1 text-faint transition-colors hover:text-ink"
-      >
-        —
-      </button>
+      {badge > 0 && (
+        <span
+          aria-hidden
+          className="tabular shrink-0 rounded-pill bg-accent-soft px-1.5 py-0.5 text-[0.6875rem] text-accent"
+        >
+          {badge}
+        </span>
+      )}
     </div>
   );
 
@@ -256,81 +203,38 @@ export function CyclopsDock({ badge }: { badge: number }) {
       </div>
     );
 
+  // The aside always reserves 300px on lg+; below lg the rail is hidden (use the
+  // Ask Cyclops nav pill). When expanded the panel becomes a fixed overlay but
+  // the aside keeps its width, so content never reflows.
   return (
-    <>
-      {/* Edge tab: shows whenever collapsed (any width) AND while docked
-          below lg — the docked rail is lg-only, so the tab is its small-screen
-          stand-in (tapping it opens the overlay, which works at all widths). */}
-      {state !== "expanded" && (
+    <aside
+      className="hidden w-[300px] shrink-0 py-4 pl-1 pr-5 lg:block"
+      aria-label="Cyclops assistant"
+    >
+      {expanded && (
         <button
           type="button"
-          onClick={() => transition(state === "docked" ? "expanded" : "docked")}
-          aria-label={`Open Cyclops (${hints.expand})${
-            badge > 0 ? `, ${badge} items need attention` : ""
-          }`}
-          className={cn(
-            "fixed bottom-24 right-2 z-40 flex flex-col items-center gap-1.5 rounded-pill border border-border-agent bg-surface px-1.5 py-3 shadow-card transition-colors hover:border-agent-mark",
-            state === "docked" && "lg:hidden",
-          )}
-        >
-          <span aria-hidden className="text-agent-mark">
-            ◆
-          </span>
-          {badge > 0 && (
-            <span
-              aria-hidden
-              className="tabular rounded-pill bg-accent px-1.5 py-0.5 text-[0.6875rem] text-accent-fg"
-            >
-              {badge}
-            </span>
-          )}
-        </button>
+          aria-label="Dock Cyclops"
+          onClick={() => transition("docked")}
+          className="fixed inset-0 z-40 cursor-default bg-ink/30"
+        />
       )}
-
-      {/* The panel mounts on first open and then STAYS mounted (display:none
-          when collapsed) so CyclopsChat keeps in-flight state across
-          collapse/reopen. Backdrop and panel are keyed siblings so React
-          preserves the panel instance (no chat remount) when the overlay
-          backdrop appears/disappears on docked ⇄ expanded. */}
-      {thread.status !== "idle" && (
-        <div
-          className={
-            expanded
-              ? "fixed inset-0 z-50 flex justify-end"
-              : open
-                ? "contents"
-                : "hidden"
-          }
-        >
-          {expanded && (
-            <button
-              key="backdrop"
-              type="button"
-              aria-label="Dock Cyclops"
-              onClick={() => transition("docked")}
-              className="absolute inset-0 cursor-default bg-ink/30"
-            />
-          )}
-          <aside
-            key="panel"
-            ref={panelRef}
-            tabIndex={-1}
-            role={expanded ? "dialog" : undefined}
-            aria-modal={expanded || undefined}
-            aria-label={expanded ? "Cyclops" : "Cyclops assistant"}
-            className={
-              expanded
-                ? "relative z-10 flex h-full w-full max-w-2xl flex-col border-l border-border-agent bg-canvas"
-                : // docked: a floating card in the right gutter (Granola law — fixed, floats over content)
-                  "fixed right-3 top-14 bottom-3 z-40 hidden w-[286px] flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card lg:flex"
-            }
-          >
-            {header}
-            {body}
-            {footer}
-          </aside>
-        </div>
-      )}
-    </>
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        role={expanded ? "dialog" : undefined}
+        aria-modal={expanded || undefined}
+        aria-label={expanded ? "Cyclops" : undefined}
+        className={
+          expanded
+            ? "fixed right-0 top-[3.25rem] bottom-3 z-50 flex w-full max-w-2xl flex-col overflow-hidden rounded-l-[0.875rem] border border-border-agent bg-canvas shadow-pop"
+            : "sticky top-[3.25rem] flex h-[calc(100vh-3.25rem-0.75rem)] flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card"
+        }
+      >
+        {header}
+        {body}
+        {footer}
+      </div>
+    </aside>
   );
 }
