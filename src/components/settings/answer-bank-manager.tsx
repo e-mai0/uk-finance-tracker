@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Label, FieldError } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   saveAnswerBankItem,
   deleteAnswerBankItem,
@@ -132,6 +133,9 @@ function Row({ item }: { item: AnswerItem }) {
 
 export function AnswerBankManager({ items }: { items: AnswerItem[] }) {
   const [adding, setAdding] = useState(false);
+  // The bank can run to dozens of long answers — keep it folded by default so
+  // it doesn't dominate the settings page; the count stays visible.
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <Card>
@@ -161,9 +165,34 @@ export function AnswerBankManager({ items }: { items: AnswerItem[] }) {
             No saved answers yet. They’ll appear here as you generate and save them.
           </p>
         )}
-        {items.map((item) => (
-          <Row key={item.id} item={item} />
-        ))}
+        {items.length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              className="flex w-full items-center justify-between rounded-lg border border-border px-3.5 py-2.5 text-left transition-colors hover:bg-surface-2"
+            >
+              <span className="text-sm font-medium text-ink">
+                {items.length} saved answer{items.length === 1 ? "" : "s"}
+              </span>
+              <span className="label flex items-center gap-1.5 text-subtle">
+                {expanded ? "Hide" : "Show"}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "text-[0.6875rem] transition-transform",
+                    expanded && "rotate-180",
+                  )}
+                >
+                  ▾
+                </span>
+              </span>
+            </button>
+            {expanded &&
+              items.map((item) => <Row key={item.id} item={item} />)}
+          </>
+        )}
       </CardBody>
     </Card>
   );

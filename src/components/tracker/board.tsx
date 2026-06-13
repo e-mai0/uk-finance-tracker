@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { toggleSave } from "@/server/actions/saved";
@@ -43,54 +43,6 @@ function monogram(name: string): string {
 export function Board({ rows }: { rows: BoardRow[] }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [focusIdx, setFocusIdx] = useState(-1);
-  const tbodyRef = useRef<HTMLTableSectionElement>(null);
-
-  // Clamp focusIdx when rows shrink (e.g. filter applied).
-  useEffect(() => {
-    setFocusIdx((i) => (i >= rows.length ? -1 : i));
-  }, [rows.length]);
-
-  // Keyboard: J/K move · ⏎ open · S star · A ask. Single-letter keys are
-  // inert while focus is in an editable field (spec keyboard rule zero).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable) return;
-      if ((t).closest("button, a, summary")) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const key = e.key.toLowerCase();
-      if (key === "j" || e.key === "ArrowDown") {
-        e.preventDefault();
-        setFocusIdx((i) => Math.min(rows.length - 1, i + 1));
-      } else if (key === "k" || e.key === "ArrowUp") {
-        e.preventDefault();
-        setFocusIdx((i) => Math.max(0, i - 1));
-      } else if (e.key === "Enter" && focusIdx >= 0) {
-        const row = rows[focusIdx];
-        if (!row) return;
-        router.push(`/tracker/${row.id}`);
-      } else if (key === "s" && focusIdx >= 0) {
-        const row = rows[focusIdx];
-        if (!row) return;
-        startTransition(() => void toggleSave(row.id));
-      } else if (key === "a" && focusIdx >= 0) {
-        const row = rows[focusIdx];
-        if (!row) return;
-        router.push(`/chat?opportunity=${row.id}`);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [rows, focusIdx, router]);
-
-  // Keep the focused row visible.
-  useEffect(() => {
-    if (focusIdx < 0) return;
-    tbodyRef.current
-      ?.querySelectorAll("tr")
-      [focusIdx]?.scrollIntoView({ block: "nearest" });
-  }, [focusIdx]);
 
   const rowH = "h-[2.125rem]"; // compact, always
 
@@ -109,23 +61,18 @@ export function Board({ rows }: { rows: BoardRow[] }) {
             <th scope="col" className="label w-20 px-4 py-1.5 text-right text-faint">Status</th>
           </tr>
         </thead>
-        <tbody ref={tbodyRef}>
-          {rows.map((row, i) => {
+        <tbody>
+          {rows.map((row) => {
             const closed = row.status === "CLOSED";
-            const focused = i === focusIdx;
             return (
               <tr
                 key={row.id}
                 onClick={() => router.push(`/tracker/${row.id}`)}
-                onMouseEnter={() => setFocusIdx(i)}
-                data-focused={focused || undefined}
                 className={cn(
-                  "group cursor-pointer border-b border-hairline transition-colors",
+                  "group cursor-pointer border-b border-hairline transition-colors hover:bg-surface-2",
                   rowH,
-                  focused
-                    ? "bg-surface-2 shadow-[inset_3px_0_0_var(--color-ink)]"
-                    : row.agentTags.length > 0 &&
-                      "bg-accent-tint shadow-[inset_3px_0_0_var(--color-agent-mark)]",
+                  row.agentTags.length > 0 &&
+                    "bg-accent-tint shadow-[inset_3px_0_0_var(--color-agent-mark)]",
                 )}
               >
                 <td className="px-4">
