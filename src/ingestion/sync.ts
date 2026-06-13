@@ -6,6 +6,7 @@ import { GreenhouseAdapter } from "./adapters/greenhouse";
 import { LeverAdapter } from "./adapters/lever";
 import { AshbyAdapter } from "./adapters/ashby";
 import { JaneStreetAdapter } from "./adapters/janestreet";
+import { DeutscheBankBeesiteAdapter } from "./adapters/deutsche-beesite";
 import { JsonLdPageAdapter } from "./adapters/jsonld-page";
 import { OracleCloudAdapter } from "./adapters/oracle-cloud";
 import { TalNetAdapter } from "./adapters/talnet";
@@ -47,6 +48,9 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
       // Greenhouse board only carries experienced/new-grad roles).
       if (new URL(source.url).hostname.endsWith("janestreet.com")) {
         return new JaneStreetAdapter(employer);
+      }
+      if (new URL(source.url).hostname.endsWith("careers.db.com")) {
+        return new DeutscheBankBeesiteAdapter(employer);
       }
       return new JsonLdPageAdapter(source.url, source.identifier, employer);
     }
