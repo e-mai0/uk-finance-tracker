@@ -1,113 +1,144 @@
 # Tracker live-listings reliability — design
 
 **Date:** 2026-06-13
-**Status:** Draft for review
-**Outcome:** The tracker accurately reflects *live* listings — real open roles, with accurate open/close status and trustworthy deadlines — instead of firms standing in as generic careers-page links with stale or absent dates.
+**Status:** Draft for review (revised after live endpoint research)
+**Outcome:** The tracker accurately reflects *live* listings — real open roles, accurate open/closed status, and trustworthy deadlines — across the full firm set, instead of firms standing in as generic careers-page links with stale or absent dates.
 
 ---
 
 ## Problem
 
-The ingestion *research* (`src/ingestion/source-plans/uk-finance-2027.json`) covers ~25 firms with evidence-backed extraction plans, but the *implementation* only publishes live roles for **3 firms**:
+The ingestion *research* (`src/ingestion/source-plans/uk-finance-2027.json`) covers ~25 firms, but the *implementation* only publishes live roles for **3 firms** (Man Group, Point72 via Greenhouse; Jane Street via its JSON feed). Five firms are seeded `watchOnly` (link-only stand-ins), and ~17 aren't wired in at all (`WorkdayAdapter` is a stub that throws). `sync.ts → adapterFor()` only handles `GREENHOUSE | LEVER | ASHBY | CAREERS_PAGE`.
 
-- **Man Group**, **Point72** — Greenhouse public API (`greenhouse.ts`)
-- **Jane Street** — its own JSON feed (`janestreet.ts`)
+Two consequences:
+1. **"Generic careers page"** — most firms show a link with no live roles behind it (watch-only or not wired).
+2. **Deadlines are inaccurate** — `deadlineAt` is only ever set from JSON-LD `validThrough`, which no live source uses; Greenhouse (the only working role feed) exposes no deadline, so live roles carry `deadlineAt: null`.
 
-Everything else is either:
+Also: nothing ever marks a role `CLOSED`. `importDataset` upserts as `OPEN` and removed roles stay `OPEN` forever. And `syncWatchSource` fetches SPA shells via plain `fetch()` — for client-rendered sites the shell never changes, so change-detection is blind; for failures it counts toward auto-disabling after 10 misses.
 
-- **Seeded as `watchOnly`** (Goldman Sachs, BlackRock, Deutsche Bank, Citadel, Citadel Securities) — change-detection only, never publishes roles. Renders as a firm with a careers-page link and nothing live behind it. **This is the "generic careers page" symptom.**
-- **Not wired in at all** (Morgan Stanley, Barclays, Blackstone, J.P. Morgan, Schroders, Citi, HSBC, UBS, Macquarie, BofA, Nomura, Jefferies, Rothschild, Evercore, Lazard, Fidelity). `sync.ts → adapterFor()` only handles `GREENHOUSE | LEVER | ASHBY | CAREERS_PAGE`; `WorkdayAdapter` is a stub that throws.
+## Key research finding (live-probed 2026-06-13)
 
-**Deadlines are inaccurate** because `deadlineAt` is only ever populated from JSON-LD `validThrough` (`jsonld.ts`), and no live source uses that path. Greenhouse — the only working role feed — exposes no deadline, so live roles carry `deadlineAt: null`.
+**Every firm is ingestable with a plain server-side `fetch` on Vercel — no headless browser, no paid unlocker, no CAPTCHA solving.** Each ATS exposes a machine-readable surface that returns real data to an unauthenticated request. This collapses the earlier "World 1 / World 2" split: it's all deterministic ingestion, just with per-ATS shapes.
 
-**Watch-only change-detection may be silently failing.** `syncWatchSource` fetches via plain `fetch()` (`common.ts`). For Imperva/Cloudflare-gated sites it throws → `recordFailure` → after 10 consecutive failures the source is **auto-disabled**. The intended "detect changes every day" likely is not happening for the gated firms, and nothing surfaces that.
+### Per-firm verified approach
 
-## Two worlds (the constraint that shapes the design)
+| ATS / surface | Firms | Endpoint (verified live) | Deadline in feed? | Stable id |
+|---|---|---|---|---|
+| Greenhouse API *(live today)* | Man Group, Point72 | `boards-api.greenhouse.io/v1/boards/{token}/jobs` | No → infer | gh job id |
+| Jane Street JSON *(live today)* | Jane Street | `janestreet.com/jobs/main.json` | No → infer | position id |
+| **Workday CXS** | Morgan Stanley, Barclays, Blackstone | `POST /wday/cxs/{tenant}/{site}/jobs` (limit≤20, paginate offset) | No (only postedOn) → infer | `bulletFields[0]` reqId |
+| **Oracle Cloud CE** | J.P. Morgan, Schroders | `GET recruitingCEJobRequisitions?expand=requisitionList&finder=findReqs;siteNumber={site}` + per-Id detail | **Yes** — `ExternalPostedEndDate` (detail) | numeric `Id` |
+| **Eightfold** | HSBC (`/api/apply/v2/jobs`), Citi (`/api/pcsx/search`) | `GET ...?domain={d}&location=London&start=N` (page size 10) | No → infer | numeric `id` |
+| **Avature** | UBS, Macquarie | UBS: embedded JSON in shell + detail page; Macquarie: HTML `SearchJobs?search=internship&jobOffset=N` | UBS **yes** (detail); Macquarie no → infer | numeric jobId/reqid |
+| **Radancy / TalentBrew** | BlackRock, Citi, Barclays | `GET {base}/search-jobs/results?Keywords=intern&SearchType=1...` (JSON-wraps-HTML) | No → infer | URL jobId |
+| **tal.net** (Saba/Lumesse) | Nomura, Jefferies, Rothschild, Evercore, Lazard, Fidelity, BofA | `GET /candidate/jobboard/vacancy/{board}/adv/` (plain HTML; follow full canonical `/vx/.../opp/<id>` href) | **Yes** — inline on listing/detail | numeric opp id |
+| **Goldman bespoke** | Goldman Sachs | `POST api-higher.gs.com/gateway/api/v1/graphql` `roleSearch(experiences:["CAMPUS"])` | No → infer | `externalSource.sourceId` |
+| **Deutsche Bank Beesite** | Deutsche Bank | `GET api-deutschebank.beesite.de/graduatesearch/?data={json}` | **Yes** — `PublicationEndDate` | numeric `PositionID` |
 
-| | World 1 — deterministic JSON feeds | World 2 — JS-rendered / bot-gated |
-|---|---|---|
-| **Firms** | Man Group, Point72, Jane Street *(live today)*; Morgan Stanley, Barclays, Blackstone (Workday); J.P. Morgan, Schroders (Oracle Cloud); HSBC, Citi (Eightfold) | tal.net (BofA, Nomura, Jefferies, Rothschild, Evercore, Lazard, Fidelity); Avature (UBS, Macquarie); Goldman `higher.gs.com`; BlackRock; Deutsche Bank |
-| **Reachable with `fetch()`?** | Yes — public JSON (Workday needs POST; Oracle/Eightfold are REST) | No — SPA shells, Imperva/Cloudflare CAPTCHA, no public JSON |
-| **This branch** | **Build out fully** — real roles + dates + status | **Honest daily watch** — change-detection on /radar, never faked as live |
-
-Reliable live data is achievable for World 1 without a browser. World 2 is deferred to a later headless-rendering branch (per decision below); for now it stays watch-only, but the watch path is hardened so daily change-detection genuinely works and reports honestly.
+Notes from the probes that the build must honor:
+- **Workday Barclays detail endpoint is Akamai-gated (406/422)** — use list-only fields for Barclays; tolerate a blocked detail fetch everywhere.
+- **Goldman GraphQL introspection is open but may be locked later** — pin the operation text, don't introspect at runtime.
+- **Eightfold/Workday can flap** (transient 403) — retry with backoff; never report "0 roles" on a non-200.
+- **tal.net**: short `/opp/<id>` URLs 503 — must follow the full canonical href; per-tenant board numbers differ and must be discovered/configured; `robots.txt` disallows named AI bots but allows the default agent on candidate paths — use a neutral honest UA and honor `Crawl-delay: 10`.
+- **UK filtering** is most robust **client-side** (on `locationsText` / `PrimaryLocationCountry=="GB"` / parsed location), with server facets as an optional optimization.
+- **Off-season zero-count is valid** (Eightfold returns 200 + count 0) — distinguish from a broken feed.
 
 ## Decisions (from brainstorming)
 
-1. **World 2 stays watch-only this branch.** Daily cron change-detection is "good enough" for the gated firms; do not build Playwright now. → Harden the watch path so it actually runs daily and surfaces unreachable sources instead of silently auto-disabling.
-2. **Infer deadlines from the recruiting cycle when a feed publishes none**, rather than showing "no deadline." Inferred deadlines are **clearly marked as estimates** so they add coverage without claiming false precision.
+1. **Achieve full live coverage with plain fetch.** No headless/browser this branch — research shows it's unnecessary for every firm. (Keep an Imperva-detection guard in the fetch path so if tal.net ever turns on bot protection, that host degrades to watch-only and reports it, rather than silently failing.)
+2. **Infer deadlines from the recruiting cycle** where a feed exposes none, clearly marked as **estimated + rolling**, biased earlier ("may close early — apply ASAP"). Real published deadlines always win.
 
 ---
 
 ## Design
 
-### 1. New deterministic adapters (World 1 coverage: 3 → ~9 firms)
+### 1. New adapters (live role coverage: 3 → ~25 firms)
 
-Three new adapters behind the existing `SourceAdapter` interface, each a pure `payload → RawOpportunity[]` mapper (mirrors `greenhouse.ts`), unit-tested against captured JSON fixtures:
+Each is a pure `fetch → RawOpportunity[]` mapper behind the existing `SourceAdapter` interface, unit-tested against captured JSON/HTML fixtures (mirrors `greenhouse.ts`). All reuse `classifyPosting()` so inclusion rules stay in one tested place.
 
-- **`WorkdayAdapter`** — replaces the throwing stub. POSTs to `/wday/cxs/{tenant}/{site}/jobs` with `{limit, offset, searchText, appliedFacets}`, paginates, maps `jobPostings[]` (title, externalPath, locationsText, postedOn). Covers Morgan Stanley, Barclays, Blackstone.
-- **`OracleCloudAdapter`** — GETs `recruitingCEJobRequisitions?onlyData=true&finder=findReqs;siteNumber={site}`, paginates, optionally fetches per-req detail for location/dates. Covers J.P. Morgan, Schroders.
-- **`EightfoldAdapter`** — queries the public positions API filtered to UK/intern. Covers HSBC; Citi attempted (PCSX returned 403 on probe — see spike).
+- `WorkdayAdapter` (replaces the throwing stub) — POST CXS, paginate, client-filter UK. *MS, Barclays, Blackstone.*
+- `OracleCloudAdapter` — list crawl + per-Id detail for **deadline** + location. *JPM, Schroders.*
+- `EightfoldAdapter` — per-tenant endpoint (`apply/v2/jobs` vs `pcsx/search`), paginate by `start`. *HSBC, Citi.*
+- `AvatureAdapter` — Macquarie HTML parse; UBS embedded-JSON + detail-page **deadline**. *UBS, Macquarie.*
+- `RadancyAdapter` — one generic `{baseUrl, companyId}` adapter parsing the `/search-jobs/results` JSON-wraps-HTML envelope. *BlackRock, Citi, Barclays.*
+- `TalNetAdapter` — per-host board config, parse the public job board HTML, follow canonical opp URLs, extract inline **deadlines**, honor Crawl-delay. *Nomura, Jefferies, Rothschild, Evercore, Lazard, Fidelity, BofA.*
+- `GoldmanHigherAdapter` — GraphQL `roleSearch`, pinned operation text. *Goldman.* (Routed via `CAREERS_PAGE` hostname dispatch like Jane Street, or its own kind — see data model.)
+- `DeutscheBankBeesiteAdapter` — Beesite REST, client-filter `CountryCode=="GB"`, **deadline** from `PublicationEndDate` (treat `2099-12-31` as none). *Deutsche Bank.*
 
-Each adapter reuses `classifyPosting()` so inclusion rules stay in one tested place. Wire all three into `adapterFor()`.
+Wire all into `adapterFor()`. Where a firm appears on two surfaces (e.g. Citi on Eightfold *and* Radancy; Barclays on Workday *and* Radancy), pick the one with the better data and dedupe — documented per firm in the plan.
 
-### 2. Verification spike (precedes adapter work)
+### 2. Verification + fixture capture per adapter
 
-The research probes hit 400/403 (Workday needs a POST body; Eightfold is token-gated). Before committing each adapter, make **one live call per ATS** to confirm it returns usable JSON today, and **capture the response as a test fixture**. If an endpoint is no longer reachable unauthenticated (e.g. Citi/Eightfold 403), that firm drops to World 2 watch-only for this branch — documented, not silently skipped.
+The endpoints were probed live today; before/while building each adapter, capture a current response as a **test fixture** and assert the adapter maps it correctly. If an endpoint has since changed, that surfaces immediately. Live calls are one-off capture, never part of the test suite (tests run offline).
 
-### 3. Accurate deadlines & status
+### 3. Deadlines
 
-- **Real deadlines where exposed:** capture close/valid-through from Workday/Oracle detail resources and JSON-LD `validThrough`. Populate `deadlineAt` + `opensAt`.
-- **Inferred deadlines where not exposed:** a new deterministic `inferDeadline(roleFamily, firstSeenAt, cycle)` derives an estimated close date from known UK-finance cycle windows (most summer-internship deadlines cluster Nov–Jan, rolling). Stored in `deadlineAt` with a new `deadlineEstimated: Boolean` flag on `Opportunity` so the UI can mark it "est." Estimates never override a real published deadline.
-- **Status accuracy / removal detection:** a role present in a prior sync but **absent from its feed for 2 consecutive syncs → `CLOSED`** (debounce avoids flapping on a transient empty fetch). A passed `deadlineAt` with no live confirmation → `CLOSED`. Requires tracking per-(source, role-key) presence across runs.
+- **Real where exposed:** Oracle (`ExternalPostedEndDate` via detail), tal.net (inline), Deutsche Bank (`PublicationEndDate`), UBS (detail page). Populate `deadlineAt` (+ `opensAt` where available).
+- **Inferred otherwise:** `inferDeadline(roleFamily, firstSeenAt, cycle)` — a pure, deterministic module using realistic UK-finance windows (open Jul–Sep of year N-1; nominal close Oct–Dec; rolling fills from September). Stored in `deadlineAt` with `deadlineEstimated = true` and `isRolling = true`; the UI marks it "est. · rolling." Estimates **never** override a real published deadline. Per-bank exact dates are deliberately **not** hardcoded (least stable signal).
 
-### 4. Honesty layer (kills the "looks unreliable" feeling)
+### 4. Status & removal detection (reliability engine)
 
-- Each firm/source carries a visible **freshness state**: `live` (last-sync time shown), `watch` (change-detected, review on /radar), or `link-only` (no automatable feed).
-- The tracker title strip and rows reflect real state; estimated deadlines render with an explicit "est." marker; no firm is presented as live when it isn't.
+Adopt the canonical pattern (last-seen + health-gated absence sweep + soft close):
 
-### 5. Harden the watch path (World 2 daily change-detection)
+- Each sync bumps `lastSeenAt` and resets `consecutiveMisses` for roles present in a **healthy** fetch.
+- **Health gate (false-closure guard):** closure logic runs only when the adapter returned without error and the fetch looks healthy (no 4xx/5xx, not an empty-but-200 anomaly). A source outage **pauses** closure for that source — never cascades closures.
+- **Close decision:** passed `deadlineAt` → `CLOSED` immediately; absent from a healthy feed for **2 consecutive syncs** → `CLOSED` (debounced). Detail-page HTTP 410/explicit "closed" text → close immediately where available.
+- **Soft close:** set `status=CLOSED`, `closedAt`, `closeReason`; keep the row so a reappearance re-opens it.
 
-- `syncWatchSource` failures on gated sites should set an explicit **`unreachable`** status rather than counting toward auto-disable; surface "couldn't reach — last seen N days ago" on /radar instead of silently disabling.
-- Keep sitemap-based watches (Citadel domains) working as the reliable case; treat CAPTCHA/403 as a distinct, reported state.
+### 5. Honesty / freshness layer
+
+- Each source carries a visible state: **live** (with last-sync time), or **unreachable** (reported, not silently disabled).
+- Estimated deadlines render with an explicit "est. · rolling" marker; real deadlines render plain.
+- Drop the `watchOnly` stand-ins for firms now covered by a real adapter; keep watch only as the *degraded* fallback an Imperva-guard can flip a host into.
+
+### 6. Polite, robust fetching (shared `common.ts` upgrades)
+
+- Identified UA (keep `TrackrBot/1.0`), explicit connect/read timeouts (already 15s), **full-jitter exponential backoff honoring `Retry-After`**, retry only 429/502/503/504/timeouts, per-host **circuit breaker**, ~1 req/s per host with jitter, honor `robots.txt` `Crawl-delay` (esp. tal.net 10s). Conditional GET (ETag/If-Modified-Since) where supported.
+- An **Imperva/Incapsula guard**: detect interstitial markers / incident-ids in a 200 body and treat as a fetch failure → degrade host to `unreachable`, don't publish garbage.
 
 ---
 
 ## Data model changes (additive — run by user)
 
-Per project convention, schema changes are additive SQL the **user runs** (`prisma/sql/`, see [[cyclops-overhaul]]):
+Per project convention, additive SQL the **user runs** (`prisma/sql/`, see [[cyclops-overhaul]]):
 
-- `SourceType` enum: add `ORACLE_CLOUD`, `EIGHTFOLD` (Workday already present).
-- `Opportunity`: add `deadlineEstimated Boolean @default(false)`.
-- `IngestionSource`: extend `lastStatus` usage with an explicit `unreachable` state (string convention — no column change) and rely on existing `lastChangedAt` for watch freshness.
-- Possible: a lightweight per-source `seenKeys Json?` (or reuse `watchState`) to track role presence across runs for removal detection.
+- `SourceType` enum: add `ORACLE_CLOUD`, `EIGHTFOLD`, `AVATURE`, `RADANCY`, `TALNET`. (Goldman + Deutsche Bank route via `CAREERS_PAGE` hostname dispatch, like Jane Street — no enum value each.) `WORKDAY` already exists.
+- `Opportunity`: add `deadlineEstimated Boolean @default(false)`, `isRolling Boolean @default(false)`, `consecutiveMisses Int @default(0)`, `closedAt DateTime?`, `closeReason String?`.
+- `IngestionSource`: add `config Json?` (carry tenant/site/board/companyId/domain per ATS — avoids overloading `identifier`) and `lastSuccessfulFetchAt DateTime?` (gates the closure sweep).
 
 ## Components & boundaries
 
-- `ingestion/adapters/workday.ts`, `oracle-cloud.ts`, `eightfold.ts` — pure mappers, each independently testable against fixtures.
+- `ingestion/adapters/{workday,oracle-cloud,eightfold,avature,radancy,talnet,goldman-higher,deutsche-beesite}.ts` — pure mappers, each independently testable against fixtures.
 - `ingestion/deadline-infer.ts` — pure `inferDeadline()` + cycle table; unit-tested.
-- `ingestion/sync.ts` — `adapterFor()` extended; removal-detection logic added to `syncSource`/`importDataset`.
-- `ingestion/import.ts` — sets `deadlineEstimated`; applies removal → `CLOSED` transition.
-- `ingestion/watch.ts` / `syncWatchSource` — `unreachable` state, no silent disable.
-- `prisma/seed.ts` — new live source rows for the World 1 firms (kind = WORKDAY / ORACLE_CLOUD / EIGHTFOLD), with tenant/site identifiers.
-- UI (`tracker/page.tsx`, board, ticker) — freshness state + "est." deadline marker.
+- `ingestion/status.ts` — pure removal/close state machine (present/miss/close-reason); unit-tested.
+- `ingestion/sync.ts` — `adapterFor()` extended; `config` plumbed to adapters; health gate.
+- `ingestion/import.ts` — sets `deadlineEstimated`/`isRolling`; applies the close transition via `ingestion/status.ts`.
+- `ingestion/adapters/common.ts` — backoff, circuit breaker, crawl-delay, Imperva guard.
+- `prisma/seed.ts` — live source rows for all firms with `config` (tenant/site/board/etc.); drop now-covered `watchOnly` rows.
+- UI (`tracker/page.tsx`, board, ticker) — freshness state + "est. · rolling" marker.
 
-## Testing
+## Testing (TDD)
 
-- TDD for every pure unit: each adapter mapper (fixture in → expected `RawOpportunity[]` out, incl. classification exclusions), `inferDeadline`, removal-detection state machine, watch `unreachable` transition.
-- Live spike calls are one-off verification + fixture capture, not part of the test suite (no network in tests).
-- Existing `classify`/`start-application` tests stay green.
+- Each adapter mapper: captured fixture in → expected `RawOpportunity[]` out, including classification exclusions and the per-ATS quirks (Workday 20-row pages, Oracle detail deadline, Eightfold off-season 0, tal.net canonical URL, Radancy `Keywords` param, Beesite `2099-12-31` sentinel).
+- `inferDeadline` and the `status.ts` state machine: pure unit tests (present → miss → miss → close; healthy-gate prevents close on failed fetch; deadline-passed close; reappearance re-open).
+- Live spike calls are one-off fixture capture, not in the suite (no network in tests). Existing `classify`/`start-application` tests stay green.
 
 ## Out of scope (explicit)
 
-- Playwright / headless rendering for World 2 — separate follow-up branch.
-- Lever/Ashby seed expansion beyond what research supports.
-- Any login, form submission, or crossing an apply wall — read public surfaces only (unchanged guarantee).
+- Headless rendering / paid unlockers — research shows they're unnecessary for the current firm set; the Imperva-guard is the contingency.
+- Crossing any login/apply wall — read public surfaces only (unchanged guarantee). recsolu (DB) and tal.net apply pages are login-walled and not touched.
+- Per-bank hardcoded deadline calendars — inference stays cycle-based and honest.
 
 ## Success criteria
 
-1. Live role coverage rises from 3 firms to ~9 (subject to spike confirmation).
-2. Every live role shows a deadline — real where published, clearly-marked estimate otherwise.
-3. Roles that leave a feed transition to `CLOSED` within 2 syncs; passed deadlines close.
-4. World 2 firms show an honest watch/link state and unreachable sources are reported, not silently disabled.
-5. No firm is presented as "live" when it has no live feed.
+1. Live role coverage rises from 3 firms to ~25 (subject to per-firm fixture confirmation at build time).
+2. Every live role shows a deadline — real where the feed/detail exposes one, clearly-marked estimate ("est. · rolling") otherwise.
+3. Roles absent from a healthy feed for 2 syncs, or past their deadline, transition to `CLOSED`; reappearance re-opens. No closures occur on a failed/empty fetch.
+4. No firm is presented as "live" when its feed is unreachable; unreachable sources are reported, not silently disabled.
+5. All ingestion runs server-side on Vercel with no browser, polite fetching, and an Imperva-guard contingency.
+
+## Open risks
+
+- These are undocumented/quasi-public endpoints; they can change or lock down. Mitigation: fixtures + per-source health status + the Imperva-guard + circuit breaker make breakage visible and contained, not silent.
+- Citi/Barclays appear on two ATSes; dedupe rules must be explicit (chosen in the plan).
+- Inferred deadlines are estimates by nature; the "est. · rolling" marker keeps them honest.
