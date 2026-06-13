@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import type { RawDataset } from "./types";
 import { normalizeAll } from "./normalize";
+import { decideTransitions } from "./status";
 
 export function slugify(name: string): string {
   return name
@@ -93,6 +94,8 @@ export async function importDataset(
       status: n.status,
       opensAt: n.opensAt,
       deadlineAt: n.deadlineAt,
+      deadlineEstimated: n.deadlineEstimated,
+      isRolling: n.isRolling,
       descriptionSummary: n.descriptionSummary,
       eligibilityNotes: n.eligibilityNotes,
       sponsorshipInfo: n.sponsorshipInfo,
@@ -140,6 +143,48 @@ export async function importDataset(
     if (sources.length > 0) {
       await prisma.opportunitySource.createMany({
         data: sources.map((s) => ({ ...s, opportunityId })),
+      });
+    }
+  }
+
+  // Health-gated close sweep: for each employer+sourceType cohort touched this
+  // run, mark roles absent from this (healthy) feed as missed/closed, reopen
+  // reappearances, and close roles past a REAL deadline. `healthy` is true here
+  // because importDataset only runs after a successful adapter fetch.
+  const presentByCohort = new Map<string, Set<string>>(); // `${employerId}:${sourceType}` -> keys
+  for (const n of normalized) {
+    const employerId = employerIdByName.get(n.employer)!;
+    const cohort = `${employerId}:${n.sourceType}`;
+    const key = `${n.title} ${n.location}`;
+    let set = presentByCohort.get(cohort);
+    if (!set) { set = new Set(); presentByCohort.set(cohort, set); }
+    set.add(key);
+  }
+  for (const [cohort, presentKeys] of presentByCohort) {
+    const sep = cohort.indexOf(":");
+    const employerId = cohort.slice(0, sep);
+    const sourceType = cohort.slice(sep + 1) as (typeof normalized)[number]["sourceType"];
+    const rows = await prisma.opportunity.findMany({
+      where: { employerId, sourceType },
+      select: { id: true, title: true, location: true, status: true, consecutiveMisses: true, deadlineAt: true, deadlineEstimated: true },
+    });
+    const existing = rows.map((r) => ({
+      key: `${r.title} ${r.location}`,
+      status: r.status,
+      consecutiveMisses: r.consecutiveMisses,
+      deadlineAt: r.deadlineAt,
+      deadlineEstimated: r.deadlineEstimated,
+    }));
+    const idByKey = new Map(rows.map((r) => [`${r.title} ${r.location}`, r.id]));
+    const transitions = decideTransitions(existing, presentKeys, true, now);
+    for (const t of transitions) {
+      await prisma.opportunity.update({
+        where: { id: idByKey.get(t.key)! },
+        data: {
+          status: t.status,
+          consecutiveMisses: t.consecutiveMisses,
+          ...(t.status === "CLOSED" ? { closedAt: now, closeReason: t.closeReason } : { closedAt: null, closeReason: null }),
+        },
       });
     }
   }
