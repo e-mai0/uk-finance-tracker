@@ -174,7 +174,7 @@ function FilterDropdown({
       >
         {label}
         {count > 0 && (
-          <span className="tabular text-[0.6875rem] text-amber">{count}</span>
+          <span className="tabular text-[0.6875rem] text-canvas/70">{count}</span>
         )}
         <span
           aria-hidden

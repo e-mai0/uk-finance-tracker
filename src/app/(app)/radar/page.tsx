@@ -122,7 +122,7 @@ function Section({
         <span className="label text-ink">
           <span className={glyphTone}>{glyph}</span> {title}
         </span>
-        <span className="tabular label text-subtle">{count}</span>
+        <span className="tabular label text-faint">{count}</span>
       </div>
       <ul className="divide-y divide-border">{children}</ul>
     </div>

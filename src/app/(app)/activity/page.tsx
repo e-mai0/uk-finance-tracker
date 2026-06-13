@@ -96,11 +96,9 @@ export default async function ActivityPage() {
 
   return (
     <div className="animate-rise mx-auto max-w-3xl px-5 py-8">
-      <div className="label text-faint">Agent activity</div>
-      <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
-        Activity
-      </h1>
-      <p className="mt-0.5 max-w-2xl text-sm text-muted">
+      <p className="label text-faint">Agent activity</p>
+      <h1 className="mt-1 text-[1.75rem] text-ink">Activity</h1>
+      <p className="mt-1 max-w-[60ch] text-[0.875rem] text-muted">
         What Cyclops has been doing — briefs, employer research, memory
         gardening, and items raised for you.
       </p>

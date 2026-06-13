@@ -308,7 +308,8 @@ function Stepper({ step }: { step: number }) {
           <div
             className={cn(
               "h-1 rounded-full transition-colors",
-              i <= step ? "bg-accent" : "bg-border",
+              // User progress, not the agent — ink, per the amber-is-agent law.
+              i <= step ? "bg-ink" : "bg-border",
             )}
           />
           <span
