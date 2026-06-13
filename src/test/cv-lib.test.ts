@@ -27,6 +27,15 @@ describe("cvDataSchema", () => {
     expect(cv.education[0].grade).toBe("Predicted First");
     expect(cv.projects[0].result).toBe("1st Place");
   });
+
+  it("rejects genuinely invalid input", () => {
+    // number for fullName (string required)
+    expect(() => cvDataSchema.parse({ fullName: 42 })).toThrow();
+    // array where fullName string is required
+    expect(() => cvDataSchema.parse({ fullName: ["not", "a", "string"] })).toThrow();
+    // non-array for education (array required)
+    expect(() => cvDataSchema.parse({ education: "not-an-array" })).toThrow();
+  });
 });
 
 describe("formInputToCvData", () => {
