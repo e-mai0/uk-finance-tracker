@@ -69,7 +69,7 @@ export function ExtensionConnect({ tokens }: { tokens: TokenRow[] }) {
         {error && <p className="text-xs text-danger">{error}</p>}
 
         {token && (
-          <div className="rounded-lg border border-accent/30 bg-accent-soft/40 p-3">
+          <div className="rounded-[var(--radius-control)] border border-border bg-surface-2 p-3">
             <p className="text-xs font-medium text-ink">
               Copy this token now — it won’t be shown again:
             </p>

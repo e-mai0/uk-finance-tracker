@@ -75,7 +75,7 @@ export default async function DashboardPage({
       {/* Title strip */}
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border bg-surface px-4 py-3">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-[1.35rem] leading-none text-ink">Tracker</h1>
+          <h1 className="text-[1.375rem] leading-none text-ink">Tracker</h1>
           <span className="text-[0.8125rem] text-subtle">
             Summer 2027 · UK finance internships
           </span>
@@ -128,7 +128,8 @@ export default async function DashboardPage({
           <span className="tabular text-ink">{stats.deadlinesSoon}</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span aria-hidden className="text-accent">●</span>
+          {/* Fit-high mark — green tier ramp, not amber (amber means agent). */}
+          <span aria-hidden className="text-tier-strong">●</span>
           Match ≥ 75 <span className="tabular text-ink">{stats.topMatches}</span>
         </span>
       </div>

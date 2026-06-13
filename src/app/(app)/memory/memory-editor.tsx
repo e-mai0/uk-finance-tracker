@@ -70,10 +70,10 @@ export function MemoryEditor({ path, content, revisions }: Props) {
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-mono text-sm text-ink truncate">
+          <h2 className="truncate font-mono text-[0.75rem] font-normal text-ink">
             {path}
           </h2>
-          <p className="mt-0.5 font-mono text-[0.6875rem] text-subtle">
+          <p className="mt-0.5 text-[0.8125rem] text-muted">
             Cyclops reads these files before every conversation. Edit anything;
             every change is recorded below.
           </p>
@@ -83,10 +83,11 @@ export function MemoryEditor({ path, content, revisions }: Props) {
           onClick={handleSave}
           disabled={!isDirty || isPending}
           className={cn(
-            "label shrink-0 border px-3 py-1.5 transition-colors",
+            // Manual save is a user commit — ink pill, never amber.
+            "shrink-0 rounded-pill px-4 py-1.5 text-[0.8125rem] font-extrabold transition-colors",
             isDirty && !isPending
-              ? "border-accent bg-accent-tint text-accent hover:bg-accent hover:text-canvas"
-              : "cursor-not-allowed border-border text-faint opacity-40",
+              ? "bg-ink text-canvas hover:bg-chrome-2"
+              : "cursor-not-allowed border border-border bg-surface text-faint",
           )}
         >
           {isPending ? "Saving…" : "Save"}
@@ -97,7 +98,7 @@ export function MemoryEditor({ path, content, revisions }: Props) {
       {error && (
         <div
           role="alert"
-          className="border border-danger-soft bg-danger-soft px-3 py-2 font-mono text-[0.6875rem] text-danger"
+          className="rounded-[var(--radius-control)] border border-danger-soft bg-danger-soft px-3 py-2 text-[0.8125rem] text-danger"
         >
           <span aria-hidden className="mr-1">
             ▲
@@ -113,9 +114,9 @@ export function MemoryEditor({ path, content, revisions }: Props) {
         onChange={(e) => setText(e.target.value)}
         spellCheck={false}
         className={cn(
-          "h-96 w-full resize-y border border-border bg-canvas px-3 py-2.5",
-          "font-mono text-[0.78rem] leading-relaxed text-ink",
-          "placeholder:text-faint focus:border-accent",
+          "h-96 w-full resize-y rounded-[var(--radius-control)] border border-border-interactive bg-surface px-3 py-2.5",
+          "font-mono text-[0.75rem] leading-relaxed text-ink",
+          "placeholder:text-faint",
         )}
       />
 
@@ -125,11 +126,11 @@ export function MemoryEditor({ path, content, revisions }: Props) {
           History
         </p>
         {revisions.length === 0 ? (
-          <p className="font-mono text-[0.7rem] text-faint">
+          <p className="font-mono text-[0.6875rem] text-faint">
             No revisions yet.
           </p>
         ) : (
-          <div className="divide-y divide-border border border-border">
+          <div className="divide-y divide-hairline overflow-hidden rounded-[var(--radius-control)] border border-border">
             {revisions.map((rev) => {
               const who = rev.author === "CYCLOPS" ? "Cyclops" : "You";
               const ts = new Date(rev.createdAt).toLocaleString("en-GB", {
@@ -165,8 +166,8 @@ export function MemoryEditor({ path, content, revisions }: Props) {
                     onClick={() => handleRestore(rev)}
                     disabled={isPending}
                     className={cn(
-                      "label shrink-0 border border-border px-2.5 py-1 text-subtle transition-colors",
-                      "hover:border-accent hover:text-accent",
+                      "label shrink-0 rounded-pill border border-border-interactive px-2.5 py-1 text-subtle transition-colors",
+                      "hover:bg-surface-2 hover:text-ink",
                       "disabled:cursor-not-allowed disabled:opacity-40",
                     )}
                   >

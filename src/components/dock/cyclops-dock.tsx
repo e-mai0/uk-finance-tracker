@@ -48,6 +48,9 @@ function isEditable(target: EventTarget | null): target is HTMLElement {
  * overlay, on every page except /settings and /chat. Reuses CyclopsChat against a
  * lazily-fetched per-user "Dock" ChatSession. It yields to the full Ask Cyclops
  * page, which has its own chat UI.
+ *
+ * Granola law: every state floats OVER the page (fixed). Opening the dock
+ * never reflows the page content underneath it.
  */
 export function CyclopsDock({ badge }: { badge: number }) {
   const pathname = usePathname();
@@ -325,7 +328,7 @@ export function CyclopsDock({ badge }: { badge: number }) {
             className={
               expanded
                 ? "relative z-10 flex h-full w-full max-w-2xl flex-col border-l border-border-agent bg-canvas"
-                : "sticky top-12 hidden h-[calc(100vh-3rem)] w-[286px] shrink-0 border-l border-border-agent bg-surface lg:flex lg:flex-col"
+                : "fixed right-0 top-12 z-40 hidden h-[calc(100vh-3rem)] w-[286px] border-l border-border-agent bg-surface lg:flex lg:flex-col"
             }
           >
             {header}

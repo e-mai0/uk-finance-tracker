@@ -61,7 +61,7 @@ export default async function ApplicationsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="label text-subtle">Pipeline</div>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
+          <h1 className="mt-1 text-[1.375rem] leading-none text-ink">
             Applications
           </h1>
           <p className="mt-0.5 text-sm text-muted">

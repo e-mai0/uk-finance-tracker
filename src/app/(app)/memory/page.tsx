@@ -147,7 +147,7 @@ export default async function MemoryPage({
         {/* Heading */}
         <div className="border-b border-border px-3 py-2.5">
           <p className="label text-subtle">Cyclops</p>
-          <p className="font-mono text-[0.78rem] text-ink">
+          <p className="font-mono text-[0.75rem] text-ink">
             What Cyclops knows
           </p>
         </div>
@@ -244,7 +244,7 @@ export default async function MemoryPage({
         <div className="flex items-center border-b border-border bg-surface px-4 py-2">
           <div className="flex items-baseline gap-2">
             <span className="label text-subtle">Memory</span>
-            <span className="truncate font-mono text-[0.78rem] text-ink">
+            <span className="truncate font-mono text-[0.75rem] text-ink">
               {activePath ?? "—"}
             </span>
           </div>
@@ -283,12 +283,13 @@ function FileLink({ path, isActive }: { path: string; isActive: boolean }) {
       href={`/memory?f=${encodeURIComponent(path)}`}
       aria-current={isActive ? "page" : undefined}
       className={
+        // Selection is ink — inset spine + neutral tint, never amber.
         isActive
-          ? "block border-l-2 border-accent bg-accent-tint px-3 py-2"
-          : "block border-l-2 border-transparent px-3 py-2 hover:bg-surface-2"
+          ? "block bg-surface-2 px-3 py-2 shadow-[inset_3px_0_0_var(--color-ink)]"
+          : "block px-3 py-2 hover:bg-surface-2"
       }
     >
-      <span className="block truncate font-mono text-[0.72rem] text-ink">
+      <span className="block truncate font-mono text-[0.75rem] text-ink">
         {label}
       </span>
       {path.includes("/") && (

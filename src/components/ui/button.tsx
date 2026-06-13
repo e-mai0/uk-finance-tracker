@@ -10,25 +10,27 @@ type Variant =
   | "link";
 type Size = "sm" | "md" | "lg" | "icon";
 
+// GB+ contract: amber means agent — buttons are never amber. Primary commits
+// are ink pills; secondary pills carry the 3:1 interactive border.
 const variants: Record<Variant, string> = {
   primary:
-    "bg-accent text-accent-fg hover:bg-accent-hover disabled:opacity-50",
+    "bg-ink font-extrabold text-canvas hover:bg-chrome-2 disabled:opacity-50",
   secondary:
-    "bg-surface-2 text-ink border border-border-strong hover:bg-surface disabled:opacity-50",
+    "border border-border-interactive bg-surface font-bold text-ink hover:bg-surface-2 disabled:opacity-50",
   outline:
-    "border border-border-strong bg-surface text-ink hover:bg-surface-2 hover:border-ink/40 disabled:opacity-50",
-  ghost: "text-muted hover:bg-surface-2 hover:text-ink disabled:opacity-50",
+    "border border-border-interactive bg-surface font-bold text-ink hover:bg-surface-2 disabled:opacity-50",
+  ghost: "font-bold text-muted hover:bg-surface-2 hover:text-ink disabled:opacity-50",
   danger:
-    "bg-danger text-white hover:bg-danger/90 disabled:opacity-50",
+    "bg-danger font-bold text-white hover:bg-danger/90 disabled:opacity-50",
   // Editorial text action — breaks the twin-button cliché.
-  link: "text-ink underline decoration-border-strong underline-offset-4 hover:text-accent hover:decoration-accent",
+  link: "font-bold text-ink underline decoration-border-strong underline-offset-4 hover:decoration-ink",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm rounded-[var(--radius-control)] gap-1.5",
-  md: "h-10 px-4 text-sm rounded-[var(--radius-control)] gap-2",
-  lg: "h-11 px-5 text-[0.95rem] rounded-[var(--radius-control)] gap-2",
-  icon: "h-9 w-9 rounded-[var(--radius-control)]",
+  sm: "h-8 px-3.5 text-[0.8125rem] rounded-pill gap-1.5",
+  md: "h-10 px-4 text-[0.8125rem] rounded-pill gap-2",
+  lg: "h-11 px-5 text-sm rounded-pill gap-2",
+  icon: "h-9 w-9 rounded-pill",
 };
 
 export interface ButtonProps
@@ -42,7 +44,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-1 disabled:cursor-not-allowed",
+        // Focus comes from the global :focus-visible outline (2px agent-mark).
+        "inline-flex items-center justify-center transition-colors disabled:cursor-not-allowed",
         variants[variant],
         sizes[size],
         className,
