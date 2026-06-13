@@ -85,26 +85,25 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
       <span className="block">
         <span
           className={cn(
-            // GB+ "worked" chip — rounded pill, green ✓ when finished, no border
-            "inline-flex items-center gap-1.5 rounded-pill px-3 py-1 font-mono text-[0.6875rem]",
-            state === "output-error"
-              ? "bg-danger-soft text-danger"
-              : "bg-surface-3 text-subtle",
+            // Process activity is subordinate to speech: faint mono, no pill, a
+            // leading status glyph (▸ working / ✓ done). Never reads as a message.
+            "inline-flex items-center gap-1.5 font-mono text-[0.6875rem]",
+            state === "output-error" ? "text-danger" : "text-faint",
           )}
         >
           <span
             aria-hidden
             className={
               state === "output-available" || state === "output-denied"
-                ? "text-success"
-                : "text-accent"
+                ? "text-good-mark"
+                : "text-agent-mark"
             }
           >
             {state === "output-available" || state === "output-denied" ? "✓" : "▸"}
           </span>
           {label}
           {(state === "input-streaming" || state === "input-available") && (
-            <span className="caret text-accent">▌</span>
+            <span className="caret text-agent-mark">▌</span>
           )}
         </span>
 

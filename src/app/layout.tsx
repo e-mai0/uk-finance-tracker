@@ -7,7 +7,8 @@ import "./globals.css";
 const sans = Karla({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ["400", "700", "800"],
+  // 400 body · 500/600 the calm-title middle (hierarchy without shouting) · 700/800 earned emphasis
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 

@@ -193,9 +193,9 @@ export default async function ChatPage({
           <form action={createThread}>
             <button
               type="submit"
-              className="w-full rounded-pill bg-ink px-3 py-1.5 text-[0.8125rem] font-extrabold text-canvas transition-opacity hover:opacity-90"
+              className="w-full rounded-pill border border-border-interactive bg-surface px-3 py-1.5 text-[0.8125rem] font-semibold text-ink transition-colors hover:bg-surface-2"
             >
-              <span aria-hidden className="mr-1">
+              <span aria-hidden className="mr-1 text-subtle">
                 +
               </span>
               New conversation
@@ -236,7 +236,7 @@ export default async function ChatPage({
                       className={rowClass}
                     >
                       <span className="flex items-baseline gap-1 truncate">
-                        <span className="block truncate text-[0.8125rem] font-extrabold text-ink">
+                        <span className="block truncate text-[0.8125rem] font-medium text-ink">
                           {t.title}
                           {isMorningBrief && (
                             <>
@@ -280,7 +280,7 @@ export default async function ChatPage({
         {/* Pane header */}
         <div className="flex items-center justify-between border-b border-hairline bg-surface-2 px-4 py-2.5">
           <div className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate font-display text-[1.0625rem] font-semibold text-ink">
+            <span className="truncate font-display text-[1.0625rem] font-medium text-ink">
               {activeThread.title}
             </span>
           </div>

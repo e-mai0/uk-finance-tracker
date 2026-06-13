@@ -285,7 +285,7 @@ function FileLink({ path, isActive }: { path: string; isActive: boolean }) {
           : "block px-4 py-2 hover:bg-surface-2"
       }
     >
-      <span className="block truncate text-[0.8125rem] font-extrabold text-ink">
+      <span className="block truncate text-[0.8125rem] font-medium text-ink">
         {label}
       </span>
       {path.includes("/") && (

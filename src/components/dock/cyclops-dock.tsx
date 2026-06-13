@@ -185,49 +185,42 @@ export function CyclopsDock({ badge }: { badge: number }) {
 
   const header = (
     <div className="flex items-center gap-2 border-b border-border-agent bg-surface-2 px-3 py-2">
-      <span className="label shrink-0 text-accent">
-        <span aria-hidden className="text-agent-mark">
-          ◆
-        </span>{" "}
-        CYCLOPS
-      </span>
-      <span className="label truncate text-faint">
-        {dockContextLabel(pathname)}
-      </span>
-      <div className="ml-auto flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={() => transition(expanded ? "docked" : "expanded")}
-          aria-label={
-            expanded
-              ? `Dock Cyclops (${hints.expand})`
-              : `Expand Cyclops (${hints.expand})`
-          }
-          className="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle transition-colors hover:border-border-interactive hover:text-ink"
-        >
-          <span suppressHydrationWarning>{hints.expand}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => transition("collapsed")}
-          aria-label={`Hide Cyclops (${hints.collapse})`}
-          className="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle transition-colors hover:border-border-interactive hover:text-ink"
-        >
-          —
-        </button>
-      </div>
+      {/* Click the header to expand; the chrome (⌘J labels) is gone — shortcuts
+          still fire silently. Only a quiet collapse affordance remains. */}
+      <button
+        type="button"
+        onClick={() => transition(expanded ? "docked" : "expanded")}
+        aria-label={
+          expanded
+            ? `Dock Cyclops (${hints.expand})`
+            : `Expand Cyclops (${hints.expand})`
+        }
+        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+      >
+        <span className="label shrink-0 text-accent">
+          <span aria-hidden className="text-agent-mark">
+            ◆
+          </span>{" "}
+          CYCLOPS
+        </span>
+        <span className="label truncate text-faint">
+          {dockContextLabel(pathname)}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={() => transition("collapsed")}
+        aria-label={`Hide Cyclops (${hints.collapse})`}
+        className="label shrink-0 px-1 text-faint transition-colors hover:text-ink"
+      >
+        —
+      </button>
     </div>
   );
 
   const footer = (
-    <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
-      <span className="label text-faint" suppressHydrationWarning>
-        {hints.expand} EXPAND · {hints.collapse} HIDE
-      </span>
-      <Link
-        href={chatHref}
-        className="label shrink-0 text-accent hover:underline"
-      >
+    <div className="border-t border-border px-3 py-2 text-right">
+      <Link href={chatHref} className="label text-accent hover:underline">
         Open in Ask Cyclops →
       </Link>
     </div>
