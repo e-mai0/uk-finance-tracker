@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import path from "node:path";
 import matter from "gray-matter";
 
 export type WritingSkill = {
@@ -20,10 +20,18 @@ export function parseWritingSkill(raw: string): WritingSkill {
   return { body, bannedTells };
 }
 
-// Read once at module load. `new URL(..., import.meta.url)` is statically
-// traced by @vercel/nft so writing.md is bundled into the serverless function
-// (verified in Task 8). Works in vitest (node env) and tsx (the eval) too.
-const raw = readFileSync(fileURLToPath(new URL("./writing.md", import.meta.url)), "utf8");
+// Read once at module load from the repo source path. We deliberately avoid
+// `new URL("./writing.md", import.meta.url)`: webpack rewrites that into an
+// asset URL that breaks `next build` page-data collection ("path argument must
+// be of type string ... received an instance of URL"). A process.cwd()-relative
+// path is opaque to the bundler, so it resolves on the real filesystem at
+// runtime; writing.md is kept in the serverless bundle via
+// outputFileTracingIncludes (next.config.ts). cwd is the repo root under next
+// build/dev/start, vitest and tsx.
+const raw = readFileSync(
+  path.join(process.cwd(), "src", "server", "engine", "skills", "writing.md"),
+  "utf8",
+);
 
 /**
  * The loaded writing-craft skill. Single source of truth for craft + tells.
