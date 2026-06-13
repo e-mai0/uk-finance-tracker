@@ -8,6 +8,7 @@ import { AshbyAdapter } from "./adapters/ashby";
 import { JaneStreetAdapter } from "./adapters/janestreet";
 import { JsonLdPageAdapter } from "./adapters/jsonld-page";
 import { OracleCloudAdapter } from "./adapters/oracle-cloud";
+import { TalNetAdapter } from "./adapters/talnet";
 import { fetchText, ImpervaBlockedError } from "./adapters/common";
 import { evaluateWatch, type WatchState } from "./watch";
 
@@ -52,6 +53,10 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
     case "ORACLE_CLOUD": {
       const c = source.config as unknown as Extract<SourceConfig, { ats: "oracle" }>;
       return new OracleCloudAdapter(c, employer);
+    }
+    case "TALNET": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "talnet" }>;
+      return new TalNetAdapter(c, employer);
     }
     default:
       return null;
