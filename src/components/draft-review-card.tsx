@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { acceptDraft, skipDraft } from "@/server/actions/drafts";
 
+// Canonical GB+ proposal verbs — Apply (ink) · Edit first (hairline) · skip
+// (quiet). Same card in Today, Workspace, and Memory.
 const PRI_PILL =
-  "rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-bold text-canvas transition-opacity disabled:opacity-60";
+  "rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas transition-opacity disabled:opacity-60";
 const SEC_PILL =
-  "rounded-pill border border-border-interactive bg-surface px-3 py-1 text-[0.8125rem] font-bold text-ink transition-colors hover:bg-surface-2 disabled:opacity-60";
+  "rounded-pill border border-border-strong px-4 py-1.5 text-[0.8125rem] font-bold text-muted transition-colors hover:text-ink disabled:opacity-60";
+const SKIP = "px-2 py-1.5 text-[0.8125rem] font-bold text-border-interactive transition-colors hover:text-ink disabled:opacity-40";
 const GHOST = "label inline-flex min-h-6 items-center px-1.5 py-1 text-subtle transition-colors hover:text-ink disabled:opacity-40";
 
 /**
@@ -73,11 +76,11 @@ export function DraftReviewCard({
 
   return (
     <div className="overflow-hidden rounded-control border border-border-agent bg-surface">
-      <div className="flex items-center gap-2 bg-surface-2 px-3.5 py-2">
+      <div className="flex items-center gap-2 border-b border-hairline bg-surface-2 px-3.5 py-2.5">
         <span className="label rounded-pill bg-accent-soft px-2.5 py-0.5 text-accent">
           ◆ DRAFT READY
         </span>
-        {meta && <span className="label truncate text-faint">{meta}</span>}
+        {meta && <span className="label ml-auto truncate text-faint">{meta}</span>}
       </div>
 
       <div className="px-3.5 py-3">
@@ -119,9 +122,9 @@ export function DraftReviewCard({
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border px-3.5 py-2.5">
+      <div className="flex items-center gap-2 border-t border-hairline px-3.5 py-2.5">
         <button type="button" onClick={accept} disabled={pending} className={PRI_PILL}>
-          {pending ? "Saving…" : edited ? "Save edited" : "Accept"}
+          {pending ? "Applying…" : edited ? "Apply edit" : "Apply"}
         </button>
         {!editing && (
           <button
@@ -137,9 +140,9 @@ export function DraftReviewCard({
           type="button"
           onClick={skip}
           disabled={pending}
-          className={`${GHOST} ml-auto`}
+          className={`${SKIP} ml-auto`}
         >
-          Skip
+          skip
         </button>
       </div>
     </div>
