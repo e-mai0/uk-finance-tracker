@@ -25,11 +25,14 @@ function rows(list: EfPos[], base: string, employer: AdapterEmployer): RawOpport
   return out;
 }
 
+/** Raw positions array for a page (shape differs per endpoint). */
+export function positionsOf(payload: unknown, endpoint: "apply" | "pcsx"): EfPos[] {
+  if (endpoint === "apply") return (payload as { positions?: EfPos[] })?.positions ?? [];
+  return (payload as { data?: { positions?: EfPos[] } })?.data?.positions ?? [];
+}
+
 export function mapEightfold(payload: unknown, endpoint: "apply" | "pcsx", base: string, employer: AdapterEmployer): RawOpportunity[] {
-  if (endpoint === "apply") {
-    const p = payload as { positions?: EfPos[] }; return rows(p?.positions ?? [], base, employer);
-  }
-  const p = payload as { data?: { positions?: EfPos[] } }; return rows(p?.data?.positions ?? [], base, employer);
+  return rows(positionsOf(payload, endpoint), base, employer);
 }
 
 function count(payload: unknown, endpoint: "apply" | "pcsx"): number {
@@ -45,13 +48,16 @@ export class EightfoldAdapter implements SourceAdapter {
     const path = this.cfg.endpoint === "apply" ? "/api/apply/v2/jobs" : "/api/pcsx/search";
     const base = `https://${this.cfg.host}`;
     const all: RawOpportunity[] = [];
+    // Advance by the actual number of positions returned per page (page size is
+    // server-controlled, not a fixed 10), so we never skip or overlap rows.
     let start = 0, total = Infinity;
-    while (start < total && start < 1000) {
+    while (start < total && start < 5000) {
       const payload = await fetchJson(`${base}${path}?domain=${this.cfg.domain}&query=intern&location=London&start=${start}`);
       total = count(payload, this.cfg.endpoint);
-      all.push(...mapEightfold(payload, this.cfg.endpoint, base, this.employer));
-      start += 10;
-      if (total === 0) break;
+      const page = positionsOf(payload, this.cfg.endpoint);
+      all.push(...rows(page, base, this.employer));
+      if (page.length === 0) break; // no more rows (covers off-season count:0 too)
+      start += page.length;
     }
     return buildDataset(this.id, this.employer, all);
   }

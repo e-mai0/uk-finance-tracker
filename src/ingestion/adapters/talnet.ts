@@ -25,6 +25,13 @@ export function mapTalNetBoard(html: string, baseUrl: string, employer: AdapterE
     if (seen.has(id)) continue;
     seen.add(id);
     const title = rawTitle.replace(/\s+/g, " ").trim();
+    // These boards are UK-locale (/en-GB) but DO carry some non-UK roles, which
+    // name their city in the title (Paris/Frankfurt/Tokyo/Sydney per research).
+    // We gate UK on the title text: this correctly drops the named non-UK roles
+    // but errs toward UNDER-collection — a UK role whose title omits a city is
+    // skipped. Safe direction for a reliability product (never shows a wrong
+    // location). FOLLOW-UP: capture a live board fixture and extract the per-row
+    // location cell, then gate on that instead of the title.
     const verdict = classifyPosting({ title, location: title }, fallback);
     if (!verdict.include) continue;
     const after = html.slice(m.index ?? 0, (m.index ?? 0) + 600);
