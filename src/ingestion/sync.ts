@@ -10,6 +10,7 @@ import { DeutscheBankBeesiteAdapter } from "./adapters/deutsche-beesite";
 import { JsonLdPageAdapter } from "./adapters/jsonld-page";
 import { OracleCloudAdapter } from "./adapters/oracle-cloud";
 import { TalNetAdapter } from "./adapters/talnet";
+import { WorkdayAdapter } from "./adapters/workday";
 import { fetchText, ImpervaBlockedError } from "./adapters/common";
 import { evaluateWatch, type WatchState } from "./watch";
 
@@ -61,6 +62,10 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
     case "TALNET": {
       const c = source.config as unknown as Extract<SourceConfig, { ats: "talnet" }>;
       return new TalNetAdapter(c, employer);
+    }
+    case "WORKDAY": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "workday" }>;
+      return new WorkdayAdapter(c, employer);
     }
     default:
       return null;
