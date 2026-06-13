@@ -2,20 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { RoleFamily, WorkAuth } from "@prisma/client";
+import type { RoleFamily } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToggleChipGroup } from "@/components/ui/toggle-chip";
-import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
 import {
   DEGREE_TYPES,
   ROLE_FAMILIES,
-  UK_LOCATIONS,
   UK_UNIVERSITIES,
-  WORK_AUTH_OPTIONS,
 } from "@/lib/constants";
 import { updateSettings, type SettingsResult } from "@/server/actions/settings";
 
@@ -28,24 +25,14 @@ export interface SettingsInitial {
   graduationYear: number;
   currentYear: number;
   targetRoleFamilies: RoleFamily[];
-  skills: string[];
-  workAuth: WorkAuth;
-  aLevels: string;
-  gcseSummary: string;
-  gpaOrEquivalent: string;
-  preferredLocations: string[];
-  openToAnywhereUk: boolean;
-  targetEmployers: string[];
 }
 
 const YEAR_OPTIONS = ["2026", "2027", "2028", "2029", "2030", "2031"];
 
 export function SettingsForm({
   initial,
-  employerSuggestions,
 }: {
   initial: SettingsInitial;
-  employerSuggestions: string[];
 }) {
   const router = useRouter();
   const [s, setS] = useState(initial);
@@ -68,16 +55,6 @@ export function SettingsForm({
       graduationYear: Number(s.graduationYear),
       currentYear: Number(s.currentYear),
       targetRoleFamilies: s.targetRoleFamilies,
-      skills: s.skills,
-      workAuth: s.workAuth,
-      gradeInfo: {
-        aLevels: s.aLevels,
-        gcseSummary: s.gcseSummary,
-        gpaOrEquivalent: s.gpaOrEquivalent,
-      },
-      preferredLocations: s.preferredLocations,
-      openToAnywhereUk: s.openToAnywhereUk,
-      targetEmployers: s.targetEmployers,
     };
 
     startTransition(async () => {
@@ -212,105 +189,6 @@ export function SettingsForm({
               />
             </div>
             <FieldError message={errors.targetRoleFamilies?.[0]} />
-          </div>
-          <div>
-            <Label>Skills &amp; interests</Label>
-            <div className="mt-2">
-              <TagInput
-                value={s.skills}
-                onChange={(v) => set("skills", v)}
-                placeholder="Add a skill and press Enter"
-              />
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Eligibility</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-5">
-          <div>
-            <Label>UK work authorization</Label>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {WORK_AUTH_OPTIONS.map((o) => {
-                const active = s.workAuth === o.value;
-                return (
-                  <button
-                    key={o.value}
-                    type="button"
-                    onClick={() => set("workAuth", o.value)}
-                    className={cn(
-                      // Selection is ink — never amber (GB+ contract).
-                      "rounded-[var(--radius-control)] border px-3.5 py-2.5 text-left text-[0.8125rem] font-bold transition-colors",
-                      active
-                        ? "border-ink bg-surface-3 text-ink"
-                        : "border-border-interactive bg-surface text-muted hover:bg-surface-2 hover:text-ink",
-                    )}
-                  >
-                    {o.label}
-                  </button>
-                );
-              })}
-            </div>
-            <FieldError message={errors.workAuth?.[0]} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Input
-              value={s.aLevels}
-              onChange={(e) => set("aLevels", e.target.value)}
-              placeholder="A-levels"
-            />
-            <Input
-              value={s.gcseSummary}
-              onChange={(e) => set("gcseSummary", e.target.value)}
-              placeholder="GCSEs"
-            />
-            <Input
-              value={s.gpaOrEquivalent}
-              onChange={(e) => set("gpaOrEquivalent", e.target.value)}
-              placeholder="Degree grade / GPA"
-            />
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Preferences &amp; targets</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-5">
-          <div>
-            <Label>Preferred UK locations</Label>
-            <div className="mt-2">
-              <ToggleChipGroup
-                options={UK_LOCATIONS.map((l) => ({ value: l, label: l }))}
-                selected={s.preferredLocations}
-                onChange={(v) => set("preferredLocations", v)}
-              />
-            </div>
-            <label className="mt-3 flex items-center gap-2 text-sm text-muted">
-              <input
-                type="checkbox"
-                checked={s.openToAnywhereUk}
-                onChange={(e) => set("openToAnywhereUk", e.target.checked)}
-                className="h-4 w-4 rounded border-border-interactive accent-[var(--color-ink)]"
-              />
-              I&apos;m open to roles anywhere in the UK
-            </label>
-            <FieldError message={errors.preferredLocations?.[0]} />
-          </div>
-          <div>
-            <Label>Target employers</Label>
-            <div className="mt-2">
-              <TagInput
-                value={s.targetEmployers}
-                onChange={(v) => set("targetEmployers", v)}
-                suggestions={employerSuggestions}
-                placeholder="Add a firm and press Enter"
-              />
-            </div>
           </div>
         </CardBody>
       </Card>

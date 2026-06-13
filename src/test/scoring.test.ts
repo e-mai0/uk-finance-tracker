@@ -88,6 +88,15 @@ describe("scoreOpportunity", () => {
     const { reasons } = scoreOpportunity(baseProfile, prefs, opp);
     expect(reasons.some((r) => r.toLowerCase().includes("anywhere"))).toBe(true);
   });
+
+  it("skips the work-auth section entirely when workAuth is unknown", () => {
+    const unknownAuth: ScoreProfile = { ...baseProfile, workAuth: null };
+    const withAuth = scoreOpportunity(baseProfile, basePrefs, baseOpp);
+    const withoutAuth = scoreOpportunity(unknownAuth, basePrefs, baseOpp);
+    // baseProfile is UK_CITIZEN (+15); null gets neither bonus nor penalty.
+    expect(withoutAuth.score).toBe(withAuth.score - 15);
+    expect(withoutAuth.reasons.join(" ")).not.toMatch(/sponsorship|eligible to work/i);
+  });
 });
 
 describe("fitTier", () => {

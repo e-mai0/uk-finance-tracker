@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { SettingsForm } from "@/components/settings/settings-form";
+import { QuestionnaireForm } from "@/components/questionnaire/questionnaire-form";
 import { ApplyProfileForm } from "@/components/settings/apply-profile-form";
 import { AnswerBankManager } from "@/components/settings/answer-bank-manager";
 import { ExtensionConnect } from "@/components/settings/extension-connect";
@@ -119,7 +120,6 @@ export default async function SettingsPage() {
       </section>
 
       <SettingsForm
-        employerSuggestions={employers.map((e) => e.name)}
         initial={{
           name: user.name,
           email: user.email,
@@ -129,16 +129,31 @@ export default async function SettingsPage() {
           graduationYear: profile.graduationYear,
           currentYear: profile.currentYear,
           targetRoleFamilies: prefs.targetRoleFamilies,
-          skills: profile.skills,
-          workAuth: profile.workAuth,
-          aLevels: grade.aLevels ?? "",
-          gcseSummary: grade.gcseSummary ?? "",
-          gpaOrEquivalent: grade.gpaOrEquivalent ?? "",
-          preferredLocations: prefs.preferredLocations,
-          openToAnywhereUk: prefs.openToAnywhereUk,
-          targetEmployers: prefs.targetEmployers,
         }}
       />
+
+      <div className="rounded-[var(--radius-card)] border border-border bg-surface p-5">
+        <h2 className="text-base font-semibold tracking-tight text-ink">
+          Questionnaire
+        </h2>
+        <p className="mt-0.5 mb-5 text-sm text-muted">
+          Optional details that sharpen your matches and drafts.
+        </p>
+        <QuestionnaireForm
+          variant="settings"
+          employerSuggestions={employers.map((e) => e.name)}
+          initial={{
+            workAuth: profile.workAuth,
+            aLevels: grade.aLevels ?? "",
+            gcseSummary: grade.gcseSummary ?? "",
+            gpaOrEquivalent: grade.gpaOrEquivalent ?? "",
+            skills: profile.skills,
+            preferredLocations: prefs.preferredLocations,
+            openToAnywhereUk: prefs.openToAnywhereUk,
+            targetEmployers: prefs.targetEmployers,
+          }}
+        />
+      </div>
 
       <div className="space-y-1.5 pt-2">
         <h2 className="text-[1.0625rem] leading-none text-ink">Apply copilot</h2>

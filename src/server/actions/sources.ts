@@ -12,13 +12,7 @@ import {
   prettifyIdentifier,
   safePublicUrl,
 } from "../../lib/source-detect";
-
-export interface ScoutState {
-  ok: boolean;
-  message: string;
-}
-
-export const SCOUT_IDLE: ScoutState = { ok: true, message: "" };
+import type { ScoutState } from "./scout-state";
 
 /**
  * Firm Scout: a user pastes any careers/job-board URL; if it's a Greenhouse /

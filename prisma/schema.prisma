@@ -118,7 +118,7 @@ model Profile {
   degreeType     String
   graduationYear Int
   currentYear    Int
-  workAuth       WorkAuth
+  workAuth       WorkAuth?
   gradeInfo      Json? // optional A-level / GCSE / GPA style fields
   skills         String[] @default([])
   createdAt      DateTime @default(now())

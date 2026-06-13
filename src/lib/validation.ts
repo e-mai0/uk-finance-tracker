@@ -64,18 +64,19 @@ export const educationSchema = z.object({
     .max(7, "That seems too high"),
 });
 
-export const interestsSchema = z.object({
+export const essentialsSchema = educationSchema.extend({
   targetRoleFamilies: z
     .array(z.enum(ROLE_FAMILY_VALUES))
     .min(1, "Pick at least one area you're targeting"),
-  skills: z.array(z.string().trim().min(1)).max(20).default([]),
 });
 
-export const eligibilitySchema = z.object({
-  workAuth: z.enum(WORK_AUTH_VALUES, {
-    message: "Select your work authorization",
-  }),
-  // Optional academic info — supported but never required for the MVP.
+// ---------------------------------------------------------------------------
+// Optional questionnaire — wizard step 3 and the Settings page. Every field
+// is optional; absent locations default to "open to anywhere in the UK".
+// ---------------------------------------------------------------------------
+
+export const questionnaireSchema = z.object({
+  workAuth: z.enum(WORK_AUTH_VALUES).nullable().optional(),
   gradeInfo: z
     .object({
       aLevels: z.string().trim().max(120).optional().or(z.literal("")),
@@ -83,44 +84,22 @@ export const eligibilitySchema = z.object({
       gpaOrEquivalent: z.string().trim().max(60).optional().or(z.literal("")),
     })
     .optional(),
-});
-
-export const targetsSchema = z.object({
+  skills: z.array(z.string().trim().min(1)).max(20).default([]),
   preferredLocations: z.array(z.string().trim().min(1)).default([]),
-  openToAnywhereUk: z.boolean().default(false),
+  openToAnywhereUk: z.boolean().default(true),
   targetEmployers: z.array(z.string().trim().min(1)).max(40).default([]),
-  // CV metadata only for the MVP (no file parsing/storage).
-  cvFileName: z.string().trim().max(200).optional().or(z.literal("")),
-  cvFileSize: z.number().int().nonnegative().optional(),
 });
-
-// ---------------------------------------------------------------------------
-// Full onboarding payload (validated server-side on finish)
-// ---------------------------------------------------------------------------
-
-export const onboardingSchema = educationSchema
-  .merge(interestsSchema)
-  .merge(eligibilitySchema)
-  .merge(targetsSchema)
-  .refine(
-    (d) => d.openToAnywhereUk || d.preferredLocations.length > 0,
-    {
-      message: "Pick at least one location, or select 'open to anywhere in the UK'",
-      path: ["preferredLocations"],
-    },
-  );
 
 export type EducationInput = z.infer<typeof educationSchema>;
-export type InterestsInput = z.infer<typeof interestsSchema>;
-export type EligibilityInput = z.infer<typeof eligibilitySchema>;
-export type TargetsInput = z.infer<typeof targetsSchema>;
-export type OnboardingInput = z.infer<typeof onboardingSchema>;
+export type EssentialsInput = z.infer<typeof essentialsSchema>;
+export type QuestionnaireInput = z.infer<typeof questionnaireSchema>;
 
 // ---------------------------------------------------------------------------
-// Settings (profile + preferences edit) — reuses onboarding shape
+// Settings (education + role-family targets) — the questionnaire covers the
+// rest via saveQuestionnaire.
 // ---------------------------------------------------------------------------
 
-export const settingsSchema = onboardingSchema;
+export const settingsSchema = essentialsSchema;
 export type SettingsInput = z.infer<typeof settingsSchema>;
 
 // ---------------------------------------------------------------------------
