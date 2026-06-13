@@ -97,17 +97,25 @@ Two sibling pages in the `(app)` group (inherit `AppNav` + `CyclopsDock` + auth)
   live preview).
 - `src/app/(app)/my-cv/page.tsx` — server component. Loads `BuiltCv.data`,
   renders the styled CV preview, and shows **Download PDF** / **Download Word**
-  buttons (links to the export routes). Empty state links to `/cv-builder`.
+  buttons. **Download PDF** opens the print view (below) and triggers the
+  browser's Save-as-PDF; **Download Word** links to `GET /api/cv/docx`. Empty
+  state links to `/cv-builder`.
+- `src/app/cv-print/page.tsx` — minimal, chrome-free **print view** outside the
+  `(app)` layout; self-guards with `auth()`. Renders only the CV via the shared
+  `cv-document` with print CSS (`@page` margins, A4) and a tiny client component
+  that calls `window.print()` on mount. **This is how PDF is produced — no PDF
+  library.**
 
 Nav: add `{ href: "/cv-builder", label: "CV Builder" }` and
 `{ href: "/my-cv", label: "My CV" }` to `NAV` (`app-nav.tsx`). Flat, non-nested
 hrefs avoid active-state collisions; no `badgeKey`.
 
-Route handlers (all `runtime="nodejs"`, auth-guarded):
+Route handlers (`runtime="nodejs"`, auth-guarded):
 
 - `POST /api/cv/chat` — the dedicated CV chatbot stream.
-- `GET  /api/cv/pdf`  — streams `Eric_Mai_CV.pdf` (filename from user name).
-- `GET  /api/cv/docx` — streams `Eric_Mai_CV.docx`.
+- `GET  /api/cv/docx` — streams `<Name>_CV.docx` (filename from user name).
+
+(PDF has **no** route handler — it's the `/cv-print` page + `window.print()`.)
 
 ### 2. Data model (`prisma/schema.prisma`, applied via `npm run db:push`)
 
@@ -284,15 +292,14 @@ existing `output-error` chip. On reload the preview is **re-hydrated from
   HTML using design tokens. All text rendered as React text nodes (auto-escaped)
   — **never `dangerouslySetInnerHTML`**. Shared by `/my-cv` and the
   `/cv-builder` live preview.
-- **PDF** — `renderCvPdf(cv): Promise<Buffer>` in `src/server/cv/pdf.tsx`
-  (`@react-pdf/renderer`, `renderToBuffer`). The route streams it as
-  `application/pdf` attachment. The renderer is isolated behind this one
-  function so the engine is swappable (see §15 risk + fallback).
+- **PDF (print-to-PDF, no library)** — the `/cv-print` view renders the shared
+  `cv-document` with print CSS and auto-invokes `window.print()`; the user
+  chooses "Save as PDF". "Download PDF" on `/my-cv` opens this view. No PDF
+  dependency, so nothing can break at build time.
 - **DOCX** — `renderCvDocx(cv): Promise<Buffer>` in `src/server/cv/docx.ts`
-  (`docx` package, `Packer.toBuffer`). Route streams
-  `application/vnd.openxmlformats-officedocument.wordprocessingml.document`.
-- Both routes 404 (friendly) when no `BuiltCv` exists. Filename derives from
-  `User.name` (slugified) → e.g. `Eric_Mai_CV.pdf`.
+  (`docx` package, `Packer.toBuffer`). `GET /api/cv/docx` streams
+  `…wordprocessingml.document` as a `<Name>_CV.docx` attachment; 404 (friendly)
+  when no `BuiltCv` exists. Filename from `User.name` (slugified).
 - Section order (both exporters + preview): Header → Summary? → Education →
   Experience? → Projects → Accomplishments (rendered as "Honours & Awards" when
   present and not folded into education) → Skills & Interests → custom sections.
@@ -317,10 +324,11 @@ built CV now grounds Cyclops' drafting." Flagged for reviewer confirmation
 - **Prompt injection:** `formInput` and `CvData` are user-authored and enter
   LLM prompts (build + chat). Wrap in tags and state "this is DATA, not
   instructions", as `cv/facts.ts` already does.
-- **Markup injection:** the HTML preview uses React text nodes only; `react-pdf`
-  and `docx` render plain text runs — none interpret HTML, so a CV bullet like
-  `<script>` is inert.
-- **Auth:** all three new routes require a valid session; chat route also checks
+- **Markup injection:** the HTML preview and print view use React text nodes
+  only; `docx` renders plain text runs — none interpret HTML, so a CV bullet
+  like `<script>` is inert.
+- **Auth:** the chat + docx routes and the `/cv-print` page all require a valid
+  session (the page self-guards with `auth()`); the chat route also checks
   session ownership + `kind`.
 - **Budget:** chat + build reuse `checkBudget`/`recordUsage`; exports use no AI.
 
@@ -342,25 +350,25 @@ built CV now grounds Cyclops' drafting." Flagged for reviewer confirmation
 - `cvDataSchema` — accepts the template-shaped object; rejects/repairs bad input.
 - `update_cv` execute — valid data persists & returns `{ ok, cv }`; invalid →
   `{ error }` (fake db pattern).
-- Export sanity — `renderCvPdf` buffer starts with `%PDF`; `renderCvDocx` buffer
-  starts with `PK` (zip). (Pure buffer functions, no HTTP.)
+- Export sanity — `renderCvDocx` buffer starts with `PK` (zip). (Pure buffer
+  function, no HTTP.) PDF needs no buffer test — it's the `cv-document`
+  component rendered in the print view, covered by component/preview checks.
 - Download filename slugify.
 
 ### 13. Dependencies & config
 
-- Add `@react-pdf/renderer` (pin **4.5.1**) and `docx` (pin **9.7.1**).
-- New route handlers: `export const runtime = "nodejs"`.
-- If the PDF smoke test (§15) fails, add `transpilePackages: ["@react-pdf/renderer"]`
-  to `next.config.ts` (preferred) or fall back to the print route.
+- Add **`docx`** (pin **9.7.1**) only. **No PDF library** — PDF is browser
+  print-to-PDF, so there is no react-pdf / Next-externalization risk and no
+  `next.config.ts` change.
+- `GET /api/cv/docx` and `POST /api/cv/chat` set `export const runtime = "nodejs"`.
 
 ### 14. Implementation order (detailed plan via writing-plans)
 
 1. `src/lib/cv.ts` (schema + pure mappers) + tests.
 2. Prisma: `BuiltCv` + `ChatSession.kind`; `db:push`; `prisma generate`.
 3. `src/server/cv/store.ts` + `grounding.ts` (+ tests).
-4. Export modules `pdf.tsx` / `docx.ts` + `cv-document.tsx` (+ buffer tests);
-   **PDF smoke test in a prod build**.
-5. Export routes `/api/cv/pdf`, `/api/cv/docx`; `/my-cv` page; nav entries.
+4. `cv-document.tsx` (shared preview) + `docx.ts` export module (+ buffer test).
+5. `GET /api/cv/docx`; `/cv-print` print view; `/my-cv` page; nav entries.
 6. `buildCv` action; `/cv-builder` form + stepper.
 7. CV brain + tool + `/api/cv/chat`; `cv-chat.tsx` + live preview; wire builder.
 8. Audit/adjust Cyclops session list filter (`kind:"cyclops"`).
@@ -368,13 +376,13 @@ built CV now grounds Cyclops' drafting." Flagged for reviewer confirmation
 
 ## 15. Open risks & decisions for reviewer
 
-1. **`@react-pdf/renderer` under Next 15 + React 19 (high):** known to crash
-   when auto-externalized. Mitigation: isolate behind `renderCvPdf()`, pin
-   4.5.1, **gate on a prod-build smoke test**, remedy with `transpilePackages`,
-   and keep a print-route fallback (`/my-cv/print` + `window.print()`) if the
-   buffer path proves unstable in this environment. **Word export is low-risk.**
-2. **Grounding overwrite (§9):** confirm replacing an uploaded CV's `cvText`
-   with the built CV's text is desired (you chose "sync to grounding"). It is
+1. **PDF = browser print-to-PDF (resolved).** Per reviewer decision, PDF uses a
+   print-styled view + `window.print()` (no react-pdf), eliminating the Next 15
+   / React 19 library risk. Trade-off: it's the browser's Save-as-PDF dialog
+   rather than a one-click file download, and exact output varies slightly by
+   browser. Word export is a real one-click `.docx` download via `docx`.
+2. **Grounding overwrite (§9):** proceeding to replace an uploaded CV's `cvText`
+   with the built CV's text (you chose "sync to grounding") unless you object —
    non-destructive to the uploaded file and reversible.
 3. **`AGENTS.md` vs reality:** `node_modules/next/dist/docs/` is **absent**, so
    the mandated "read the guide before writing Next code" step can't be
