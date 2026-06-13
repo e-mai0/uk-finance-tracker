@@ -110,17 +110,21 @@ export function AppNav({
           {/* ⌘K palette — trigger button + overlay live in the component. */}
           <CommandPalette />
 
-          {/* Agent activity pill — opens the activity log. */}
-          <Link
-            href="/activity"
-            aria-label="Agent activity log"
-            className="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle transition-colors hover:bg-surface-2 hover:text-ink"
-          >
-            <span aria-hidden className="text-agent-mark">
-              ●
-            </span>
-            {activity}
-          </Link>
+          {/* Agent activity pill — opens the activity log. Shown only when the
+              agent actually has something to report; "idle" is not surfaced (an
+              amber ● next to "idle" is noise and miscolours the contract). */}
+          {activity !== "idle" && (
+            <Link
+              href="/activity"
+              aria-label={`Agent activity: ${activity}`}
+              className="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle transition-colors hover:text-ink"
+            >
+              <span aria-hidden className="text-agent-mark">
+                ●
+              </span>
+              {activity}
+            </Link>
+          )}
 
           <div className="relative" ref={menuRef}>
             <button
