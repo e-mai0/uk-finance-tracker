@@ -8,8 +8,12 @@
     "render:v2": "remotion render src/index.ts WatchItCount out/watch-it-count.mp4 --codec=h264"
   },
   "dependencies": {
+    "@fontsource/geist-mono": "^5.2.8",
+    "@fontsource/hanken-grotesk": "^5.2.8",
+    "@fontsource/newsreader": "^5.2.10",
     "@remotion/cli": "^4.0.476",
     "@remotion/google-fonts": "^4.0.476",
+    "@remotion/motion-blur": "^4.0.476",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "remotion": "^4.0.476"

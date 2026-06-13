@@ -1,6 +1,9 @@
 // Cyclops "GB+" tokens, lifted from src/app/globals.css so the reel uses the
 // real shipped theme: warm linen paper, cream cards, amber agent accent.
 export const theme = {
+  paper: "#fffefb", // award-cut: crisp near-white stage (Ref-A temperature)
+  gold: "#f0b35f", // amber -> gold gradient top
+  gold2: "#ffd89a", // gold highlight
   canvas: "#f4f1ea", // linen page base
   surface: "#fffdf9", // cream cards
   surface2: "#faf6ee", // card heads / hover
