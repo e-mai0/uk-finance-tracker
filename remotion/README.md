@@ -33,9 +33,21 @@ npm run render:v2     # -> out/watch-it-count.mp4 (1080x1920, 15s, 30fps, h264)
   `.woff2` files into `src/fonts/` and load with `@remotion/fonts` (no network at
   render time — the sandbox's TLS proxy blocks Google Fonts' CDN).
 
+## Audio
+
+`scripts/make-track.py` synthesizes a 15s, 120 BPM upbeat bed (pure stdlib, no
+numpy) to `public/track.wav`; the visual edit is cut to that BPM (beat = 15
+frames). Regenerate with `python3 scripts/make-track.py`. Remotion muxes it via
+`<Audio src={staticFile("track.wav")} />`. Swap in a licensed track any time.
+
+## Style
+
+This cut emulates the kinetic motion-graphics reference: beat-synced bounce
+(`beatBump`), cards storming in from offscreen with springy overshoot and 3D
+scatter, a swoosh wipe between scenes, a confetti burst on the memory-save and
+the final click, gradient progress bars, drifting amber background blobs.
+
 ## Not included (deliberately)
 
-- **Audio.** Rendered silent. Add a royalty-free beat + SFX via Remotion's
-  `<Audio>` (free) or generate a track; beat-sync the cuts to the track's BPM.
 - **Live-action inserts.** None needed for V2. V1/V5 need real human shots —
   phone-shoot them or use the limited AI-video credits for just those plates.
