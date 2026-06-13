@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cyclops — GB+ Redesign (real-system render)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- exactly the weights app/layout.tsx ships via next/font -->
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600&family=Karla:wght@400;700;800&family=Fragment+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+<!-- ░░ the app's real Tailwind v4 @theme — verbatim from src/app/globals.css ░░ -->
+<style type="text/tailwindcss">
+@theme {
+  --color-canvas: #f4f1ea;
+  --color-surface: #fffdf9;
+  --color-surface-2: #faf6ee;
+  --color-surface-3: #f0ebdf;
+  --color-ink: #2b2722;
+  --color-muted: #5d564b;
+  --color-subtle: #6b6256;
+  --color-faint: #756c5f;
+  --color-deco: #a39885;
+  --color-border: #e3dccd;
+  --color-hairline: #efe9dc;
+  --color-border-strong: #d4cab6;
+  --color-border-interactive: #847b6e;
+  --color-border-agent: #ecd9bd;
+  --color-accent: #9a4c0c;
+  --color-accent-2: #c05f10;
+  --color-agent-mark: #c05f10;
+  --color-accent-hover: #7a3c0a;
+  --color-accent-fg: #fffdf9;
+  --color-accent-soft: #f8ead9;
+  --color-accent-tint: #fdf6ea;
+  --color-agent-on-dark: #f0b35f;
+  --color-chrome: #2b2722;
+  --color-chrome-2: #3d372e;
+  --color-chrome-line: #4a4234;
+  --color-chrome-ink: #f4f1ea;
+  --color-chrome-ink-2: #c4b9a6;
+  --color-chrome-dim: #9d917f;
+  --color-amber: #f0b35f;
+  --color-amber-2: #f5c57e;
+  --color-success: #3a6246;
+  --color-good-mark: #4e7d5b;
+  --color-success-soft: #e8efe6;
+  --color-warning: #8f6b22;
+  --color-warning-soft: #f6ecd8;
+  --color-danger: #a93226;
+  --color-danger-soft: #f6e3e0;
+  --color-info: #9a4c0c;
+  --color-info-soft: #f8ead9;
+  --color-diff-del: #a93226;
+  --color-diff-del-bg: #f9ecea;
+  --color-diff-add: #2e6b46;
+  --color-diff-add-bg: #ebf2ec;
+  --color-tier-strong: #4e7d5b;
+  --color-tier-good: #9a4c0c;
+  --color-tier-mod: #8f6b22;
+  --color-tier-low: #b9b0a0;
+  --radius-card: 0.875rem;
+  --radius-control: 0.625rem;
+  --radius-pill: 999px;
+  --radius-bar: 999px;
+  --radius: 0.625rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 0.875rem;
+  --radius-3xl: 0.875rem;
+  --shadow-card: 0 2px 6px rgba(70, 60, 40, 0.05), 0 12px 32px -20px rgba(70, 60, 40, 0.14);
+  --shadow-pop: 0 10px 28px -16px rgba(70, 60, 40, 0.22);
+  --shadow-frame: 0 2px 6px rgba(70, 60, 40, 0.05), 0 12px 32px -20px rgba(70, 60, 40, 0.14);
+  --font-display: var(--font-display-slab), Georgia, serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+}
+</style>
+
+<style>
+  /* font variables next/font would set on <html> */
+  :root{ --font-display-slab:"Zilla Slab"; --font-geist-sans:"Karla"; --font-geist-mono:"Fragment Mono"; }
+
+  /* ── app base, scoped to .app so it doesn't fight the dark viewer ── */
+  .app{ color:var(--color-ink); font-family:var(--font-sans); background-color:var(--color-canvas); -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  .app h1, .app h2{ font-family:var(--font-display); letter-spacing:-0.01em; font-weight:500; }
+  .app a{ text-decoration:none; color:inherit; }
+  /* app utility classes (verbatim from globals.css) */
+  .label{ font-family:var(--font-mono); font-size:0.6875rem; font-weight:400; letter-spacing:0.08em; text-transform:uppercase; }
+  .tabular{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
+  .caret{ animation:caret 1.05s steps(1,end) infinite; }
+  @keyframes caret{ 50%{opacity:0;} }
+  .live-dot{ box-shadow:0 0 0 2px rgba(78,125,91,.18), 0 0 7px 0 rgba(78,125,91,.5); }
+  .animate-rise{ animation:rise .5s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes rise{ from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+  .ticker-track{ display:inline-flex;flex-wrap:nowrap;white-space:nowrap;animation:ticker var(--ticker-duration,48s) linear infinite; }
+  .ticker:hover .ticker-track{ animation-play-state:paused; }
+  @keyframes ticker{ to{transform:translate3d(-50%,0,0);} }
+
+  /* ── dark viewer chrome (NOT part of the app; plain CSS) ── */
+  body{ margin:0; background:#15130f; color:#cdc6b8; font-family:"Karla",sans-serif; -webkit-font-smoothing:antialiased; }
+  .pcap{ max-width:1280px; margin:42px auto 8px; padding:0 22px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  .pcap b{ font-family:"Fragment Mono",monospace; font-size:13px; color:#f0b35f; }
+  .pcap h3{ font-family:"Zilla Slab",serif; font-size:18px; color:#fff; font-weight:600; }
+  .pcap span{ font-family:"Fragment Mono",monospace; font-size:10.5px; color:#8a8275; }
+  .pcap em{ font-style:normal; font-family:"Fragment Mono",monospace; font-size:9px; color:#6fae7e; border:1px solid #2f4634; border-radius:999px; padding:2px 9px; }
+  .pcap em.anchor{ color:#f0b35f; border-color:#4a3a22; }
+  .frame{ max-width:1280px; margin:0 auto; border:1px solid #2c2a24; border-radius:8px; overflow:hidden; box-shadow:0 30px 80px -40px rgba(0,0,0,.7); }
+  .note{ max-width:1280px; margin:10px auto 0; padding:0 22px; font-size:12.5px; color:#8f877a; line-height:1.65; }
+  .note b{ color:#c2bbac; font-weight:600; } .note .chg{ color:#f0b35f; font-weight:600; }
+  .intro{ max-width:1280px; margin:44px auto 0; padding:0 22px; }
+  .intro h1{ font-family:"Zilla Slab",serif; font-size:30px; color:#fff; font-weight:600; }
+  .intro p{ font-size:14px; color:#9b9285; line-height:1.7; margin-top:10px; max-width:86ch; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>GB+ Redesign — rendered on the app's real design system</h1>
+  <p>This mockup is compiled through the app's actual Tailwind v4 <code>@theme</code> (verbatim tokens), the same <code>next/font</code> weights (Karla 400/700/800 · Zilla Slab 500/600 · Fragment Mono), and the same utility classes. Page 1 (Today) is the app's <b style="color:#f0b35f">current</b> markup verbatim — the fidelity anchor: it should read identically to your live Today page (content is sample data). The remaining pages are the <b style="color:#f0b35f">redesign</b> drawn in that same real system.</p>
+</div>
+
+<!-- ════════════════ 1 · TODAY (CURRENT — fidelity anchor, verbatim markup) ════════════════ -->
+<div class="pcap"><b>1</b><h3>Today — the landing</h3><span>page content matches the live page; dock + composer redesigned</span><em class="anchor">render-fidelity reference</em></div>
+<div class="frame">
+  <div class="app">
+    <!-- AppNav (verbatim) -->
+    <header class="sticky top-0 z-40 bg-canvas/95 backdrop-blur-sm">
+      <div class="flex items-center gap-2.5 px-5 py-2.5">
+        <a class="font-display text-[1.0625rem] font-semibold text-ink">cyclops<span class="text-accent">.</span></a>
+        <nav class="ml-3 flex items-center gap-1">
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold bg-ink text-canvas">Today<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-amber">3</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Tracker</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Radar</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Applications<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">2</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Ask Cyclops<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">1</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Memory</a>
+        </nav>
+        <div class="ml-auto flex items-center gap-2.5">
+          <button class="label flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-faint"><span aria-hidden>⌘K</span></button>
+          <a class="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle"><span aria-hidden class="text-agent-mark">●</span> worked overnight</a>
+          <button class="tabular flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[0.6875rem] text-canvas">EC</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex min-h-0 flex-1">
+      <main class="min-w-0 flex-1">
+        <!-- today/page.tsx body, verbatim classes -->
+        <div class="mx-auto max-w-3xl px-5 py-8">
+          <p class="label text-faint">FRIDAY 13 JUNE</p>
+          <h1 class="mt-1 text-[1.75rem] text-ink">Good morning, Eric.</h1>
+          <p class="mt-1 text-[0.875rem] text-muted">Cyclops prepared your brief overnight.</p>
+
+          <section class="mt-5 rounded-card border border-border border-l-[3px] border-l-agent-mark bg-surface shadow-card">
+            <div class="flex items-center gap-2 border-b border-border px-4 py-2.5">
+              <span class="label rounded-pill bg-accent-soft px-2.5 py-0.5 text-accent">◆ MORNING BRIEF</span>
+              <span class="label text-faint">PREPARED 07:00</span>
+              <span class="ml-auto"><span class="block h-1.5 w-1.5 rounded-full bg-agent-mark"></span></span>
+            </div>
+            <div class="px-4 py-3">
+              <p class="max-w-[70ch] whitespace-pre-wrap text-[0.875rem] leading-relaxed text-ink">The week ahead is about J.P. Morgan. Your two hardest answers are drafted and waiting — both in your voice, from the answer bank. Reviewing them today keeps you a week ahead of the rush. One flag: Barclays moved to 12 July and added a video-interview stage.</p>
+            </div>
+            <div class="border-t border-border px-4 py-2.5">
+              <a class="inline-block rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas">Open as chat</a>
+            </div>
+          </section>
+
+          <section class="mt-5 rounded-card border border-border bg-surface shadow-card">
+            <div class="flex items-baseline justify-between border-b border-border px-4 py-2.5">
+              <h2 class="label text-faint">NEEDS YOU</h2>
+              <span class="tabular label text-faint">3</span>
+            </div>
+            <ul class="divide-y divide-border">
+              <li class="px-4 py-3">
+                <div class="flex items-start gap-3">
+                  <span aria-hidden class="w-4 shrink-0 text-center text-agent-mark">◆</span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[0.875rem] text-ink">Review 2 drafted answers — J.P. Morgan</p>
+                    <p class="mt-0.5 font-mono text-[0.6875rem] text-subtle">02:14</p>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-1.5">
+                    <button class="label inline-flex min-h-6 items-center px-1.5 py-1 text-subtle hover:text-ink">later</button>
+                  </div>
+                </div>
+                <details class="mt-2 pl-7"><summary class="label inline-flex cursor-pointer list-none items-center gap-1 text-accent">Review ↓</summary></details>
+              </li>
+              <li class="px-4 py-3">
+                <div class="flex items-start gap-3">
+                  <span aria-hidden class="w-4 shrink-0 text-center text-agent-mark">?</span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[0.875rem] text-ink">Missing answer — “Why this division?” — Goldman</p>
+                    <p class="mt-0.5 font-mono text-[0.6875rem] text-subtle">07:00</p>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-1.5">
+                    <a class="rounded-pill border border-border-interactive bg-surface px-3 py-1 text-[0.8125rem] font-bold text-ink hover:bg-surface-2">Answer in chat</a>
+                    <button class="label inline-flex min-h-6 items-center px-1.5 py-1 text-subtle hover:text-ink">Dismiss</button>
+                    <button class="label inline-flex min-h-6 items-center px-1.5 py-1 text-subtle hover:text-ink">later</button>
+                  </div>
+                </div>
+              </li>
+              <li class="px-4 py-3">
+                <div class="flex items-start gap-3">
+                  <span aria-hidden class="w-4 shrink-0 text-center text-agent-mark">▲</span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[0.875rem] text-ink">Confirm deadline change — Barclays</p>
+                    <p class="mt-0.5 font-mono text-[0.6875rem] text-subtle">02:14</p>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-1.5">
+                    <button class="rounded-pill border border-border-interactive bg-surface px-3 py-1 text-[0.8125rem] font-bold text-ink hover:bg-surface-2">Confirm</button>
+                    <button class="label inline-flex min-h-6 items-center px-1.5 py-1 text-subtle hover:text-ink">later</button>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section class="mt-5 rounded-card border border-border bg-surface shadow-card">
+            <div class="flex items-baseline justify-between border-b border-border px-4 py-2.5">
+              <h2 class="label text-faint">COMING UP</h2>
+              <a class="label text-subtle hover:text-ink">full tracker →</a>
+            </div>
+            <ul class="divide-y divide-border">
+              <li><a class="flex items-center gap-3 px-4 py-3 hover:bg-surface-2">
+                <span aria-hidden class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 text-[0.7rem] font-semibold tracking-tight text-muted">JP</span>
+                <div class="min-w-0 flex-1"><p class="truncate text-[0.875rem] font-bold text-ink">J.P. Morgan</p><p class="truncate text-[0.8125rem] text-muted">SWE Intern</p></div>
+                <div class="shrink-0 text-right"><p class="font-mono text-[0.78rem] text-danger">▼ D-17</p><p class="font-mono text-[0.6875rem] text-subtle">30 Jun</p></div>
+              </a></li>
+              <li><a class="flex items-center gap-3 px-4 py-3 hover:bg-surface-2">
+                <span aria-hidden class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 text-[0.7rem] font-semibold tracking-tight text-muted">BC</span>
+                <div class="min-w-0 flex-1"><p class="truncate text-[0.875rem] font-bold text-ink">Barclays</p><p class="truncate text-[0.8125rem] text-muted">Tech Developer</p></div>
+                <div class="shrink-0 text-right"><p class="font-mono text-[0.78rem] text-ink">D-29</p><p class="font-mono text-[0.6875rem] text-subtle">12 Jul</p></div>
+              </a></li>
+              <li><a class="flex items-center gap-3 px-4 py-3 hover:bg-surface-2">
+                <span aria-hidden class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 text-[0.7rem] font-semibold tracking-tight text-muted">HS</span>
+                <div class="min-w-0 flex-1"><p class="truncate text-[0.875rem] font-bold text-ink">HSBC</p><p class="truncate text-[0.8125rem] text-muted">Tech Summer Intern</p></div>
+                <div class="shrink-0 text-right"><p class="font-mono text-[0.78rem] text-ink">D-36</p><p class="font-mono text-[0.6875rem] text-subtle">19 Jul</p></div>
+              </a></li>
+            </ul>
+          </section>
+        </div>
+      </main>
+
+      <!-- dock: floating card + rounded composer (redesigned) -->
+      <aside class="my-4 mr-5 flex w-[286px] shrink-0 flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card" style="height:560px;">
+        <div class="flex items-center gap-2 border-b border-border-agent bg-surface-2 px-3 py-2">
+          <span class="label shrink-0 text-accent"><span aria-hidden class="text-agent-mark">◆</span> CYCLOPS</span>
+          <span class="label truncate text-faint">TODAY</span>
+          <div class="ml-auto flex shrink-0 items-center gap-1">
+            <button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">⌘J</button>
+            <button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">—</button>
+          </div>
+        </div>
+        <div class="flex-1 px-3 py-3">
+          <p class="text-[0.8125rem] leading-relaxed text-muted">Morning. The queue is short today — JPM first, it's the only one with a real clock on it. I'll re-sweep listings at 19:00.</p>
+          <div class="mt-3 flex flex-col gap-1.5">
+            <button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">Walk me through the brief</button>
+            <button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">Plan my week</button>
+          </div>
+        </div>
+        <div class="border-t border-hairline p-3">
+          <div class="rounded-[16px] border border-border bg-surface">
+            <div class="flex items-center gap-2 px-3 py-2 text-[0.8125rem] text-faint"><span class="font-mono text-accent">›</span> Ask Cyclops…</div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between gap-2 border-t border-hairline px-3 py-2">
+          <span class="label text-faint">⌘J EXPAND · CTRL+\ HIDE</span>
+          <a class="label shrink-0 text-accent">Open in Ask Cyclops →</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Today:</b> the page content is the live page's exact markup (only the data is sample) — your fidelity reference for the rendering system. The <span class="chg">dock is now the redesigned floating card with the rounded composer</span> (no rectangular input anywhere). Greeting weight, brief card, queue rows and “Coming up” match the current app.</div>
+
+<!-- ════════════════ 2 · ASK CYCLOPS (REDESIGN) ════════════════ -->
+<div class="pcap"><b>2</b><h3>Ask Cyclops — chat</h3><span>ink bubbles · Karla prose · rounded-16 composer</span><em>REDESIGN</em></div>
+<div class="frame">
+  <div class="app">
+    <header class="sticky top-0 z-40 bg-canvas/95 backdrop-blur-sm">
+      <div class="flex items-center gap-2.5 px-5 py-2.5">
+        <a class="font-display text-[1.0625rem] font-semibold text-ink">cyclops<span class="text-accent">.</span></a>
+        <nav class="ml-3 flex items-center gap-1">
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Today<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">3</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Tracker</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Radar</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Applications<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">2</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold bg-ink text-canvas">Ask Cyclops<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-amber">1</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Memory</a>
+        </nav>
+        <div class="ml-auto flex items-center gap-2.5">
+          <button class="label flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-faint">⌘K</button>
+          <a class="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle"><span class="text-agent-mark">●</span> memory on</a>
+          <button class="tabular flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[0.6875rem] text-canvas">EC</button>
+        </div>
+      </div>
+    </header>
+    <div class="animate-rise flex h-[640px] gap-4 px-5 py-4">
+      <!-- thread rail (floating card) -->
+      <aside class="flex w-64 shrink-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
+        <div class="flex gap-2 border-b border-hairline px-3 py-2.5">
+          <div class="label flex flex-1 items-center gap-2 rounded-control border border-border bg-surface px-3 py-1.5 text-faint"><span class="text-agent-mark">›</span> Search chats…</div>
+          <button class="rounded-pill bg-ink px-3 py-1.5 text-[0.75rem] font-extrabold text-canvas">+ New</button>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-1">
+          <div class="label px-3 pt-3 pb-1 text-faint">Needs you</div>
+          <a class="block bg-accent-tint px-3 py-2 shadow-[inset_3px_0_0_var(--color-ink)]"><span class="block truncate text-[0.8125rem] font-extrabold text-ink">JPM application prep</span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">◆ 1 proposal · 09:32</span></a>
+          <div class="label px-3 pt-3 pb-1 text-faint">Today</div>
+          <a class="block px-3 py-2 hover:bg-surface-2"><span class="block truncate text-[0.8125rem] font-bold text-muted">Morning brief — 13 Jun <span class="label text-accent">◆ AUTO</span></span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">07:00</span></a>
+          <div class="label px-3 pt-3 pb-1 text-faint">This week</div>
+          <a class="block px-3 py-2 hover:bg-surface-2"><span class="block truncate text-[0.8125rem] font-bold text-muted">Cover letter voice check</span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">11 Jun · 3 edits applied ✓</span></a>
+          <a class="block px-3 py-2 hover:bg-surface-2"><span class="block truncate text-[0.8125rem] font-bold text-muted">Citadel sponsorship reality</span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">09 Jun</span></a>
+        </nav>
+        <div class="border-t border-hairline px-3 py-2"><span class="label text-faint">Archived 12 · ⌘F search all</span></div>
+      </aside>
+      <!-- reader -->
+      <div class="flex min-w-0 flex-1 flex-col">
+        <div class="flex items-center gap-2 px-1 pb-3">
+          <span class="font-display text-[1.0625rem] font-semibold text-ink">JPM application prep</span>
+          <span class="label rounded-pill bg-accent-soft px-2 py-0.5 text-accent">◆ JPM · SWE</span>
+          <span class="label ml-auto text-faint">14 messages · rename · archive</span>
+        </div>
+        <div class="flex-1 overflow-y-auto rounded-card border border-border bg-surface shadow-card px-6 py-5">
+          <p class="mb-4 text-center font-mono text-[0.6875rem] uppercase tracking-widest text-faint">Today · 09:32</p>
+          <div class="mb-4 flex justify-end"><div class="max-w-[74%] rounded-[14px_14px_4px_14px] bg-ink px-[15px] py-2.5 text-[0.875rem] leading-[1.55] text-canvas">Can you check my JPM answers against my voice profile and tighten them up?</div></div>
+          <div class="mb-3"><span class="inline-flex items-center gap-1.5 rounded-pill bg-surface-3 px-3 py-1 font-mono text-[0.6875rem] text-subtle"><span class="text-good-mark">✓</span> read memory · checked voice.md · compared 2 answers</span></div>
+          <p class="mb-4 max-w-[64ch] text-[0.875rem] leading-[1.7] text-ink">Both are close to your voice; the second drifts formal. Q2 buries the 40% result — proposal below.</p>
+          <!-- the shared proposal card -->
+          <div class="mb-4 max-w-[580px] overflow-hidden rounded-control border border-border-agent bg-surface">
+            <div class="flex items-center gap-2 border-b border-hairline bg-surface-2 px-3.5 py-2.5"><span class="label rounded-pill bg-accent-soft px-2 py-0.5 text-accent">◆ PROPOSED EDIT · Q2</span><span class="label ml-auto text-faint">Answer bank</span></div>
+            <div class="px-3.5 py-2.5 font-mono text-[0.6875rem] leading-[1.85]">
+              <span class="mb-1 block rounded-sm bg-diff-del-bg px-2 py-0.5 text-diff-del">− I am writing to express my strong interest in process improvement…</span>
+              <span class="block rounded-sm bg-diff-add-bg px-2 py-0.5 text-diff-add">+ Last summer I cut our pipeline's runtime 40% by replacing a nightly batch…</span>
+            </div>
+            <div class="flex items-center gap-2 border-t border-hairline px-3.5 py-2.5">
+              <button class="rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas">Apply</button>
+              <button class="rounded-pill border border-border-strong px-4 py-1.5 text-[0.8125rem] font-bold text-muted">Edit first</button>
+              <button class="px-2 py-1.5 text-[0.8125rem] font-bold text-border-interactive">skip</button>
+              <span class="label ml-auto text-faint">⌘⏎ apply · e · s</span>
+            </div>
+          </div>
+          <p class="max-w-[64ch] text-[0.875rem] leading-[1.7] text-ink">Want the same pass on Goldman? Two answers reuse one story — I'd swap in the hackathon win.</p>
+        </div>
+        <!-- composer: rounded-16, prompt + context chips + ink Send -->
+        <div class="pt-3">
+          <div class="rounded-[16px] border border-border bg-surface shadow-pop">
+            <div class="flex items-start gap-2 px-4 pt-3 pb-1 text-[0.875rem] text-faint"><span class="font-mono text-accent">›</span><span>Reply… (⏎ send · ⇧⏎ newline · esc blurs)</span></div>
+            <div class="flex items-center gap-2 px-3.5 pb-3">
+              <span class="label rounded-pill bg-surface-3 px-2.5 py-1 text-subtle">◆ JPM · SWE</span>
+              <span class="label rounded-pill bg-surface-3 px-2.5 py-1 text-subtle">¶ voice.md</span>
+              <span class="label rounded-pill border border-dashed border-border-strong px-2.5 py-1 text-faint">+ add context</span>
+              <button class="ml-auto rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Ask Cyclops:</b> ink user bubble with a tail (not amber, not rectangular), Karla agent prose, the “worked” provenance chip, the shared proposal card (Apply / Edit first / skip), and the rounded-16 composer with removable context chips and an ink Send.</div>
+
+<!-- ════════════════ 3 · TRACKER (tape + ink filter pills + board) ════════════════ -->
+<div class="pcap"><b>3</b><h3>Tracker — the dense board</h3><span>live tape (current) · ink filter pills (redesign) · board (current) · dock</span><em>REDESIGN</em></div>
+<div class="frame">
+  <div class="app">
+    <header class="sticky top-0 z-40 bg-canvas/95 backdrop-blur-sm">
+      <div class="flex items-center gap-2.5 px-5 py-2.5">
+        <a class="font-display text-[1.0625rem] font-semibold text-ink">cyclops<span class="text-accent">.</span></a>
+        <nav class="ml-3 flex items-center gap-1">
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Today<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">3</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold bg-ink text-canvas">Tracker</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Radar</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Applications<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">2</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Ask Cyclops<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">1</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Memory</a>
+        </nav>
+        <div class="ml-auto flex items-center gap-2.5">
+          <button class="label flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-faint">⌘K</button>
+          <a class="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle"><span class="text-agent-mark">●</span> synced 07:00</a>
+          <button class="tabular flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[0.6875rem] text-canvas">EC</button>
+        </div>
+      </div>
+    </header>
+    <div class="animate-rise">
+      <!-- live tape (verbatim current styling) -->
+      <div class="overflow-hidden border-b border-border bg-surface">
+        <div class="flex items-stretch">
+          <div class="flex shrink-0 items-center gap-2 border-r border-border px-3.5"><span class="live-dot inline-block h-1.5 w-1.5 rounded-full bg-success"></span><span class="label text-subtle">Live tape</span></div>
+          <div class="ticker relative min-w-0 flex-1 overflow-hidden">
+            <div class="ticker-track" style="--ticker-duration:48s">
+              <div class="flex shrink-0 items-center">
+                <a class="inline-flex items-center gap-2 px-4 py-1.5"><span class="tabular text-[0.78rem] tracking-wide text-accent">JPM</span><span class="text-[0.7rem] leading-none text-danger">▼</span><span class="label text-subtle">OPEN</span><span class="tabular text-[0.74rem] text-subtle">17d</span><span class="ml-2 text-border-strong">│</span></a>
+                <a class="inline-flex items-center gap-2 px-4 py-1.5"><span class="tabular text-[0.78rem] tracking-wide text-accent">BARC</span><span class="text-[0.7rem] leading-none text-success">▲</span><span class="label text-subtle">OPEN</span><span class="tabular text-[0.74rem] text-subtle">29d</span><span class="ml-2 text-border-strong">│</span></a>
+                <a class="inline-flex items-center gap-2 px-4 py-1.5"><span class="tabular text-[0.78rem] tracking-wide text-accent">HSBC</span><span class="text-[0.7rem] leading-none text-success">▲</span><span class="label text-subtle">OPEN</span><span class="tabular text-[0.74rem] text-subtle">36d</span><span class="ml-2 text-border-strong">│</span></a>
+                <a class="inline-flex items-center gap-2 px-4 py-1.5"><span class="tabular text-[0.78rem] tracking-wide text-accent">RVLT</span><span class="text-[0.7rem] leading-none text-success">▲</span><span class="label text-subtle">OPEN</span><span class="tabular text-[0.74rem] text-subtle">50d</span><span class="ml-2 text-border-strong">│</span></a>
+                <a class="inline-flex items-center gap-2 px-4 py-1.5"><span class="tabular text-[0.78rem] tracking-wide text-accent">CTDL</span><span class="text-[0.7rem] leading-none text-success">▲</span><span class="label text-subtle">OPEN</span><span class="tabular text-[0.74rem] text-subtle">81d</span><span class="ml-2 text-border-strong">│</span></a>
+                <a class="inline-flex items-center gap-2 px-4 py-1.5"><span class="tabular text-[0.78rem] tracking-wide text-accent">GLDS</span><span class="text-[0.7rem] leading-none text-success">▲</span><span class="label text-subtle">OPEN</span><span class="tabular text-[0.74rem] text-subtle">123d</span><span class="ml-2 text-border-strong">│</span></a>
+              </div>
+            </div>
+            <div class="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-surface to-transparent"></div>
+            <div class="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface to-transparent"></div>
+          </div>
+        </div>
+      </div>
+      <!-- filter strip — ink rounded pills (was square amber); no title bar (removed) -->
+      <div class="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-4 py-2.5">
+        <div class="label flex min-w-[240px] flex-1 items-center gap-2 rounded-pill border border-border bg-surface px-3.5 py-1.5 text-faint"><span class="font-mono text-accent">›</span> Find a firm, role or division…</div>
+        <button class="rounded-pill bg-ink px-3.5 py-1.5 text-[0.72rem] font-bold text-canvas">All <span class="tabular ml-1 text-amber">52</span></button>
+        <button class="rounded-pill bg-surface-3 px-3.5 py-1.5 text-[0.72rem] font-bold text-muted">Closing <span class="tabular ml-1 text-accent">6</span></button>
+        <button class="rounded-pill bg-surface-3 px-3.5 py-1.5 text-[0.72rem] font-bold text-muted">Strong <span class="tabular ml-1 text-accent">11</span></button>
+        <button class="rounded-pill bg-surface-3 px-3.5 py-1.5 text-[0.72rem] font-bold text-muted">★ <span class="tabular ml-1 text-accent">3</span></button>
+        <span class="label rounded-pill border border-border-strong px-3 py-1.5 text-subtle">Sort fit ▾</span>
+        <span class="label rounded-pill border border-border-strong px-3 py-1.5 text-subtle">Compact ▾</span>
+      </div>
+      <!-- board (verbatim current styling) -->
+      <div class="flex">
+        <div class="min-w-0 flex-1 p-4">
+          <div class="rounded-card border border-border bg-surface shadow-card">
+            <table class="w-full border-collapse">
+              <thead><tr class="border-b border-border-strong bg-surface-3 text-left">
+                <th class="label w-9 px-4 py-1.5 text-faint"></th><th class="label py-1.5 text-faint">Firm · Role</th>
+                <th class="label w-24 py-1.5 text-right text-faint">Deadline</th><th class="label w-16 py-1.5 text-right text-faint">Days</th>
+                <th class="label w-28 py-1.5 text-right text-faint">Fit</th><th class="label w-20 px-4 py-1.5 text-right text-faint">Status</th>
+              </tr></thead>
+              <tbody>
+                <tr class="group h-[2.125rem] border-b border-hairline bg-accent-tint shadow-[inset_3px_0_0_var(--color-agent-mark)]">
+                  <td class="px-4"><span class="tabular flex h-5 w-5 items-center justify-center rounded-sm border border-border-agent bg-accent-soft text-[0.6875rem] text-accent">JP</span></td>
+                  <td class="max-w-0 truncate pr-3"><span class="text-[0.8125rem] font-extrabold text-ink">J.P. Morgan</span><span class="text-[0.75rem] font-bold text-subtle"> · SWE Intern</span><span class="label ml-2 rounded-pill border border-border-agent bg-accent-soft px-1.5 text-accent">◆ 2 drafts</span></td>
+                  <td class="tabular text-right text-[0.75rem] text-muted">30 Jun</td><td class="tabular text-right text-[0.75rem] text-danger">▼ 17</td>
+                  <td class="text-right"><span class="inline-flex items-center justify-end gap-2"><span class="relative inline-block h-1.5 w-10 overflow-hidden rounded-bar bg-surface-3"><span class="absolute inset-y-0 left-0 rounded-bar" style="width:71%;background:var(--color-tier-good)"></span></span><span class="tabular w-6 text-right text-[0.75rem]" style="color:var(--color-tier-good)">71</span></span></td>
+                  <td class="px-4 text-right"><span class="label text-muted">OPEN</span></td>
+                </tr>
+                <tr class="group h-[2.125rem] border-b border-hairline">
+                  <td class="px-4"><span class="tabular flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-surface-2 text-[0.6875rem] text-subtle">BC</span></td>
+                  <td class="max-w-0 truncate pr-3"><span class="text-[0.8125rem] font-extrabold text-ink">Barclays</span><span class="text-[0.75rem] font-bold text-subtle"> · Tech Developer</span><span class="label ml-2 rounded-pill border border-border-agent bg-accent-soft px-1.5 text-accent">▲ moved</span></td>
+                  <td class="tabular text-right text-[0.75rem] text-muted">12 Jul</td><td class="tabular text-right text-[0.75rem] text-muted">29</td>
+                  <td class="text-right"><span class="inline-flex items-center justify-end gap-2"><span class="relative inline-block h-1.5 w-10 overflow-hidden rounded-bar bg-surface-3"><span class="absolute inset-y-0 left-0 rounded-bar" style="width:48%;background:var(--color-tier-mod)"></span></span><span class="tabular w-6 text-right text-[0.75rem]" style="color:var(--color-tier-mod)">48</span></span></td>
+                  <td class="px-4 text-right"><span class="label text-muted">OPEN</span></td>
+                </tr>
+                <tr class="group h-[2.125rem] border-b border-hairline">
+                  <td class="px-4"><span class="tabular flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-surface-2 text-[0.6875rem] text-subtle">RV</span></td>
+                  <td class="max-w-0 truncate pr-3"><span class="text-[0.8125rem] font-extrabold text-ink">Revolut</span><span class="text-[0.75rem] font-bold text-subtle"> · Backend Intern</span><span class="label ml-2 text-success">NEW</span></td>
+                  <td class="tabular text-right text-[0.75rem] text-muted">02 Aug</td><td class="tabular text-right text-[0.75rem] text-muted">50</td>
+                  <td class="text-right"><span class="inline-flex items-center justify-end gap-2"><span class="relative inline-block h-1.5 w-10 overflow-hidden rounded-bar bg-surface-3"><span class="absolute inset-y-0 left-0 rounded-bar" style="width:76%;background:var(--color-tier-strong)"></span></span><span class="tabular w-6 text-right text-[0.75rem]" style="color:var(--color-tier-strong)">76</span></span></td>
+                  <td class="px-4 text-right"><span class="label text-muted">OPEN</span></td>
+                </tr>
+                <tr class="group h-[2.125rem] border-b border-hairline">
+                  <td class="px-4"><span class="tabular flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-surface-2 text-[0.6875rem] text-subtle">GS</span></td>
+                  <td class="max-w-0 truncate pr-3"><span class="text-[0.8125rem] font-extrabold text-ink">Goldman Sachs</span><span class="text-[0.75rem] font-bold text-subtle"> · Eng Summer Analyst</span></td>
+                  <td class="tabular text-right text-[0.75rem] text-muted">14 Oct</td><td class="tabular text-right text-[0.75rem] text-muted">123</td>
+                  <td class="text-right"><span class="inline-flex items-center justify-end gap-2"><span class="relative inline-block h-1.5 w-10 overflow-hidden rounded-bar bg-surface-3"><span class="absolute inset-y-0 left-0 rounded-bar" style="width:82%;background:var(--color-tier-strong)"></span></span><span class="tabular w-6 text-right text-[0.75rem]" style="color:var(--color-tier-strong)">82</span></span></td>
+                  <td class="px-4 text-right"><span class="label text-muted">OPEN</span></td>
+                </tr>
+                <tr class="group h-[2.125rem] border-b border-hairline opacity-100">
+                  <td class="px-4"><span class="tabular flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-surface-2 text-[0.6875rem] text-subtle">MS</span></td>
+                  <td class="max-w-0 truncate pr-3"><span class="text-[0.8125rem] font-extrabold text-subtle">Morgan Stanley</span><span class="text-[0.75rem] font-bold text-faint"> · Tech Analyst</span></td>
+                  <td class="tabular text-right text-[0.75rem] text-faint">02 Jun</td><td class="tabular text-right text-[0.75rem] text-faint">—</td>
+                  <td class="text-right"><span class="inline-flex items-center justify-end gap-2"><span class="relative inline-block h-1.5 w-10 overflow-hidden rounded-bar bg-surface-3"><span class="absolute inset-y-0 left-0 rounded-bar" style="width:22%;background:var(--color-tier-low)"></span></span><span class="tabular w-6 text-right text-[0.75rem] text-faint">22</span></span></td>
+                  <td class="px-4 text-right"><span class="label text-faint">CLOSED</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="flex gap-4 border-t border-hairline px-4 py-2"><span class="label text-faint">◆ = CYCLOPS · ▼ = CLOSING ≤14D · ★ = SAVED</span><span class="label ml-auto text-faint">J/K MOVE · ⏎ OPEN · S SAVE · A ASK</span></div>
+          </div>
+        </div>
+        <aside class="my-4 mr-4 flex w-[286px] shrink-0 flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card">
+          <div class="flex items-center gap-2 border-b border-border-agent bg-surface-2 px-3 py-2"><span class="label shrink-0 text-accent"><span class="text-agent-mark">◆</span> CYCLOPS</span><span class="label truncate text-faint">TRACKER · DAYS↑</span><div class="ml-auto flex shrink-0 items-center gap-1"><button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">⌘J</button><button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">—</button></div></div>
+          <div class="flex-1 px-3 py-3"><p class="text-[0.8125rem] leading-relaxed text-muted">JPM is the one to touch today. Want me to hide the four listings you'll never be eligible for?</p>
+            <div class="mt-3 flex flex-col gap-1.5">
+              <button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">Hide ineligible (4)</button>
+              <button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">Why is Revolut at 76?</button>
+            </div>
+          </div>
+          <div class="border-t border-hairline p-3"><div class="rounded-[16px] border border-border bg-surface"><div class="flex items-center gap-2 px-3 py-2 text-[0.8125rem] text-faint"><span class="font-mono text-accent">›</span> Ask about what you see…</div></div></div>
+          <div class="flex items-center justify-between gap-2 border-t border-hairline px-3 py-2"><span class="label text-faint">⌘J EXPAND · CTRL\ HIDE</span><a class="label shrink-0 text-accent">Open in Ask Cyclops →</a></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Tracker:</b> the <b>live tape</b> and dense board are reproduced verbatim from the current app (the board already uses the warm agent-row tint). The redesign is the <span class="chg">filter strip → ink rounded pills</span> (was square amber `bg-accent`), plus <span class="chg">Fresh-finds + Firm-Scout moved off the board</span> per your call. The dock here shows the <span class="chg">redesigned rounded composer</span>.</div>
+
+<!-- ════════════════ 4 · MEMORY (REDESIGN) ════════════════ -->
+<div class="pcap"><b>4</b><h3>Memory — what Cyclops knows</h3><span>file rail · document · unified proposal card</span><em>REDESIGN</em></div>
+<div class="frame">
+  <div class="app">
+    <header class="sticky top-0 z-40 bg-canvas/95 backdrop-blur-sm">
+      <div class="flex items-center gap-2.5 px-5 py-2.5">
+        <a class="font-display text-[1.0625rem] font-semibold text-ink">cyclops<span class="text-accent">.</span></a>
+        <nav class="ml-3 flex items-center gap-1">
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Today<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">3</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Tracker</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Radar</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Applications<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">2</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Ask Cyclops<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">1</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold bg-ink text-canvas">Memory<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-amber">1</span></a>
+        </nav>
+        <div class="ml-auto flex items-center gap-2.5">
+          <button class="label flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-faint">⌘K</button>
+          <a class="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle"><span class="text-agent-mark">●</span> 1 pending edit</a>
+          <button class="tabular flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[0.6875rem] text-canvas">EC</button>
+        </div>
+      </div>
+    </header>
+    <div class="animate-rise flex h-[600px] gap-4 px-5 py-4">
+      <aside class="flex w-60 shrink-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
+        <div class="flex items-baseline gap-2 border-b border-hairline px-3 py-3"><h2 class="font-display text-[1rem] font-semibold text-ink">Files</h2><span class="label ml-auto text-faint">9</span></div>
+        <div class="px-3 py-2">
+          <div class="label flex items-center gap-2 rounded-control border border-border bg-surface px-3 py-1.5 text-faint"><span class="font-mono text-accent">›</span> Search memory…</div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-1">
+          <div class="label px-3 pb-1 pt-3 text-faint">Profile</div>
+          <a class="block px-3 py-2 hover:bg-surface-2"><span class="block truncate text-[0.8125rem] font-extrabold text-ink">profile.md</span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">Who you are · eligibility</span></a>
+          <a class="block bg-accent-tint px-3 py-2 shadow-[inset_3px_0_0_var(--color-ink)]"><span class="flex items-center gap-1.5 truncate"><span class="truncate text-[0.8125rem] font-extrabold text-ink">voice.md</span><span class="label shrink-0 text-accent">◆ 1 edit</span></span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">How you write · 14 rules</span></a>
+          <a class="block px-3 py-2 hover:bg-surface-2"><span class="block truncate text-[0.8125rem] font-extrabold text-ink">strategy.md</span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">Targets · priorities</span></a>
+          <div class="label px-3 pb-1 pt-3 text-faint">Stories</div>
+          <a class="block px-3 py-2 hover:bg-surface-2"><span class="block truncate text-[0.8125rem] font-extrabold text-ink">hackathon.md</span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">stories/ · used in 2 apps</span></a>
+          <a class="block px-3 py-2 hover:bg-surface-2"><span class="block truncate text-[0.8125rem] font-extrabold text-ink">society-lead.md</span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">stories/ · unused</span></a>
+          <div class="label px-3 pb-1 pt-3 text-faint">Companies</div>
+          <a class="block px-3 py-2 hover:bg-surface-2"><span class="block truncate text-[0.8125rem] font-extrabold text-ink">jpmorgan.md</span><span class="mt-0.5 block font-mono text-[0.6875rem] text-subtle">companies/ · 6 sources</span></a>
+        </nav>
+        <div class="border-t border-hairline px-3 py-2"><span class="label text-faint">Memory · 9 files</span></div>
+      </aside>
+      <div class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
+        <div class="flex items-center gap-2 border-b border-hairline bg-surface-2 px-4 py-2.5"><span class="label rounded-pill bg-accent-soft px-2 py-0.5 text-accent">¶ voice.md</span><span class="label ml-auto text-faint">edited by you 06 Jun · by cyclops 02:14 (pending)</span></div>
+        <div class="flex-1 overflow-y-auto px-6 py-5">
+          <h2 class="text-[1rem] text-ink">How Eric writes</h2>
+          <div class="mt-2 max-w-[62ch] text-[0.8125rem] leading-[1.8] text-muted">· Sentences under 22 words. No throat-clearing openers.<br>· Every story lands on a number.<br>· British spelling; no “passionate”, no “delve”.<br>· First person, active voice, concrete verbs.</div>
+          <!-- the SAME proposal card as chat/workspace -->
+          <div class="mt-5 max-w-[560px] overflow-hidden rounded-control border border-border-agent bg-surface">
+            <div class="flex items-center gap-2 border-b border-hairline bg-surface-2 px-3.5 py-2.5"><span class="label rounded-pill bg-accent-soft px-2 py-0.5 text-accent">◆ PROPOSED ADDITION</span><span class="label ml-auto text-faint">learned from your Q2 edit</span></div>
+            <div class="px-3.5 py-2.5 font-mono text-[0.6875rem] leading-[1.85]"><span class="block rounded-sm bg-diff-add-bg px-2 py-0.5 text-diff-add">+ When asked about teamwork, Eric prefers the hackathon story over the society-committee one.</span></div>
+            <div class="flex items-center gap-2 border-t border-hairline px-3.5 py-2.5">
+              <button class="rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas">Apply</button>
+              <button class="rounded-pill border border-border-strong px-4 py-1.5 text-[0.8125rem] font-bold text-muted">Edit first</button>
+              <button class="px-2 py-1.5 text-[0.8125rem] font-bold text-border-interactive">skip</button>
+              <span class="label ml-auto text-faint">⌘⏎ apply · e · s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="flex w-[286px] shrink-0 flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card">
+        <div class="flex items-center gap-2 border-b border-border-agent bg-surface-2 px-3 py-2"><span class="label shrink-0 text-accent"><span class="text-agent-mark">◆</span> CYCLOPS</span><span class="label truncate text-faint">MEMORY · VOICE.MD</span><div class="ml-auto flex shrink-0 items-center gap-1"><button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">⌘J</button><button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">—</button></div></div>
+        <div class="flex-1 px-3 py-3"><p class="text-[0.8125rem] leading-relaxed text-muted">I never edit memory silently — everything lands as a proposal like the one on screen. Three of your stories haven't been used in any application yet.</p>
+          <div class="mt-3 flex flex-col gap-1.5">
+            <button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">Which stories are unused?</button>
+            <button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">Show last night's diff</button>
+          </div>
+        </div>
+        <div class="border-t border-hairline p-3"><div class="rounded-[16px] border border-border bg-surface"><div class="flex items-center gap-2 px-3 py-2 text-[0.8125rem] text-faint"><span class="font-mono text-accent">›</span> Ask about memory…</div></div></div>
+          <div class="flex items-center justify-between gap-2 border-t border-hairline px-3 py-2"><span class="label text-faint">⌘J EXPAND · CTRL\ HIDE</span><a class="label shrink-0 text-accent">Open in Ask Cyclops →</a></div>
+      </aside>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Memory:</b> the one real change — the current page renders a bespoke “Accept / Edit / <b>reject</b>” card, but the GB+ contract retired “reject”; the proposal here is the <span class="chg">identical card</span> used in chat and the workspace, with verbs <span class="chg">Apply / Edit first / skip</span>. File rail keeps ink-inset selection + pending-edit badge.</div>
+
+<!-- ════════════════ 5 · SETTINGS (REDESIGN) ════════════════ -->
+<div class="pcap"><b>5</b><h3>Settings — quiet admin</h3><span>permissions as sentences · ink ALWAYS-YOU · link rows · no dock</span><em>REDESIGN</em></div>
+<div class="frame">
+  <div class="app">
+    <header class="sticky top-0 z-40 bg-canvas/95 backdrop-blur-sm">
+      <div class="flex items-center gap-2.5 px-5 py-2.5">
+        <a class="font-display text-[1.0625rem] font-semibold text-ink">cyclops<span class="text-accent">.</span></a>
+        <nav class="ml-3 flex items-center gap-1">
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Today<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">3</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Tracker</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Radar</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Applications<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">2</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Ask Cyclops<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">1</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Memory</a>
+        </nav>
+        <div class="ml-auto flex items-center gap-2.5">
+          <button class="label flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-faint">⌘K</button>
+          <a class="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle"><span class="text-agent-mark">●</span> idle</a>
+          <button class="tabular flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[0.6875rem] text-canvas">EC</button>
+        </div>
+      </div>
+    </header>
+    <div class="mx-auto max-w-3xl px-4 py-6">
+      <h1 class="text-[1.375rem] leading-none text-ink">Settings</h1>
+      <section class="mt-4 rounded-card border border-border bg-surface shadow-card">
+        <div class="flex items-baseline justify-between border-b border-border px-4 py-2.5"><h2 class="text-[1.0625rem] leading-none text-ink">Cyclops permissions</h2><span class="label text-faint">What the agent may do</span></div>
+        <ul class="divide-y divide-hairline">
+          <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-[0.875rem] font-bold text-ink">Draft answers in your voice</p><p class="label mt-0.5 text-subtle">Uses answer bank + CV · saves only when you approve</p></div><span class="label shrink-0 rounded-pill bg-success-soft px-2.5 py-0.5 text-success">✓ ON</span></li>
+          <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-[0.875rem] font-bold text-ink">Overnight refresh &amp; morning brief</p><p class="label mt-0.5 text-subtle">Nightly cron 05:30 · budget-capped</p></div><span class="label shrink-0 rounded-pill bg-success-soft px-2.5 py-0.5 text-success">✓ ON</span></li>
+          <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-[0.875rem] font-bold text-ink">Fill forms via the extension</p><p class="label mt-0.5 text-subtle">Only with you watching · confirmation-gated · never submits</p></div><span class="label shrink-0 rounded-pill bg-success-soft px-2.5 py-0.5 text-success">✓ ON</span></li>
+          <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-[0.875rem] font-bold text-ink">Submit applications</p><p class="label mt-0.5 text-subtle">Never automatic — this cannot be enabled</p></div><span class="label shrink-0 rounded-pill bg-ink px-2.5 py-0.5 text-canvas">ALWAYS YOU</span></li>
+        </ul>
+      </section>
+      <section class="mt-4 rounded-card border border-border bg-surface shadow-card">
+        <div class="flex items-baseline justify-between border-b border-border px-4 py-2.5"><h2 class="text-[1.0625rem] leading-none text-ink">Profile &amp; connections</h2><span class="label text-faint">The boring but necessary</span></div>
+        <ul class="divide-y divide-hairline">
+          <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-[0.875rem] font-bold text-ink">Profile &amp; eligibility</p><p class="label mt-0.5 text-subtle">Summer 2027 · UK · visa: none needed</p></div><span class="label shrink-0 text-accent">EDIT →</span></li>
+          <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-[0.875rem] font-bold text-ink">Apply copilot details</p><p class="label mt-0.5 text-subtle">Phone · address · links · CV on file</p></div><span class="label shrink-0 text-accent">EDIT →</span></li>
+          <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-[0.875rem] font-bold text-ink">Browser extension</p><p class="label mt-0.5 text-subtle">Connected · token trk_…8f2 · last used today</p></div><span class="label shrink-0 text-accent">MANAGE →</span></li>
+          <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-[0.875rem] font-bold text-ink">Answer bank</p><p class="label mt-0.5 text-subtle">12 stories · 9 answers · 3 unused</p></div><span class="label shrink-0 text-accent">OPEN →</span></li>
+        </ul>
+      </section>
+      <p class="mt-4 text-center font-mono text-[0.6875rem] uppercase tracking-widest text-faint">No dock here — settings is the one room the agent stays out of</p>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Settings:</b> permissions already on-spec (ink ALWAYS-YOU fact). The change is <span class="chg">collapsing the long inline forms</span> (profile, apply-copilot, answer-bank, extension) into quiet link rows that open focused editors.</div>
+
+<!-- ════════════════ 6 · APPLICATIONS (REDESIGN) ════════════════ -->
+<div class="pcap"><b>6</b><h3>Applications — the pipeline</h3><span>stage groups · ink completion meter (progress ≠ fit) · dock</span><em>REDESIGN</em></div>
+<div class="frame">
+  <div class="app">
+    <header class="sticky top-0 z-40 bg-canvas/95 backdrop-blur-sm">
+      <div class="flex items-center gap-2.5 px-5 py-2.5">
+        <a class="font-display text-[1.0625rem] font-semibold text-ink">cyclops<span class="text-accent">.</span></a>
+        <nav class="ml-3 flex items-center gap-1">
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Today<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">3</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Tracker</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Radar</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold bg-ink text-canvas">Applications<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-amber">2</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Ask Cyclops<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">1</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Memory</a>
+        </nav>
+        <div class="ml-auto flex items-center gap-2.5">
+          <button class="label flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-faint">⌘K</button>
+          <a class="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle"><span class="text-agent-mark">●</span> 2 need review</a>
+          <button class="tabular flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[0.6875rem] text-canvas">EC</button>
+        </div>
+      </div>
+    </header>
+    <div class="animate-rise flex">
+      <div class="min-w-0 flex-1 p-4">
+        <div class="rounded-card border border-border bg-surface shadow-card">
+          <div class="flex items-baseline gap-2 border-b border-hairline px-4 py-3"><h2 class="font-display text-[1rem] font-semibold text-ink">In progress</h2><span class="label ml-auto text-faint">2 · sorted by deadline</span></div>
+          <div class="flex items-center gap-3 border-b border-hairline px-4 py-3">
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border-agent bg-accent-soft text-[0.7rem] font-semibold text-accent">JP</span>
+            <div class="min-w-0 flex-1"><p class="text-[0.875rem] font-extrabold text-ink">J.P. Morgan <span class="font-bold text-subtle">· SWE Intern</span> <span class="label rounded-pill bg-accent-soft px-1.5 text-accent">◆ 2 drafts ready</span></p><p class="label mt-0.5 text-subtle">Closes 30 Jun · T−17</p></div>
+            <div class="flex shrink-0 items-center gap-4">
+              <div class="text-right"><p class="label text-faint">Answers</p><p class="tabular text-[0.8125rem] text-ink">4<span class="text-faint">/6</span></p></div>
+              <span class="relative inline-block h-1.5 w-16 overflow-hidden rounded-bar bg-surface-3"><span class="absolute inset-y-0 left-0 rounded-bar bg-ink" style="width:66%"></span></span>
+              <span class="label rounded-pill bg-accent-soft px-2 py-0.5 text-accent">DRAFTING</span>
+              <button class="rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas">Open</button>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 border-b border-hairline px-4 py-3">
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 text-[0.7rem] font-semibold text-muted">GS</span>
+            <div class="min-w-0 flex-1"><p class="text-[0.875rem] font-extrabold text-ink">Goldman Sachs <span class="font-bold text-subtle">· Eng Summer Analyst</span> <span class="label rounded-pill bg-warning-soft px-1.5 text-warning">? 1 missing answer</span></p><p class="label mt-0.5 text-subtle">Closes 14 Oct · T−123</p></div>
+            <div class="flex shrink-0 items-center gap-4">
+              <div class="text-right"><p class="label text-faint">Answers</p><p class="tabular text-[0.8125rem] text-ink">2<span class="text-faint">/4</span></p></div>
+              <span class="relative inline-block h-1.5 w-16 overflow-hidden rounded-bar bg-surface-3"><span class="absolute inset-y-0 left-0 rounded-bar bg-ink" style="width:50%"></span></span>
+              <span class="label rounded-pill bg-accent-soft px-2 py-0.5 text-accent">DRAFTING</span>
+              <button class="rounded-pill border border-border-strong px-4 py-1.5 text-[0.8125rem] font-bold text-muted">Open</button>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2 border-b border-hairline bg-surface-2 px-4 py-2"><h2 class="font-display text-[1rem] font-semibold text-ink">Submitted</h2><span class="label ml-auto text-faint">1 · watching for replies</span></div>
+          <div class="flex items-center gap-3 border-b border-hairline px-4 py-3">
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 text-[0.7rem] font-semibold text-muted">RV</span>
+            <div class="min-w-0 flex-1"><p class="text-[0.875rem] font-extrabold text-ink">Revolut <span class="font-bold text-subtle">· Backend Intern</span> <span class="label rounded-pill bg-success-soft px-1.5 text-success">✓ submitted 04 Jun</span></p><p class="label mt-0.5 text-subtle">Cyclops watches your inbox keywords · no reply yet</p></div>
+            <button class="shrink-0 rounded-pill border border-border-strong px-4 py-1.5 text-[0.8125rem] font-bold text-muted">Open</button>
+          </div>
+          <div class="flex items-baseline gap-2 border-b border-hairline bg-surface-2 px-4 py-2"><h2 class="font-display text-[1rem] font-semibold text-ink">Closed</h2><span class="label ml-auto text-faint">1</span></div>
+          <div class="flex items-center gap-3 px-4 py-3 opacity-60">
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 text-[0.7rem] font-semibold text-muted">MS</span>
+            <div class="min-w-0 flex-1"><p class="text-[0.875rem] font-extrabold text-ink">Morgan Stanley <span class="font-bold text-subtle">· Tech Analyst</span></p><p class="label mt-0.5 text-subtle">Rejected 28 May · notes saved to memory</p></div>
+            <span class="label shrink-0 rounded-pill bg-warning-soft px-2 py-0.5 text-warning">REJECTED</span>
+          </div>
+          <div class="flex gap-4 border-t border-hairline px-4 py-2"><span class="label text-faint">4 APPLICATIONS</span><span class="label ml-auto text-faint">⏎ OPEN · N NEW FROM TRACKER</span></div>
+        </div>
+      </div>
+      <aside class="my-4 mr-4 flex w-[286px] shrink-0 flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card">
+        <div class="flex items-center gap-2 border-b border-border-agent bg-surface-2 px-3 py-2"><span class="label shrink-0 text-accent"><span class="text-agent-mark">◆</span> CYCLOPS</span><span class="label truncate text-faint">APPLICATIONS</span><div class="ml-auto flex shrink-0 items-center gap-1"><button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">⌘J</button><button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">—</button></div></div>
+        <div class="flex-1 px-3 py-3"><p class="text-[0.8125rem] leading-relaxed text-muted">JPM is 2 approvals from submit-ready. Goldman's missing answer is the only blocker there — I can draft it from your hackathon story.</p>
+          <div class="mt-3 flex flex-col gap-1.5"><button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">Finish JPM with me now</button><button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">Draft the Goldman answer</button></div>
+        </div>
+        <div class="border-t border-hairline p-3"><div class="rounded-[16px] border border-border bg-surface"><div class="flex items-center gap-2 px-3 py-2 text-[0.8125rem] text-faint"><span class="font-mono text-accent">›</span> Ask about your pipeline…</div></div></div>
+          <div class="flex items-center justify-between gap-2 border-t border-hairline px-3 py-2"><span class="label text-faint">⌘J EXPAND · CTRL\ HIDE</span><a class="label shrink-0 text-accent">Open in Ask Cyclops →</a></div>
+      </aside>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Applications:</b> stage groups (In progress / Submitted / Closed); the completion meter is <span class="chg">ink</span> (progress ≠ fit ≠ agent) with the answers count beside it; submitted rows state what the agent watches. Dock talks distance-to-done.</div>
+
+<!-- ════════════════ 7 · WORKSPACE (REDESIGN) ════════════════ -->
+<div class="pcap"><b>7</b><h3>Application workspace — one application, everything</h3><span>stage stepper · answers spine · shared proposal card · pinned dock</span><em>REDESIGN</em></div>
+<div class="frame">
+  <div class="app">
+    <header class="sticky top-0 z-40 bg-canvas/95 backdrop-blur-sm">
+      <div class="flex items-center gap-2.5 px-5 py-2.5">
+        <a class="font-display text-[1.0625rem] font-semibold text-ink">cyclops<span class="text-accent">.</span></a>
+        <nav class="ml-3 flex items-center gap-1">
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Today<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">3</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Tracker</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Radar</a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold bg-ink text-canvas">Applications<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-amber">2</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Ask Cyclops<span class="tabular ml-1.5 text-[0.6875rem] font-normal text-accent">1</span></a>
+          <a class="rounded-pill px-3 py-1.5 text-[0.8125rem] font-bold text-subtle hover:bg-surface-2 hover:text-ink">Memory</a>
+        </nav>
+        <div class="ml-auto flex items-center gap-2.5">
+          <button class="label flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-faint">⌘K</button>
+          <a class="label flex items-center gap-2 rounded-pill bg-surface-2 px-3 py-1.5 text-subtle"><span class="text-agent-mark">●</span> 2 proposals here</a>
+          <button class="tabular flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[0.6875rem] text-canvas">EC</button>
+        </div>
+      </div>
+    </header>
+    <div class="animate-rise flex">
+      <div class="min-w-0 flex-1 p-4">
+        <a class="label text-accent">← Applications</a>
+        <div class="mt-2 flex items-center gap-3">
+          <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-border-agent bg-accent-soft text-[0.8125rem] font-semibold text-accent">JP</span>
+          <div><div class="font-display text-[1.25rem] font-semibold text-ink">J.P. Morgan — SWE Intern</div><div class="label text-subtle">London / Glasgow · closes 30 Jun · T−17 · fit 71 · sponsor yes</div></div>
+          <div class="ml-auto flex overflow-hidden rounded-pill border border-border-strong">
+            <span class="label bg-success-soft px-3 py-1.5 text-success">✓ RESEARCH</span>
+            <span class="label bg-ink px-3 py-1.5 text-canvas">DRAFTING</span>
+            <span class="label px-3 py-1.5 text-faint">SUBMIT</span>
+            <span class="label px-3 py-1.5 text-faint">INTERVIEW</span>
+          </div>
+        </div>
+        <div class="mt-4 rounded-card border border-border bg-surface shadow-card">
+          <div class="flex items-baseline gap-2 border-b border-hairline px-4 py-3"><h2 class="font-display text-[1rem] font-semibold text-ink">Answers</h2><span class="label ml-auto text-faint">4 of 6 · 2 awaiting your review</span></div>
+          <div class="border-b border-hairline px-4 py-3"><p class="text-[0.875rem] font-extrabold text-ink">Why J.P. Morgan? <span class="label rounded-pill bg-success-soft px-1.5 text-success">✓ approved</span></p><p class="mt-1 text-[0.8125rem] leading-relaxed text-subtle">Last summer I built a reconciliation tool that cut a 3-hour manual process to 12 minutes…</p></div>
+          <div class="border-b border-hairline bg-surface-2 px-4 py-3">
+            <p class="text-[0.875rem] font-extrabold text-ink">Describe a time you improved a process. <span class="label rounded-pill bg-accent-soft px-1.5 text-accent">◆ draft ready</span></p>
+            <p class="mt-1 text-[0.8125rem] text-subtle">Your current answer opens formally and buries the result. My proposal:</p>
+            <div class="mt-3 max-w-[560px] overflow-hidden rounded-control border border-border-agent bg-surface">
+              <div class="flex items-center gap-2 border-b border-hairline bg-surface-2 px-3.5 py-2.5"><span class="label rounded-pill bg-accent-soft px-2 py-0.5 text-accent">◆ PROPOSED EDIT</span><span class="label ml-auto text-faint">Answer bank · voice</span></div>
+              <div class="px-3.5 py-2.5 font-mono text-[0.6875rem] leading-[1.85]"><span class="mb-1 block rounded-sm bg-diff-del-bg px-2 py-0.5 text-diff-del">− I am writing to express my strong interest in process improvement…</span><span class="block rounded-sm bg-diff-add-bg px-2 py-0.5 text-diff-add">+ Last summer I cut our pipeline's runtime 40% by replacing a nightly batch…</span></div>
+              <div class="flex items-center gap-2 border-t border-hairline px-3.5 py-2.5"><button class="rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas">Apply</button><button class="rounded-pill border border-border-strong px-4 py-1.5 text-[0.8125rem] font-bold text-muted">Edit first</button><button class="px-2 py-1.5 text-[0.8125rem] font-bold text-border-interactive">skip</button><span class="label ml-auto text-faint">⌘⏎ apply · e · s</span></div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 flex-1"><p class="text-[0.875rem] font-extrabold text-subtle">Why this division? <span class="label rounded-pill bg-warning-soft px-1.5 text-warning">— not started</span></p><p class="mt-1 text-[0.8125rem] text-faint">No answer yet. Cyclops can draft from your stories — it will ask first.</p></div><button class="shrink-0 rounded-pill border border-border-strong px-4 py-1.5 text-[0.8125rem] font-bold text-muted">Let Cyclops draft</button></div>
+          <div class="flex gap-4 border-t border-hairline px-4 py-2"><span class="label text-faint">FORM MAPPED VIA EXTENSION · 6 QUESTIONS</span><span class="label ml-auto text-faint">LAST AGENT PASS 02:14</span></div>
+        </div>
+      </div>
+      <aside class="my-4 mr-4 flex w-[286px] shrink-0 flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card">
+        <div class="flex items-center gap-2 border-b border-border-agent bg-surface-2 px-3 py-2"><span class="label shrink-0 text-accent"><span class="text-agent-mark">◆</span> CYCLOPS</span><span class="label truncate text-faint">JPM · SWE INTERN</span><div class="ml-auto flex shrink-0 items-center gap-1"><button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">⌘J</button><button class="label rounded-control border border-border bg-surface px-1.5 py-0.5 text-subtle">—</button></div></div>
+        <div class="flex-1 px-3 py-3"><p class="text-[0.8125rem] leading-relaxed text-muted">This thread is pinned to JPM. Overnight: mapped the form, researched their tech division (6 sources), drafted Q2 and Q4. Q2 is above.</p>
+          <div class="mt-3 flex flex-col gap-1.5"><button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">What's left before submit?</button><button class="rounded-pill border border-border px-3 py-1.5 text-left text-[0.8125rem] font-bold text-muted hover:border-agent-mark hover:text-accent">Practice their interview Qs</button></div>
+        </div>
+        <div class="border-t border-hairline p-3"><div class="rounded-[16px] border border-border bg-surface"><div class="flex items-center gap-2 px-3 py-2 text-[0.8125rem] text-faint"><span class="font-mono text-accent">›</span> Ask about this application…</div></div></div>
+          <div class="flex items-center justify-between gap-2 border-t border-hairline px-3 py-2"><span class="label text-faint">⌘J EXPAND · CTRL\ HIDE</span><a class="label shrink-0 text-accent">Open in Ask Cyclops →</a></div>
+      </aside>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Workspace:</b> the stage stepper is one pill-strip; answers are the spine; the in-flow proposal card is <span class="chg">identical</span> to the dock/chat/memory one. The dock auto-pins to this application.</div>
+
+<div style="height:70px;"></div>
+</body>
+</html>

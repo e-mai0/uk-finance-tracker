@@ -70,10 +70,10 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
     <div className="bg-surface px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
         {/* Command-line search */}
-        <div className="flex min-w-[220px] flex-1 items-center border border-border-strong bg-surface focus-within:border-accent">
+        <div className="flex min-w-[220px] flex-1 items-center rounded-pill border border-border bg-surface focus-within:border-border-interactive">
           <span
             aria-hidden
-            className="select-none pl-3 pr-1 font-mono text-sm text-accent"
+            className="select-none pl-3.5 pr-1 font-mono text-sm text-accent"
           >
             ›
           </span>
@@ -81,7 +81,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
             value={q}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="search firm, role, division, keyword…"
-            className="h-9 w-full bg-transparent pr-3 font-mono text-[0.82rem] text-ink placeholder:text-faint"
+            className="h-9 w-full bg-transparent pr-3.5 font-mono text-[0.82rem] text-ink placeholder:text-faint"
           />
         </div>
 
@@ -132,7 +132,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
             <select
               value={get("sort") || "best_match"}
               onChange={(e) => setParam("sort", e.target.value)}
-              className="h-9 appearance-none border border-border-strong bg-surface pl-3 pr-7 font-mono text-[0.8rem] uppercase tracking-wide text-ink focus-visible:border-accent focus-visible:outline-none"
+              className="h-9 appearance-none rounded-pill border border-border-strong bg-surface pl-3.5 pr-7 font-mono text-[0.8rem] uppercase tracking-wide text-ink focus-visible:border-border-interactive focus-visible:outline-none"
             >
               {SORT_OPTIONS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -161,7 +161,7 @@ export function FiltersBar({ resultCount }: { resultCount: number }) {
             </span>
             <button
               onClick={() => router.push(pathname, { scroll: false })}
-              className="label text-accent hover:text-accent-hover hover:underline"
+              className="label text-subtle hover:text-ink hover:underline"
             >
               × Clear {activeCount} filter{activeCount > 1 ? "s" : ""}
             </button>
@@ -189,17 +189,15 @@ function FilterDropdown({
     <details className="group relative">
       <summary
         className={cn(
-          "flex h-9 cursor-pointer list-none items-center gap-1.5 border px-3 font-mono text-[0.8rem] uppercase tracking-wide transition-colors",
+          "flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-pill border px-3.5 font-mono text-[0.8rem] uppercase tracking-wide transition-colors",
           count > 0
-            ? "border-accent bg-accent text-accent-fg"
-            : "border-border-strong bg-surface text-ink hover:border-accent hover:text-accent",
+            ? "border-transparent bg-ink text-canvas"
+            : "border-border-strong bg-surface text-muted hover:border-border-interactive hover:text-ink",
         )}
       >
         {label}
         {count > 0 && (
-          <span className="tabular bg-black/20 px-1 text-[0.6875rem] text-accent-fg">
-            {count}
-          </span>
+          <span className="tabular text-[0.6875rem] text-amber">{count}</span>
         )}
         <span
           aria-hidden
@@ -221,9 +219,9 @@ function FilterDropdown({
               <span
                 aria-hidden
                 className={cn(
-                  "flex h-4 w-4 items-center justify-center border font-mono text-[0.6875rem] leading-none",
+                  "flex h-4 w-4 items-center justify-center rounded-sm border font-mono text-[0.6875rem] leading-none",
                   active
-                    ? "border-accent bg-accent text-accent-fg"
+                    ? "border-ink bg-ink text-canvas"
                     : "border-border-strong text-transparent",
                 )}
               >
@@ -253,10 +251,10 @@ function FlagToggle({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "h-9 border px-3 font-mono text-[0.8rem] uppercase tracking-wide transition-colors",
+        "h-9 rounded-pill border px-3.5 font-mono text-[0.8rem] uppercase tracking-wide transition-colors",
         active
-          ? "border-accent bg-accent text-accent-fg"
-          : "border-border-strong bg-surface text-ink hover:border-accent hover:text-accent",
+          ? "border-transparent bg-ink text-canvas"
+          : "border-border-strong bg-surface text-muted hover:border-border-interactive hover:text-ink",
       )}
     >
       {label}

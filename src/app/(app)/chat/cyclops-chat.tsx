@@ -42,9 +42,7 @@ function friendlyError(error: Error): string {
 // ---------------------------------------------------------------------------
 function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
   if (isTextUIPart(part)) {
-    return (
-      <span className="whitespace-pre-wrap leading-relaxed">{part.text}</span>
-    );
+    return <span className="whitespace-pre-wrap">{part.text}</span>;
   }
 
   if (isToolUIPart(part)) {
@@ -87,17 +85,22 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
       <span className="block">
         <span
           className={cn(
-            "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[0.6875rem]",
-            // Bug 2 fix: real finished states per SDK are output-available/output-error/output-denied
-            state === "output-available" || state === "output-denied"
-              ? "border-border bg-surface-2 text-muted"
-              : state === "output-error"
-              ? "border-danger-soft bg-danger-soft text-danger"
-              : "border-border-strong bg-surface text-subtle",
+            // GB+ "worked" chip — rounded pill, green ✓ when finished, no border
+            "inline-flex items-center gap-1.5 rounded-pill px-3 py-1 font-mono text-[0.6875rem]",
+            state === "output-error"
+              ? "bg-danger-soft text-danger"
+              : "bg-surface-3 text-subtle",
           )}
         >
-          <span aria-hidden className="text-accent">
-            ▸
+          <span
+            aria-hidden
+            className={
+              state === "output-available" || state === "output-denied"
+                ? "text-success"
+                : "text-accent"
+            }
+          >
+            {state === "output-available" || state === "output-denied" ? "✓" : "▸"}
           </span>
           {label}
           {(state === "input-streaming" || state === "input-available") && (
@@ -244,10 +247,12 @@ export function CyclopsChat({
             >
               <div
                 className={cn(
-                  "max-w-[82%] space-y-1.5 text-sm",
+                  "space-y-1.5",
                   msg.role === "user"
-                    ? "border border-border bg-accent-tint px-3 py-2 text-ink"
-                    : "text-ink",
+                    ? // ink bubble with a tail — amber means agent, never the user
+                      "max-w-[78%] rounded-[14px_14px_4px_14px] bg-ink px-[15px] py-2.5 text-[0.875rem] leading-[1.55] text-canvas"
+                    : // agent reply is bare Karla prose
+                      "max-w-[64ch] text-[0.875rem] leading-[1.7] text-ink",
                 )}
               >
                 {msg.parts.map((part, i) => (
@@ -321,17 +326,18 @@ export function CyclopsChat({
           </div>
         )}
 
-      {/* Input bar */}
-      <div
-        className={cn(
-          "border-t border-border bg-surface",
-          compact ? "px-3 py-2" : "px-4 py-3",
-        )}
-      >
+      {/* Composer — rounded-16 card, ink Send (GB+); no rectangular input */}
+      <div className={cn(compact ? "px-3 pb-3" : "px-4 pb-4")}>
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2"
+          className={cn(
+            "flex items-center gap-2 rounded-[16px] border border-border bg-surface px-2.5 py-1.5 transition-colors focus-within:border-border-interactive",
+            !compact && "shadow-pop",
+          )}
         >
+          <span aria-hidden className="select-none pl-1 font-mono text-accent">
+            ›
+          </span>
           <input
             type="text"
             value={input}
@@ -339,10 +345,7 @@ export function CyclopsChat({
             onKeyDown={handleKeyDown}
             placeholder="Ask Cyclops…"
             maxLength={8000}
-            className={cn(
-              "flex-1 border border-border bg-canvas px-2.5 py-1.5 font-mono text-[0.8rem] text-ink placeholder:text-faint",
-              "focus:border-accent",
-            )}
+            className="min-w-0 flex-1 bg-transparent py-1 text-[0.875rem] text-ink placeholder:text-faint focus:outline-none"
             aria-label="Chat input"
           />
           {/* item 8: stop button while streaming */}
@@ -350,10 +353,7 @@ export function CyclopsChat({
             <button
               type="button"
               onClick={() => void stop()}
-              className={cn(
-                "label border border-border bg-surface px-3 py-1.5 text-danger transition-colors",
-                "hover:border-danger hover:bg-danger-soft",
-              )}
+              className="shrink-0 rounded-pill border border-border-interactive bg-surface px-3 py-1.5 text-[0.8125rem] font-bold text-danger transition-colors hover:bg-danger-soft"
               aria-label="Stop generation"
             >
               Stop
@@ -362,11 +362,7 @@ export function CyclopsChat({
             <button
               type="submit"
               disabled={!input.trim()}
-              className={cn(
-                "label border border-border bg-surface px-3 py-1.5 text-accent transition-colors",
-                "hover:border-accent hover:bg-accent-tint",
-                "disabled:cursor-not-allowed disabled:opacity-40",
-              )}
+              className="shrink-0 rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Send
             </button>
