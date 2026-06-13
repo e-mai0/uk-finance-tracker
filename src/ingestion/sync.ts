@@ -7,6 +7,7 @@ import { LeverAdapter } from "./adapters/lever";
 import { AshbyAdapter } from "./adapters/ashby";
 import { JaneStreetAdapter } from "./adapters/janestreet";
 import { DeutscheBankBeesiteAdapter } from "./adapters/deutsche-beesite";
+import { GoldmanHigherAdapter } from "./adapters/goldman-higher";
 import { JsonLdPageAdapter } from "./adapters/jsonld-page";
 import { OracleCloudAdapter } from "./adapters/oracle-cloud";
 import { TalNetAdapter } from "./adapters/talnet";
@@ -55,6 +56,9 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
       }
       if (new URL(source.url).hostname.endsWith("careers.db.com")) {
         return new DeutscheBankBeesiteAdapter(employer);
+      }
+      if (new URL(source.url).hostname.endsWith("higher.gs.com")) {
+        return new GoldmanHigherAdapter(employer);
       }
       return new JsonLdPageAdapter(source.url, source.identifier, employer);
     }
