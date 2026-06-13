@@ -1,0 +1,22 @@
+{
+  "name": "cyclops-reels",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Remotion launch reels for Cyclops — free, programmatic, renders the real product theme.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render:v2": "remotion render src/index.ts WatchItCount out/watch-it-count.mp4 --codec=h264"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.476",
+    "@remotion/google-fonts": "^4.0.476",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "remotion": "^4.0.476"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}
