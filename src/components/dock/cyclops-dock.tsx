@@ -206,9 +206,13 @@ export function CyclopsDock({ badge }: { badge: number }) {
   // The aside always reserves 300px on lg+; below lg the rail is hidden (use the
   // Ask Cyclops nav pill). When expanded the panel becomes a fixed overlay but
   // the aside keeps its width, so content never reflows.
+  // The tracker page carries a full-width live tape at the very top, so the
+  // docked card starts below it (the tape spans full width above the rail).
+  const belowTape = pathname.startsWith("/tracker");
+
   return (
     <aside
-      className="hidden w-[300px] shrink-0 py-4 pl-1 pr-5 lg:block"
+      className="hidden w-[360px] shrink-0 py-4 pl-1 pr-5 lg:block"
       aria-label="Cyclops assistant"
     >
       {expanded && (
@@ -228,7 +232,9 @@ export function CyclopsDock({ badge }: { badge: number }) {
         className={
           expanded
             ? "fixed right-0 top-[3.25rem] bottom-3 z-50 flex w-full max-w-2xl flex-col overflow-hidden rounded-l-[0.875rem] border border-border-agent bg-canvas shadow-pop"
-            : "sticky top-[3.25rem] flex h-[calc(100vh-3.25rem-0.75rem)] flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card"
+            : belowTape
+              ? "sticky top-[5.25rem] flex h-[calc(100vh-5.25rem-0.75rem)] flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card"
+              : "sticky top-[3.25rem] flex h-[calc(100vh-3.25rem-0.75rem)] flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card"
         }
       >
         {header}

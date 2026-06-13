@@ -52,8 +52,12 @@ export default async function DashboardPage({
 
   return (
     <div className="animate-rise">
-      {/* Live tape — stays the first element, full width (user requirement) */}
-      <TickerTape items={allItems} />
+      {/* Live tape — full width across the page; the docked rail starts below it.
+          On lg the tape breaks out of the dock-reserved column (-mr matches the
+          dock's reserved width) so it spans edge to edge. */}
+      <div className="lg:-mr-[360px]">
+        <TickerTape items={allItems} />
+      </div>
 
       {/* Starred view keeps the deadline export; the title/stats bar is gone —
           counts live in the filter pills, the board footer carries the legend. */}
