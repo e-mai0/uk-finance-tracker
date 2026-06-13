@@ -1,19 +1,34 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
+import { getTrackerItems } from "@/server/queries/opportunities";
 import { cn, formatShortDate } from "@/lib/utils";
+import { FreshFinds } from "@/components/tracker/fresh-finds";
+import { ScoutCard } from "@/components/tracker/scout-card";
 import type { IngestionSource } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Radar — Trackr" };
 
 /**
- * Source transparency board: every job board and careers site we monitor,
- * how it's read, when it last ran, and what needs human review (watched
- * custom-ATS pages that changed, plus Workday boards we can't read yet).
+ * The discovery surface. Two halves:
+ *  · Fresh finds + Firm Scout — what the radar surfaced this week, and the
+ *    growth loop for adding boutique firms (Scout literally registers a new
+ *    monitored source, so it lives here rather than on the tracker grid).
+ *  · Source intelligence — every board and careers site we monitor, how it's
+ *    read, when it last ran, and what needs human review.
  */
 export default async function RadarPage() {
-  const sources = await prisma.ingestionSource.findMany({
-    orderBy: [{ enabled: "desc" }, { employerName: "asc" }],
-  });
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
+
+  const [sources, items] = await Promise.all([
+    prisma.ingestionSource.findMany({
+      orderBy: [{ enabled: "desc" }, { employerName: "asc" }],
+    }),
+    getTrackerItems(userId),
+  ]);
 
   const needsReview = sources.filter(
     (s) =>
@@ -24,18 +39,26 @@ export default async function RadarPage() {
   const watchers = sources.filter((s) => s.watchOnly);
 
   return (
-    <div className="animate-rise mx-auto max-w-6xl space-y-5 px-4 py-6">
+    <div className="animate-rise mx-auto max-w-4xl space-y-5 px-5 py-8">
       <div>
-        <div className="label text-[0.6875rem] text-subtle">Source intelligence</div>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
-          Radar
-        </h1>
-        <p className="mt-0.5 max-w-2xl text-sm text-muted">
-          Every board and careers site we monitor. Live feeds (ATS APIs,
-          public JSON, structured data) publish automatically; watched custom
-          sites are diffed for change and flagged here for review — nothing is
-          scraped or auto-published from them.
+        <p className="label text-faint">Discovery</p>
+        <h1 className="mt-1 text-[1.75rem] text-ink">Radar</h1>
+        <p className="mt-1 max-w-[62ch] text-[0.875rem] text-muted">
+          What the radar surfaced this week, and every board we monitor. Live
+          feeds (ATS APIs, public JSON, structured data) publish automatically;
+          watched custom sites are diffed for change and flagged for review —
+          nothing is scraped or auto-published from them.
         </p>
+      </div>
+
+      {/* Discovery row — fresh finds + the Firm Scout growth loop */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="overflow-hidden rounded-card border border-border shadow-card">
+          <FreshFinds items={items} />
+        </div>
+        <div className="overflow-hidden rounded-card border border-border shadow-card">
+          <ScoutCard />
+        </div>
       </div>
 
       {needsReview.length > 0 && (
@@ -94,7 +117,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-card border border-border bg-surface">
+    <div className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
       <div className="flex items-center justify-between border-b border-hairline bg-surface-2 px-3 py-2">
         <span className="label text-ink">
           <span className={glyphTone}>{glyph}</span> {title}
