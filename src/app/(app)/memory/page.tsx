@@ -141,15 +141,13 @@ export default async function MemoryPage({
         </section>
       )}
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-      {/* Left rail — file list */}
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface sm:flex">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden px-5 py-4">
+      {/* Left rail — file list (floating card) */}
+      <aside className="hidden w-60 shrink-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card sm:flex">
         {/* Heading */}
-        <div className="border-b border-border px-3 py-2.5">
-          <p className="label text-subtle">Cyclops</p>
-          <p className="font-mono text-[0.75rem] text-ink">
-            What Cyclops knows
-          </p>
+        <div className="flex items-baseline gap-2 border-b border-hairline px-4 py-3">
+          <h2 className="font-display text-[1rem] font-semibold text-ink">Files</h2>
+          <span className="label ml-auto text-faint">{files.length}</span>
         </div>
 
         {/* File list */}
@@ -160,7 +158,7 @@ export default async function MemoryPage({
           {/* Canonical group */}
           {canonical.length > 0 && (
             <>
-              <div className="px-3 pb-0.5 pt-2">
+              <div className="px-4 pb-0.5 pt-2">
                 <span className="label uppercase tracking-widest text-faint">
                   Profile
                 </span>
@@ -178,7 +176,7 @@ export default async function MemoryPage({
           {/* Stories group */}
           {stories.length > 0 && (
             <>
-              <div className="px-3 pb-0.5 pt-3">
+              <div className="px-4 pb-0.5 pt-3">
                 <span className="label uppercase tracking-widest text-faint">
                   Stories
                 </span>
@@ -196,7 +194,7 @@ export default async function MemoryPage({
           {/* Companies group */}
           {companies.length > 0 && (
             <>
-              <div className="px-3 pb-0.5 pt-3">
+              <div className="px-4 pb-0.5 pt-3">
                 <span className="label uppercase tracking-widest text-faint">
                   Companies
                 </span>
@@ -214,7 +212,7 @@ export default async function MemoryPage({
           {/* Other */}
           {other.length > 0 && (
             <>
-              <div className="px-3 pb-0.5 pt-3">
+              <div className="px-4 pb-0.5 pt-3">
                 <span className="label uppercase tracking-widest text-faint">
                   Other
                 </span>
@@ -231,23 +229,21 @@ export default async function MemoryPage({
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-border px-3 py-2">
+        <div className="border-t border-hairline px-4 py-2">
           <span className="label text-faint">
             Memory · {files.length} file{files.length !== 1 ? "s" : ""}
           </span>
         </div>
       </aside>
 
-      {/* Main pane */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* Main pane (document card) */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
         {/* Pane header */}
-        <div className="flex items-center border-b border-border bg-surface px-4 py-2">
-          <div className="flex items-baseline gap-2">
-            <span className="label text-subtle">Memory</span>
-            <span className="truncate font-mono text-[0.75rem] text-ink">
-              {activePath ?? "—"}
-            </span>
-          </div>
+        <div className="flex items-center gap-2 border-b border-hairline bg-surface-2 px-4 py-2.5">
+          <span className="label text-faint">Memory</span>
+          <span className="truncate font-mono text-[0.78rem] text-ink">
+            {activePath ?? "—"}
+          </span>
         </div>
 
         {/* Editor area */}
@@ -285,15 +281,15 @@ function FileLink({ path, isActive }: { path: string; isActive: boolean }) {
       className={
         // Selection is ink — inset spine + neutral tint, never amber.
         isActive
-          ? "block bg-surface-2 px-3 py-2 shadow-[inset_3px_0_0_var(--color-ink)]"
-          : "block px-3 py-2 hover:bg-surface-2"
+          ? "block bg-surface-2 px-4 py-2 shadow-[inset_3px_0_0_var(--color-ink)]"
+          : "block px-4 py-2 hover:bg-surface-2"
       }
     >
-      <span className="block truncate font-mono text-[0.75rem] text-ink">
+      <span className="block truncate text-[0.8125rem] font-extrabold text-ink">
         {label}
       </span>
       {path.includes("/") && (
-        <span className="block truncate font-mono text-[0.6875rem] text-faint">
+        <span className="mt-0.5 block truncate font-mono text-[0.6875rem] text-subtle">
           {path}
         </span>
       )}

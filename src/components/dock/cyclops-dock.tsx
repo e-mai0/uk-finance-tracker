@@ -328,7 +328,8 @@ export function CyclopsDock({ badge }: { badge: number }) {
             className={
               expanded
                 ? "relative z-10 flex h-full w-full max-w-2xl flex-col border-l border-border-agent bg-canvas"
-                : "fixed right-0 top-12 z-40 hidden h-[calc(100vh-3rem)] w-[286px] border-l border-border-agent bg-surface lg:flex lg:flex-col"
+                : // docked: a floating card in the right gutter (Granola law — fixed, floats over content)
+                  "fixed right-3 top-14 bottom-3 z-40 hidden w-[286px] flex-col overflow-hidden rounded-card border border-border-agent bg-surface shadow-card lg:flex"
             }
           >
             {header}
