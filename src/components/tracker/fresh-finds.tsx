@@ -25,28 +25,29 @@ export function FreshFinds({ items }: { items: TrackerItem[] }) {
         <span className="label text-subtle">Last 7d</span>
       </div>
       {fresh.length === 0 ? (
-        <p className="px-3 py-4 text-[0.78rem] text-muted">
+        <p className="px-3 py-4 text-[0.8125rem] text-muted">
           No new listings this week. Scout a firm below to widen the radar.
         </p>
       ) : (
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-hairline">
           {fresh.map((item) => (
             <li key={item.id}>
+              {/* Hover is neutral — amber is reserved for agent surfaces. */}
               <Link
-                href={`/opportunities/${item.id}`}
-                className="block border-l-2 border-transparent px-3 py-2 transition-colors hover:border-accent hover:bg-accent-tint"
+                href={`/tracker/${item.id}`}
+                className="block px-3 py-2 transition-colors hover:bg-surface-2"
               >
                 <div className="flex items-baseline gap-2.5">
                   <span aria-hidden className="text-[0.6875rem] text-success">
                     ●
                   </span>
-                  <span className="tabular shrink-0 text-[0.78rem] tracking-tight text-accent">
+                  <span className="tabular shrink-0 text-[0.75rem] text-muted">
                     {ticker(item.employerName)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[0.8rem] leading-snug text-ink">
+                  <span className="min-w-0 flex-1 truncate text-[0.8125rem] leading-snug text-ink">
                     {item.title}
                   </span>
-                  <span className="tabular text-[0.72rem] text-subtle">
+                  <span className="tabular text-[0.6875rem] text-subtle">
                     {locCode(item.location)}
                   </span>
                 </div>

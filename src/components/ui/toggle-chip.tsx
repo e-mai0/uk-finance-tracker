@@ -37,19 +37,20 @@ export function ToggleChipGroup<T extends string>({
             onClick={() => toggle(opt.value)}
             aria-pressed={active}
             className={cn(
-              "inline-flex items-center gap-2 rounded-[var(--radius-control)] border px-3 py-1.5 text-sm font-medium transition-colors",
+              // Selection is ink — never amber (GB+ contract).
+              "inline-flex items-center gap-2 rounded-pill border px-3 py-1.5 text-[0.8125rem] font-bold transition-colors",
               active
-                ? "border-accent bg-accent-soft text-accent"
-                : "border-border-strong bg-surface text-muted hover:border-ink/30 hover:text-ink",
+                ? "border-ink bg-surface-3 text-ink"
+                : "border-border-interactive bg-surface text-muted hover:bg-surface-2 hover:text-ink",
             )}
           >
             <span
               aria-hidden
               className={cn(
-                "flex h-4 w-4 items-center justify-center rounded-[2px] border font-mono text-[0.6875rem] leading-none",
+                "flex h-4 w-4 items-center justify-center rounded-[2px] border font-mono text-[0.6875rem] font-normal leading-none",
                 active
-                  ? "border-accent bg-accent text-accent-fg"
-                  : "border-border-strong text-transparent",
+                  ? "border-ink bg-ink text-canvas"
+                  : "border-border-interactive text-transparent",
               )}
             >
               ✓
