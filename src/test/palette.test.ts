@@ -83,6 +83,7 @@ describe("paletteSearch", () => {
       expect.objectContaining({
         where: {
           userId: "u1",
+          kind: "cyclops",
           title: { contains: "brief", mode: "insensitive" },
           NOT: { title: DOCK_THREAD_TITLE },
         },

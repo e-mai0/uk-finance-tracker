@@ -84,7 +84,7 @@ export default async function ChatPage({
   // deep-link visits don't pile up blank sessions.
   if (prefill && !tParam) {
     const empty = await prisma.chatSession.findFirst({
-      where: { userId, messages: { none: {} }, NOT: { title: DOCK_THREAD_TITLE } },
+      where: { userId, kind: "cyclops", messages: { none: {} }, NOT: { title: DOCK_THREAD_TITLE } },
       orderBy: { updatedAt: "desc" },
     });
     let threadId: string;
@@ -108,7 +108,7 @@ export default async function ChatPage({
   // Load up to 50 threads, newest first — exclude the dock thread (ambient
   // surface, not a conversation to manage in the rail).
   const threads = await prisma.chatSession.findMany({
-    where: { userId, NOT: { title: DOCK_THREAD_TITLE } },
+    where: { userId, kind: "cyclops", NOT: { title: DOCK_THREAD_TITLE } },
     orderBy: { updatedAt: "desc" },
     take: 50,
   });

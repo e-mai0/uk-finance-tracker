@@ -103,6 +103,7 @@ model User {
   profile       Profile?
   preferences   Preferences?
   applyProfile  ApplyProfile?
+  builtCv       BuiltCv?
   saved         SavedOpportunity[]
   matches       MatchScore[]
   apiTokens     ApiToken[]
@@ -476,6 +477,7 @@ model MemoryRevision {
 model ChatSession {
   id        String        @id @default(cuid())
   userId    String
+  kind      String        @default("cyclops") // "cyclops" | "cv-builder"
   title     String        @default("New conversation")
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
@@ -593,4 +595,19 @@ model EmployerResearch {
   model       String
   refreshedAt DateTime
   employer    Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// CV Builder — structured CV built via guided form + chatbot
+// ---------------------------------------------------------------------------
+
+model BuiltCv {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data          Json     // CvData — source of truth for preview & exports
+  formInput     Json?    // raw 3-step form answers (kept for re-edit)
+  chatSessionId String?  // dedicated CV-builder chat thread
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
