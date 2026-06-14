@@ -190,6 +190,21 @@ export function CyclopsChat({
 
   const isStreaming = status === "submitted" || status === "streaming";
 
+  // Abort any in-flight stream when this chat unmounts. Switching threads keys
+  // a fresh CyclopsChat, and the dock unmounts on navigation to /chat, /memory
+  // or /settings — without this the request is abandoned mid-flight and the
+  // streaming response visibly collapses. The server still drives generation to
+  // completion (route consumeStream) and persists the full message, so it is
+  // intact on the next load. A ref keeps the cleanup unmount-only without
+  // re-aborting on every render where `stop`'s identity changes.
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
+  useEffect(() => {
+    return () => {
+      void stopRef.current();
+    };
+  }, []);
+
   // item 7: auto-scroll only when pinned near the bottom
   useEffect(() => {
     const container = scrollContainerRef.current;

@@ -107,11 +107,20 @@ export function QuestionnaireForm({
         return;
       }
       if (variant === "onboarding") {
-        // Voice + stories are best-effort: failures never block finishing.
+        // Voice + stories are best-effort: failures never block finishing, and
+        // neither may a slow or hanging LLM call. These are server actions that
+        // finish server-side even after we navigate, so cap the wait and move on
+        // regardless — otherwise a stuck call strands the user in the wizard.
         const samples = writingSamples.filter((v) => v.trim());
         const stories = storyEntries.filter((v) => v.trim());
-        if (samples.length) await distillVoice(samples).catch(() => null);
-        if (stories.length) await seedStories(stories).catch(() => null);
+        const best = (async () => {
+          if (samples.length) await distillVoice(samples).catch(() => null);
+          if (stories.length) await seedStories(stories).catch(() => null);
+        })();
+        await Promise.race([
+          best,
+          new Promise((resolve) => setTimeout(resolve, 10000)),
+        ]);
         onDone?.();
         return;
       }
