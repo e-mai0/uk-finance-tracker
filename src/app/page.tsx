@@ -29,7 +29,7 @@ export default async function LandingPage() {
               Cyclops<span className="text-amber">.</span>
             </span>
             <span className="label hidden text-[0.6rem] text-chrome-dim sm:inline">
-              Application OS · UK Finance
+              Your internship agent
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -54,24 +54,25 @@ export default async function LandingPage() {
           <div>
             <div className="animate-rise flex items-center gap-2.5 font-mono text-xs uppercase tracking-[0.18em] text-subtle">
               <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-good-mark" />
-              One eye, always open · Summer 2027 cycle
+              One eye, always open · 2027 intern season
             </div>
             <h1
               className="animate-rise mt-5 text-balance text-[2.6rem] leading-[1.03] text-ink sm:text-[3.45rem]"
               style={{ animationDelay: "60ms" }}
             >
-              The application OS that{" "}
-              <em className="font-display italic text-accent">watches</em> finance
-              so you don&apos;t have to.
+              One eye on every internship.{" "}
+              <em className="font-display italic text-accent">
+                So you can close the other.
+              </em>
             </h1>
             <p
               className="animate-rise mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted sm:text-lg"
               style={{ animationDelay: "120ms" }}
             >
-              Cyclops tracks every UK internship across the major banks and funds,
-              scores each <span className="font-mono text-ink">0–100</span> for how
-              well it fits you, and drafts answers in your voice overnight — then
-              brings you only the decisions that actually need you.
+              Cyclops watches every employer you care about, drafts each
+              application in your own voice overnight, and brings you only the
+              decisions that actually need a human — the rest runs while you
+              sleep.
             </p>
             <div
               className="animate-rise mt-8 flex flex-wrap items-center gap-5"
@@ -90,7 +91,7 @@ export default async function LandingPage() {
               className="animate-rise mt-4 font-mono text-xs uppercase tracking-wider text-subtle"
               style={{ animationDelay: "240ms" }}
             >
-              Free to start · no card · never auto-submits
+              Free · never auto-submits
             </p>
           </div>
 
@@ -117,8 +118,8 @@ export default async function LandingPage() {
               n="02"
               glyph="▦"
               glyphTone="text-ink"
-              title="Score"
-              body="Each role earns a deterministic 0–100 fit against your degree, timing, location and target firms. No ML black box — you see the exact maths."
+              title="Shortlist"
+              body="It sifts the flood down to the handful that actually fit your background, timing and goals — so your night goes to real contenders, not the listings."
             />
             <LoopStep
               n="03"
@@ -141,7 +142,7 @@ export default async function LandingPage() {
         {/* ── The surfaces ─────────────────────────────────────────────────── */}
         <Reveal className="mt-24 sm:mt-28">
           <SectionHead
-            kicker="Inside the OS"
+            kicker="Inside Cyclops"
             title="Six surfaces. One model of you."
             lede="Every part of Cyclops feeds the same private memory — the more you use it, the more it sounds and decides like you."
           />
@@ -195,14 +196,14 @@ export default async function LandingPage() {
             <div className="border-b border-hairline px-6 py-10 text-center sm:px-10 sm:py-14">
               <p className="label text-faint">The line Cyclops won&apos;t cross</p>
               <h2 className="mx-auto mt-4 max-w-2xl text-balance text-[2rem] leading-[1.08] text-ink sm:text-[2.6rem]">
-                It drafts, scores and researches.{" "}
+                It watches, drafts and researches.{" "}
                 <span className="text-accent">You</span> click submit.
               </h2>
             </div>
             <div className="grid gap-px bg-border sm:grid-cols-3">
               <Pledge
-                title="Scores you can audit"
-                body="Fit is arithmetic, not a vibe. Every point traces back to a fact about you — degree, cycle, city, shortlist."
+                title="You see how it thinks"
+                body="Every shortlist and every draft shows the facts about you it drew on — no black box, no guessing why."
               />
               <Pledge
                 title="You own your memory"
@@ -220,14 +221,13 @@ export default async function LandingPage() {
         <Reveal className="mt-16">
           <section className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-4">
             <Stat value={`${employers || "24"}`} label="Firms watched" />
-            <Stat value="13" label="ATS adapters" />
+            <Stat value="6h" label="Re-check cycle" />
             <Stat value={`${opportunities || "45"}`} label="Live openings" />
             <Stat value="0" label="Auto-submits, ever" agent />
           </section>
           <p className="mt-3 px-1 font-mono text-[0.66rem] uppercase tracking-wider text-faint">
-            Goldman Sachs · J.P. Morgan · Morgan Stanley · Barclays · BlackRock ·
-            Citi · UBS · Schroders · Jane Street · Citadel · Point72 · Macquarie · &
-            more
+            Google · McKinsey · Goldman Sachs · Meta · BCG · Jane Street · Amazon ·
+            Stripe · Bain · Barclays · Microsoft · Deloitte · & more
           </p>
         </Reveal>
       </main>
@@ -236,9 +236,9 @@ export default async function LandingPage() {
       <section className="chrome mt-24 border-t border-chrome-line">
         <div className="mx-auto max-w-6xl px-6 py-16 text-center sm:py-24">
           <Reveal>
-            <p className="label text-chrome-dim">Cyclops · Application OS</p>
+            <p className="label text-chrome-dim">Cyclops · your internship agent</p>
             <h2 className="mx-auto mt-4 max-w-2xl text-balance text-[2.1rem] leading-[1.07] text-chrome-ink sm:text-[2.9rem]">
-              Point one eye at the City.
+              Point one eye at the hunt.
               <br className="hidden sm:block" /> Spend yours on getting the offer.
             </h2>
             <p className="mx-auto mt-5 max-w-md text-pretty text-chrome-ink-2">
@@ -266,7 +266,7 @@ export default async function LandingPage() {
       <footer className="border-t border-border">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6 font-mono text-[0.7rem] uppercase tracking-wider text-subtle">
           <span>
-            Cyclops<span className="text-accent">.</span> — UK finance application OS
+            Cyclops<span className="text-accent">.</span> — the intern&apos;s application agent
           </span>
           <span className="hidden sm:inline">
             Original product · not affiliated with any employer listed
@@ -286,20 +286,20 @@ function CoverageTape() {
   const up = "text-[#46c178]";
   const down = "text-[#f0584f]";
   const lanes = [
-    ["GS", "▲", up, "14d"],
-    ["MS", "▲", up, "9d"],
-    ["JPM", "◆", "text-amber", "SOON"],
-    ["BARC", "▲", up, "22d"],
-    ["BLK", "▼", down, "3d"],
-    ["CITI", "▲", up, "17d"],
-    ["UBS", "▲", up, "11d"],
-    ["JANE", "◆", "text-amber", "SOON"],
-    ["CTDL", "▲", up, "26d"],
+    ["GOOG", "●", up, "OPEN"],
+    ["MCK", "◆", "text-amber", "SOON"],
+    ["GS", "●", up, "14d"],
+    ["META", "●", up, "NEW"],
+    ["BCG", "◆", "text-amber", "SOON"],
+    ["STRP", "●", up, "OPEN"],
+    ["JANE", "●", up, "11d"],
+    ["DELO", "▼", down, "3d"],
+    ["AMZN", "●", up, "NEW"],
+    ["BARC", "●", up, "22d"],
+    ["BAIN", "◆", "text-amber", "SOON"],
+    ["MSFT", "●", up, "OPEN"],
     ["P72", "▼", down, "2d"],
-    ["SCHR", "▲", up, "19d"],
-    ["MACQ", "▲", up, "8d"],
-    ["NOM", "▼", down, "4d"],
-    ["DB", "▲", up, "15d"],
+    ["PWC", "●", up, "15d"],
   ] as const;
 
   const Cell = ({
@@ -389,10 +389,10 @@ function FitMeter({ fit, tier }: { fit: number; tier: keyof typeof TIER }) {
 
 function HeroDesk() {
   const rows = [
-    { code: "GS", firm: "Goldman Sachs", role: "IBD Summer Analyst", status: "Open", tone: "text-success", fit: 91, tier: "strong" as const, agent: false },
-    { code: "JPM", firm: "J.P. Morgan", role: "Markets Summer", status: "Open", tone: "text-success", fit: 84, tier: "strong" as const, agent: false },
-    { code: "CTDL", firm: "Citadel", role: "Quant Research", status: "Soon", tone: "text-warning", fit: 76, tier: "good" as const, agent: true },
-    { code: "SCHR", firm: "Schroders", role: "Asset Mgmt Intern", status: "Open", tone: "text-success", fit: 67, tier: "moderate" as const, agent: false },
+    { code: "GOOG", firm: "Google", role: "SWE Intern", status: "Open", tone: "text-success", fit: 91, tier: "strong" as const, agent: false },
+    { code: "MCK", firm: "McKinsey", role: "Summer Associate", status: "Soon", tone: "text-warning", fit: 84, tier: "strong" as const, agent: true },
+    { code: "JANE", firm: "Jane Street", role: "Quant Trading", status: "Open", tone: "text-success", fit: 76, tier: "good" as const, agent: false },
+    { code: "STRP", firm: "Stripe", role: "Product Intern", status: "Open", tone: "text-success", fit: 67, tier: "moderate" as const, agent: false },
   ];
 
   return (
@@ -402,8 +402,10 @@ function HeroDesk() {
         {/* Panel head — mimics the desk chrome */}
         <div className="flex items-center justify-between border-b border-border bg-surface-2 px-4 py-2.5">
           <span className="label text-faint">Tracker · 45 live</span>
-          <span className="relative flex items-center gap-1.5 overflow-hidden">
-            <span className="scanline pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-transparent via-[var(--color-agent-mark)]/25 to-transparent" />
+          <span className="relative flex items-center gap-1.5">
+            <span className="pointer-events-none absolute inset-0 overflow-hidden">
+              <span className="scanline absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-transparent via-[var(--color-agent-mark)]/25 to-transparent" />
+            </span>
             <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-good-mark" />
             <span className="label text-[0.6rem] text-subtle">scanning</span>
           </span>
@@ -461,8 +463,9 @@ function HeroDesk() {
         ))}
       </div>
 
-      {/* Floating proposal card — the agent's offer, overlapping the desk */}
-      <div className="mt-4 rounded-[var(--radius-card)] border border-border-agent bg-surface shadow-[var(--shadow-pop)] lg:absolute lg:-bottom-10 lg:-left-8 lg:mt-0 lg:w-[19rem]">
+      {/* Agent proposal card — the night's offer, sitting under the desk in flow
+          so it never overlaps the rows awkwardly. */}
+      <div className="mt-4 rounded-[var(--radius-card)] border border-border-agent bg-surface shadow-[var(--shadow-pop)]">
         <div className="flex items-center gap-2 border-b border-border-agent px-4 py-2.5">
           <span aria-hidden className="text-[0.8rem] text-accent">
             ◆
@@ -473,8 +476,8 @@ function HeroDesk() {
         <div className="px-4 py-3">
           <p className="text-[0.72rem] leading-relaxed text-muted">
             Drafted your{" "}
-            <span className="font-bold text-ink">&ldquo;Why Citadel?&rdquo;</span>{" "}
-            answer from your options-pricing project and markets internship.
+            <span className="font-bold text-ink">&ldquo;Why McKinsey?&rdquo;</span>{" "}
+            answer from your case-competition win and last summer&apos;s internship.
           </p>
           <div className="mt-3 flex items-center gap-2">
             <span className="inline-flex h-7 items-center rounded-pill bg-ink px-3 text-[0.7rem] font-extrabold text-canvas">
@@ -615,9 +618,9 @@ function Stat({
 
 function DeskRows() {
   const rows = [
-    { code: "MS", role: "S&T Summer", status: "Open", tone: "text-success", fit: 88, tier: "strong" as const },
-    { code: "BARC", role: "IBD Spring Week", status: "Soon", tone: "text-warning", fit: 73, tier: "good" as const },
-    { code: "BLK", role: "Aladdin Intern", status: "Closing", tone: "text-danger", fit: 61, tier: "moderate" as const },
+    { code: "META", role: "Product Intern", status: "Open", tone: "text-success", fit: 88, tier: "strong" as const },
+    { code: "BCG", role: "Summer Associate", status: "Soon", tone: "text-warning", fit: 73, tier: "good" as const },
+    { code: "AMZN", role: "SDE Intern", status: "Closing", tone: "text-danger", fit: 61, tier: "moderate" as const },
   ];
   return (
     <div className="overflow-hidden rounded-[var(--radius-control)] border border-hairline">
@@ -652,9 +655,9 @@ function DeskRows() {
 
 function AgentTrace() {
   const steps = [
-    ["read memory", "voice.md · stories/markets-internship"],
-    ["research", "Citadel · 2027 quant cycle"],
-    ["fit check", "76 / 100 · good"],
+    ["read memory", "voice.md · stories/case-comp-win"],
+    ["research", "McKinsey · 2027 summer cycle"],
+    ["match", "strong fit · top of your list"],
     ["draft", "answer · 148 words"],
   ];
   return (
@@ -692,12 +695,12 @@ function MemoryCard() {
       <div className="flex items-center gap-2 border-b border-hairline bg-surface-2 px-3 py-2">
         <span className="tabular text-[0.66rem] text-subtle">stories/</span>
         <span className="text-[0.74rem] font-bold text-ink">
-          options-pricing-project.md
+          campus-delivery-app.md
         </span>
       </div>
       <div className="px-3 py-3">
         <div className="flex flex-wrap gap-1.5">
-          {["quant", "markets", "self-taught"].map((t) => (
+          {["product", "0→1", "shipped"].map((t) => (
             <span
               key={t}
               className="tabular rounded-pill bg-surface-3 px-2 py-0.5 text-[0.62rem] text-subtle"
@@ -710,8 +713,8 @@ function MemoryCard() {
           </span>
         </div>
         <p className="mt-3 font-mono text-[0.7rem] leading-relaxed text-muted">
-          Built a Black–Scholes pricer in Python to settle a desk debate; backtested
-          against live option chains over a vacation.
+          Built and shipped a campus food-delivery app to 1,200 students in a
+          term, running the two-person engineering team end to end.
         </p>
       </div>
     </div>
@@ -721,7 +724,7 @@ function MemoryCard() {
 function AutofillCard() {
   const fields = [
     ["Full name", "Ada Whitfield"],
-    ["University", "Cambridge · Economics"],
+    ["University", "Cambridge · Computer Science"],
     ["Right to work", "UK citizen"],
   ];
   return (
