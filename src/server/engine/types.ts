@@ -54,6 +54,8 @@ export type Provenance = {
   checksFailed: string[]; // tells found in the first draft
   revised: boolean;
   questionKind: string;
+  /** The model id that produced the draft. */
+  model: string;
   residualTells: string[]; // tells remaining in the final text
   /** True when grounding is thin: story-backed question with no stories selected,
    *  or commercial question with no research. Signals elevated fabrication risk. */
