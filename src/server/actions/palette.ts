@@ -38,6 +38,7 @@ export async function paletteSearch(q: string): Promise<PaletteResults> {
     prisma.chatSession.findMany({
       where: {
         userId,
+        kind: "cyclops",
         title: { contains: term, mode: "insensitive" },
         NOT: { title: DOCK_THREAD_TITLE },
       },
