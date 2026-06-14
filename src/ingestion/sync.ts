@@ -16,6 +16,7 @@ import { EightfoldAdapter } from "./adapters/eightfold";
 import { RadancyAdapter } from "./adapters/radancy";
 import { AvatureAdapter } from "./adapters/avature";
 import { fetchText, ImpervaBlockedError } from "./adapters/common";
+import { mapPool } from "./pool";
 import { evaluateWatch, type WatchState } from "./watch";
 
 /**
@@ -227,18 +228,41 @@ export async function syncSource(
   }
 }
 
-/** Run every enabled source sequentially (gentle on the ATS APIs and well
- *  within a cron window at this registry size). */
+// Each source is a different host, so a small concurrent pool is polite while
+// letting a full registry (~20+ sources, mostly I/O-bound) finish inside one
+// daily cron run. Hobby cron is once-per-day, so a single run must cover them
+// all — we can't spread work across frequent invocations.
+const SYNC_CONCURRENCY = 5;
+// Stop starting new sources before the function's 300s limit; any not reached
+// keep their older lastRunAt and are picked first next run (oldest-first order).
+const SYNC_TIME_BUDGET_MS = 270_000;
+
+/** Run every enabled source with bounded concurrency, oldest-run first, within
+ *  a time budget. Returns one result per source (skipped ones are reported). */
 export async function syncAllSources(
   prisma: PrismaClient,
+  opts: { concurrency?: number; budgetMs?: number } = {},
 ): Promise<SourceSyncResult[]> {
+  const concurrency = opts.concurrency ?? SYNC_CONCURRENCY;
+  const budgetMs = opts.budgetMs ?? SYNC_TIME_BUDGET_MS;
+  const startedAt = Date.now();
   const sources = await prisma.ingestionSource.findMany({
     where: { enabled: true },
-    orderBy: { createdAt: "asc" },
+    // Least-recently-run first (never-run sources lead) so a partial run always
+    // makes progress on the laggards rather than re-running the same head set.
+    orderBy: [{ lastRunAt: { sort: "asc", nulls: "first" } }, { createdAt: "asc" }],
   });
-  const results: SourceSyncResult[] = [];
-  for (const source of sources) {
-    results.push(await syncSource(prisma, source));
-  }
-  return results;
+  return mapPool(sources, concurrency, (source) => {
+    if (Date.now() - startedAt > budgetMs) {
+      return Promise.resolve<SourceSyncResult>({
+        sourceId: source.id,
+        employerName: source.employerName,
+        ok: false,
+        created: 0,
+        updated: 0,
+        error: "skipped: sync time budget reached (will run next cycle)",
+      });
+    }
+    return syncSource(prisma, source);
+  });
 }

@@ -3,7 +3,10 @@ import { syncAllSources } from "../../../../ingestion/sync";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// 300s is the Hobby max (and the default with Fluid Compute). The full source
+// registry is I/O-bound and runs concurrently (see syncAllSources), so one daily
+// run completes well within this; the prior 60s cut a full run off after ~6.
+export const maxDuration = 300;
 
 /**
  * Cron endpoint: pull every enabled ingestion source (see vercel.json for the
