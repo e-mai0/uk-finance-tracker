@@ -1,12 +1,21 @@
 import type { IngestionSource, PrismaClient } from "@prisma/client";
 import type { SourceAdapter } from "./types";
+import type { SourceConfig } from "./types";
 import { importDataset } from "./import";
 import { GreenhouseAdapter } from "./adapters/greenhouse";
 import { LeverAdapter } from "./adapters/lever";
 import { AshbyAdapter } from "./adapters/ashby";
 import { JaneStreetAdapter } from "./adapters/janestreet";
+import { DeutscheBankBeesiteAdapter } from "./adapters/deutsche-beesite";
+import { GoldmanHigherAdapter } from "./adapters/goldman-higher";
 import { JsonLdPageAdapter } from "./adapters/jsonld-page";
-import { fetchText } from "./adapters/common";
+import { OracleCloudAdapter } from "./adapters/oracle-cloud";
+import { TalNetAdapter } from "./adapters/talnet";
+import { WorkdayAdapter } from "./adapters/workday";
+import { EightfoldAdapter } from "./adapters/eightfold";
+import { RadancyAdapter } from "./adapters/radancy";
+import { AvatureAdapter } from "./adapters/avature";
+import { fetchText, ImpervaBlockedError } from "./adapters/common";
 import { evaluateWatch, type WatchState } from "./watch";
 
 /**
@@ -45,7 +54,37 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
       if (new URL(source.url).hostname.endsWith("janestreet.com")) {
         return new JaneStreetAdapter(employer);
       }
+      if (new URL(source.url).hostname.endsWith("careers.db.com")) {
+        return new DeutscheBankBeesiteAdapter(employer);
+      }
+      if (new URL(source.url).hostname.endsWith("higher.gs.com")) {
+        return new GoldmanHigherAdapter(employer);
+      }
       return new JsonLdPageAdapter(source.url, source.identifier, employer);
+    }
+    case "ORACLE_CLOUD": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "oracle" }>;
+      return new OracleCloudAdapter(c, employer);
+    }
+    case "TALNET": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "talnet" }>;
+      return new TalNetAdapter(c, employer);
+    }
+    case "WORKDAY": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "workday" }>;
+      return new WorkdayAdapter(c, employer);
+    }
+    case "EIGHTFOLD": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "eightfold" }>;
+      return new EightfoldAdapter(c, employer);
+    }
+    case "RADANCY": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "radancy" }>;
+      return new RadancyAdapter(c, employer);
+    }
+    case "AVATURE": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "avature" }>;
+      return new AvatureAdapter(c, employer);
     }
     default:
       return null;
@@ -157,6 +196,7 @@ export async function syncSource(
         lastStatus: `ok: ${result.created} created, ${result.updated} updated`,
         lastError: null,
         consecutiveFailures: 0,
+        lastSuccessfulFetchAt: new Date(),
       },
     });
     return {
@@ -168,6 +208,13 @@ export async function syncSource(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (err instanceof ImpervaBlockedError) {
+      await prisma.ingestionSource.update({
+        where: { id: source.id },
+        data: { lastRunAt: new Date(), lastStatus: "unreachable (bot challenge)", lastError: message.slice(0, 500) },
+      });
+      return { sourceId: source.id, employerName: source.employerName, ok: false, created: 0, updated: 0, error: message };
+    }
     await recordFailure(prisma, source, message);
     return {
       sourceId: source.id,

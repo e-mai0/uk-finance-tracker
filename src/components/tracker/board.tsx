@@ -12,6 +12,10 @@ export type BoardRow = {
   divisionDesk: string | null;
   status: string; // OpportunityStatus
   deadlineAt: string | null; // ISO
+  /** Deadline inferred from the recruiting cycle, not a stated date. */
+  deadlineEstimated: boolean;
+  /** Rolling intake — may close once filled, ahead of any deadline. */
+  isRolling: boolean;
   daysLeft: number | null;
   score: number | undefined;
   saved: boolean;
@@ -122,10 +126,20 @@ export function Board({ rows }: { rows: BoardRow[] }) {
                     </span>
                   )}
                 </td>
-                <td className="tabular py-0 text-right text-[0.75rem] text-muted">
-                  {row.deadlineAt
-                    ? new Date(row.deadlineAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
-                    : "—"}
+                <td className="py-0 text-right">
+                  <span className="tabular text-[0.75rem] text-muted">
+                    {row.deadlineAt
+                      ? new Date(row.deadlineAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+                      : "—"}
+                  </span>
+                  {row.deadlineEstimated && (
+                    <span
+                      className="label block text-subtle"
+                      title="Estimated from the recruiting cycle — rolling, may close early"
+                    >
+                      est. · rolling
+                    </span>
+                  )}
                 </td>
                 <td
                   className={cn(

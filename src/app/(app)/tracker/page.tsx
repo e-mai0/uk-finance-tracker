@@ -38,6 +38,8 @@ export default async function DashboardPage({
     divisionDesk: it.divisionDesk ?? null,
     status: it.status,
     deadlineAt: it.deadlineAt ? new Date(it.deadlineAt).toISOString() : null,
+    deadlineEstimated: it.deadlineEstimated === true,
+    isRolling: it.isRolling === true,
     daysLeft: daysUntil(it.deadlineAt, now),
     score: it.score,
     saved: it.saved === true,

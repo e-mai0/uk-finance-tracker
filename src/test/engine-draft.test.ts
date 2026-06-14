@@ -141,6 +141,12 @@ describe("draftText", () => {
     expect(out.provenance.storiesUsed).not.toContain("rowing");
   });
 
+  it("records the model used in provenance (Sonnet)", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "Clean answer.", usage: {} });
+    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?" });
+    expect(out.provenance.model).toBe("claude-sonnet-4-6");
+  });
+
   // Item 3: honest provenance — residualTells populated
   it("populates residualTells from the final text", async () => {
     // First call: draft generation (returns clean text, no tells)
