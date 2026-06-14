@@ -6,7 +6,7 @@ import { after } from "next/server";
 import { generateObject } from "ai";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
-import { modelFor } from "@/server/ai/models";
+import { sonnet } from "@/server/ai/models";
 import { checkBudget, recordUsage } from "@/server/ai/budget";
 import {
   cvDataSchema,
@@ -64,7 +64,7 @@ export async function buildCv(raw: unknown): Promise<BuildCvResult> {
     if (budget.ok) {
       try {
         const { object, usage } = await generateObject({
-          model: modelFor("draft"),
+          model: sonnet,
           schema: cvDataSchema,
           prompt: `You are refining a CV draft for a UK finance student. Below is the current CV as JSON. Improve the clarity and impact of bullet points and phrasing — concise, action-led, British English, NO em dashes. Keep the same JSON shape and field names. Do NOT invent facts, employers, grades or numbers that are not already present; only rephrase and tidy what is there. Keep the contact details exactly as given.
 
