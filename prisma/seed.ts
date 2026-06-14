@@ -1,7 +1,5 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../src/server/db";
-import { importDataset } from "../src/ingestion/import";
-import { ukFinance2027 } from "../src/ingestion/datasets/uk-finance-2027";
 import { recomputeMatchScores } from "../src/server/matching";
 import { registerSources } from "./sources";
 
@@ -9,11 +7,10 @@ const DEMO_EMAIL = "demo@trackr.local";
 const DEMO_PASSWORD = "demo1234";
 
 async function main() {
-  console.log("→ Importing curated UK finance dataset…");
-  const result = await importDataset(prisma, ukFinance2027);
-  console.log(
-    `  employers: ${result.employers}, opportunities created: ${result.created}, updated: ${result.updated}`,
-  );
+  // The curated ukFinance2027 dataset is no longer seeded: it was bootstrap
+  // placeholder data (generic careers-page apply URLs, hand-set statuses) and is
+  // now fully superseded by the live ATS adapters. Opportunities come solely
+  // from registered sources + the sync. Run the sync after seeding to populate.
 
   console.log("→ Creating demo user…");
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
