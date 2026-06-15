@@ -15,7 +15,7 @@ import { WorkdayAdapter } from "./adapters/workday";
 import { EightfoldAdapter } from "./adapters/eightfold";
 import { RadancyAdapter } from "./adapters/radancy";
 import { AvatureAdapter } from "./adapters/avature";
-import { fetchText, ImpervaBlockedError } from "./adapters/common";
+import { describeError, fetchText, ImpervaBlockedError } from "./adapters/common";
 import { mapPool } from "./pool";
 import { evaluateWatch, type WatchState } from "./watch";
 
@@ -161,7 +161,7 @@ async function syncWatchSource(
     });
     return { ...base, ok: true, changed: outcome.changed, summary: outcome.summary };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = describeError(err);
     await recordFailure(prisma, source, message);
     return { ...base, ok: false, error: message };
   }
@@ -208,7 +208,7 @@ export async function syncSource(
       updated: result.updated,
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = describeError(err);
     if (err instanceof ImpervaBlockedError) {
       await prisma.ingestionSource.update({
         where: { id: source.id },

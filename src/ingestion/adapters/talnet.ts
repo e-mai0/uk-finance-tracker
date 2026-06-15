@@ -1,7 +1,7 @@
 import type { RawDataset, RawOpportunity, SourceAdapter } from "../types";
 import type { SourceConfig } from "../types";
 import { classifyPosting } from "../classify";
-import { buildDataset, fallbackFamilyFor, fetchTextRobust, originalSummary, type AdapterEmployer } from "./common";
+import { buildDataset, fallbackFamilyFor, fetchTextLenient, originalSummary, type AdapterEmployer } from "./common";
 
 const MONTHS: Record<string, string> = { jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",jul:"07",aug:"08",sep:"09",oct:"10",nov:"11",dec:"12" };
 
@@ -14,14 +14,17 @@ export function parseTalNetDeadline(text: string): string | null {
   return null;
 }
 
-const OPP_RE = /href="(\/vx\/[^"]*?\/opp\/(\d+)-[^"]*?\/en-GB)"[^>]*>\s*([^<]+?)\s*</gi;
+// Boards emit either root-relative (href="/vx/…") or fully-qualified
+// (href="https://host/vx/…") opp links; group 1 captures the optional origin so
+// we can rebuild the canonical URL without doubling the host.
+const OPP_RE = /href="(https?:\/\/[^"]*?)?(\/vx\/[^"]*?\/opp\/(\d+)-[^"]*?\/en-GB)"[^>]*>\s*([^<]+?)\s*</gi;
 
 export function mapTalNetBoard(html: string, baseUrl: string, employer: AdapterEmployer): RawOpportunity[] {
   const fallback = fallbackFamilyFor(employer);
   const out: RawOpportunity[] = [];
   const seen = new Set<string>();
   for (const m of html.matchAll(OPP_RE)) {
-    const [, path, id, rawTitle] = m;
+    const [, origin, path, id, rawTitle] = m;
     if (seen.has(id)) continue;
     seen.add(id);
     const title = rawTitle.replace(/\s+/g, " ").trim();
@@ -36,7 +39,7 @@ export function mapTalNetBoard(html: string, baseUrl: string, employer: AdapterE
     if (!verdict.include) continue;
     const after = html.slice(m.index ?? 0, (m.index ?? 0) + 600);
     const deadline = parseTalNetDeadline(after) ?? undefined;
-    const url = `${baseUrl}${path}`;
+    const url = `${origin ?? baseUrl}${path}`;
     out.push({
       employer: employer.name, title, roleFamily: verdict.roleFamily,
       location: /london/i.test(title) ? "London" : "UK", status: "OPEN",
@@ -55,7 +58,9 @@ export class TalNetAdapter implements SourceAdapter {
   }
   async fetch(): Promise<RawDataset> {
     const board = `https://${this.cfg.host}/candidate/jobboard/vacancy/${this.cfg.board}/adv/`;
-    const html = await fetchTextRobust(board);
+    // tal.net responses violate RFC 7230 framing (Content-Length + chunked),
+    // which undici/`fetch` rejects — use the lenient core-http parser instead.
+    const html = await fetchTextLenient(board);
     return buildDataset(this.id, this.employer, mapTalNetBoard(html, `https://${this.cfg.host}`, this.employer));
   }
 }

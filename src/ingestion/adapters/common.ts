@@ -1,3 +1,5 @@
+import http from "node:http";
+import https from "node:https";
 import type { RoleFamily } from "@prisma/client";
 import type { RawDataset, RawEmployer, RawOpportunity } from "../types";
 import { roleFamilyFromSector } from "../classify";
@@ -77,6 +79,22 @@ export function buildDataset(
   return { source: sourceId, employers: [rawEmployer], opportunities };
 }
 
+/**
+ * Render an error for logging, unwrapping `err.cause`. undici reports every
+ * transport failure as a bare "fetch failed" and hides the real reason (DNS,
+ * TLS, connection reset, malformed framing) in `.cause`; recording only
+ * `.message` is what made the tal.net HTTP-parser failure a mystery on /radar.
+ */
+export function describeError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause instanceof Error) {
+    const code = (cause as { code?: string }).code;
+    return `${err.message} (cause: ${code ? `${code} ` : ""}${cause.message})`;
+  }
+  return err.message;
+}
+
 /** Parse an HTTP Retry-After header (delay-seconds form) into milliseconds. */
 export function parseRetryAfter(header: string | null): number | null {
   if (!header) return null;
@@ -141,4 +159,52 @@ export async function fetchTextRobust(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Fetch text using Node's core http(s) parser in LENIENT mode. tal.net boards
+ * respond with both Content-Length and Transfer-Encoding: chunked on the same
+ * message — illegal per RFC 7230, so undici (the engine behind global `fetch`)
+ * rejects it outright with an HTTPParserError surfaced only as "fetch failed".
+ * `insecureHTTPParser: true` accepts the ambiguous framing (as browsers/curl
+ * do), which is the only way to read these boards server-side without a headless
+ * browser. Same non-2xx / Imperva contract as `fetchTextRobust`.
+ */
+export function fetchTextLenient(
+  url: string,
+  opts: { headers?: Record<string, string>; timeoutMs?: number } = {},
+): Promise<string> {
+  const timeoutMs = opts.timeoutMs ?? 15_000;
+  const mod = new URL(url).protocol === "http:" ? http : https;
+  return new Promise<string>((resolve, reject) => {
+    const req = mod.request(
+      url,
+      {
+        method: "GET",
+        insecureHTTPParser: true,
+        headers: { "user-agent": USER_AGENT, ...opts.headers },
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c: Buffer) => chunks.push(c));
+        res.on("end", () => {
+          const status = res.statusCode ?? 0;
+          if (status < 200 || status >= 300) {
+            reject(new Error(`GET ${url} → ${status} ${res.statusMessage ?? ""}`.trim()));
+            return;
+          }
+          const body = Buffer.concat(chunks).toString("utf8");
+          if (isImpervaBlocked(body)) {
+            reject(new ImpervaBlockedError(`Imperva interstitial at ${url}`));
+            return;
+          }
+          resolve(body);
+        });
+        res.on("error", reject);
+      },
+    );
+    req.setTimeout(timeoutMs, () => req.destroy(new Error(`GET ${url} → timeout after ${timeoutMs}ms`)));
+    req.on("error", reject);
+    req.end();
+  });
 }
