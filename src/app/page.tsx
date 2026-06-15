@@ -226,7 +226,7 @@ export default async function LandingPage() {
             <Stat value="0" label="Auto-submits, ever" agent />
           </section>
           <p className="mt-3 px-1 font-mono text-[0.66rem] uppercase tracking-wider text-faint">
-            Jayden Street · Goldman Sachs · Citadel · Lazard · Alvacore · Morgan
+            Jayden Street · Goldman Sachs · Citadel · Lazard · Evercore · Morgan
             Stanley · J.P. Morgan · Barclays · BlackRock · Point72 · Schroders ·
             Macquarie · & more
           </p>
@@ -292,7 +292,7 @@ function CoverageTape() {
     { firm: "Citadel", days: 6 },
     { firm: "Macquarie", days: 8 },
     { firm: "Morgan Stanley", days: 9 },
-    { firm: "Evercore", days: 11 },
+    { firm: "Jefferies", days: 11 },
     { firm: "Jayden Street", days: 12 },
     { firm: "BlackRock", days: 15 },
     { firm: "Citi", days: 17 },
@@ -300,7 +300,7 @@ function CoverageTape() {
     { firm: "J.P. Morgan", days: 27 },
     { firm: "Goldman Sachs", days: 31 },
     { firm: "Barclays", days: 34 },
-    { firm: "Alvacore", days: null, soon: true },
+    { firm: "Evercore", days: null, soon: true },
     { firm: "Schroders", days: null, soon: true },
   ];
 
@@ -421,7 +421,7 @@ function HeroDesk() {
     { mono: "GS", firm: "Goldman Sachs", role: "IBD Summer Analyst", desk: "TMT", deadline: "16 Jul", days: 31, score: 91, status: "OPEN", agent: false, fresh: false },
     { mono: "CI", firm: "Citadel", role: "Investment & Trading", desk: "Global Equities", deadline: "21 Jun", days: 6, score: 79, status: "OPEN", agent: true, fresh: false },
     { mono: "LA", firm: "Lazard", role: "Financial Advisory", desk: "Restructuring", deadline: "07 Jul", days: 22, score: 64, status: "OPEN", agent: false, fresh: false },
-    { mono: "AL", firm: "Alvacore", role: "Markets Summer Analyst", desk: null, deadline: "—", days: null, score: 57, status: "SOON", agent: false, fresh: true },
+    { mono: "EV", firm: "Evercore", role: "M&A Summer Analyst", desk: null, deadline: "—", days: null, score: 57, status: "SOON", agent: false, fresh: true },
   ];
 
   return (
