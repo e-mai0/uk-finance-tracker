@@ -1,5 +1,6 @@
 // src/test/cv-draft-action.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { auth } from "@/server/auth";
 
 vi.mock("server-only", () => ({}));
 
@@ -34,6 +35,14 @@ describe("draftCvFromKnown", () => {
     expect(res.ok).toBe(true);
     expect(res.cv?.fullName).toBe("Eric Mai");
     expect(gather).toHaveBeenCalledWith("u1");
+    expect(draft).toHaveBeenCalledWith("u1", { fullName: "Eric Mai", memoryFacts: [] });
     expect(persist).toHaveBeenCalledOnce();
+  });
+
+  it("returns an error when not signed in", async () => {
+    vi.mocked(auth).mockResolvedValueOnce(null as never);
+    const res = await draftCvFromKnown();
+    expect(res.error).toMatch(/session/i);
+    expect(gather).not.toHaveBeenCalled();
   });
 });
