@@ -182,6 +182,7 @@ export function CyclopsChat({
   );
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { messages, sendMessage, regenerate, stop, status, error } = useChat({
     id: sessionId,
@@ -223,6 +224,15 @@ export function CyclopsChat({
     }
   }, [messages]);
 
+  // Auto-grow the composer up to ~6 lines, then scroll. Runs on every input
+  // change so it also shrinks back after a send clears the field.
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "0px";
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  }, [input]);
+
   function handleSubmit(e?: FormEvent) {
     e?.preventDefault();
     const text = input.trim();
@@ -231,7 +241,8 @@ export function CyclopsChat({
     sendMessage({ text });
   }
 
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    // Enter sends; Shift+Enter inserts a newline (the textarea's default).
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!isStreaming) handleSubmit();
@@ -353,19 +364,20 @@ export function CyclopsChat({
       <div className={cn(compact ? "px-3 pb-3" : "px-4 pb-4")}>
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2 rounded-[16px] border border-border bg-surface px-2.5 py-1.5 transition-colors focus-within:border-border-interactive"
+          className="flex items-end gap-2 rounded-[16px] border border-border bg-surface px-2.5 py-1.5 transition-colors focus-within:border-border-interactive"
         >
-          <span aria-hidden className="select-none pl-1 font-mono text-accent">
+          <span aria-hidden className="select-none pb-1 pl-1 font-mono text-accent">
             ›
           </span>
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value.slice(0, 8000))}
             onKeyDown={handleKeyDown}
             placeholder="Ask Cyclops…"
             maxLength={8000}
-            className="min-w-0 flex-1 bg-transparent py-1 text-[0.875rem] text-ink placeholder:text-faint focus:outline-none"
+            rows={1}
+            className="min-w-0 flex-1 resize-none bg-transparent py-1 text-[0.875rem] leading-[1.5] text-ink placeholder:text-faint focus:outline-none"
             aria-label="Chat input"
           />
           {/* item 8: stop button while streaming */}
