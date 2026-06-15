@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Karla, Fragment_Mono, Zilla_Slab } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 // GB+ UI sans — humanist grotesque with quiet character (Granola's "Melange" role).
@@ -47,6 +48,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <div className="flex flex-1 flex-col">{children}</div>
+        <Analytics />
       </body>
     </html>
   );

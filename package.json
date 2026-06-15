@@ -25,6 +25,7 @@
     "@anthropic-ai/sdk": "^0.100.1",
     "@prisma/client": "^6.3.0",
     "@supabase/supabase-js": "^2.107.0",
+    "@vercel/analytics": "^2.0.1",
     "ai": "^6.0.199",
     "bcryptjs": "^2.4.3",
     "diff": "^9.0.0",
