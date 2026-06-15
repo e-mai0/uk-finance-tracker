@@ -13,7 +13,7 @@ import { CvChat } from "@/components/cv/cv-chat";
 import { CvDocument } from "@/components/cv/cv-document";
 import { draftCvFromKnown } from "@/server/actions/cv";
 import { uploadCvAction } from "@/server/actions/applyProfile";
-import type { CvData } from "@/lib/cv";
+import { isCvEmpty, type CvData } from "@/lib/cv";
 import type { UIMessage } from "ai";
 
 export function CvPageClient({
@@ -47,7 +47,10 @@ export function CvPageClient({
     startTransition(async () => {
       const res = await draftCvFromKnown();
       if (res.error) { setError(res.error); return; }
-      if (!res.cv) return;
+      if (!res.cv || isCvEmpty(res.cv)) {
+        setNotice("Cyclops needs a bit more to work with — upload a CV or add your details in Settings first.");
+        return;
+      }
       setLiveCv(res.cv);
       setHasCv(true);
       setPane("chat");

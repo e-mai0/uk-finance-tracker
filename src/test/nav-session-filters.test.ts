@@ -1,9 +1,9 @@
 // src/test/nav-session-filters.test.ts
-// Task 15: verify nav entries (CV Builder, My CV) and session kind filter.
+// Verify nav entries (unified /cv "My CV") and session kind filter.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ---------------------------------------------------------------------------
-// Nav: verify CV Builder and My CV appear in the NAV array
+// Nav: verify unified /cv "My CV" appears in the NAV array
 // ---------------------------------------------------------------------------
 // `app-nav.tsx` is a "use client" module; we must stub the Next.js hooks
 // before importing so the module doesn't crash in a Node test environment.
