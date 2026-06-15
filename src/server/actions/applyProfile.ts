@@ -112,8 +112,12 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
   // Best-effort: parse the uploaded CV into an editable structured CV so it
   // becomes the single source of truth on /cv. Failure leaves the upload intact.
   if (cvText) {
-    const cv = await parseCvTextToCvData(userId, cvText);
-    if (cv) await persistCv(userId, cv);
+    try {
+      const cv = await parseCvTextToCvData(userId, cvText);
+      if (cv) await persistCv(userId, cv);
+    } catch (err) {
+      console.error("[cv store] parse-on-upload persist failed:", err);
+    }
   }
 
   revalidatePath("/settings");
