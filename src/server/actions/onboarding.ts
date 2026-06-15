@@ -59,7 +59,15 @@ export async function completeOnboarding(raw: unknown): Promise<OnboardingResult
   ]);
 
   await syncProfileFactsToMemory(userId, "onboarding completed");
-  await recomputeMatchScores(userId);
+  // recomputeMatchScores upserts a row per opportunity in one transaction, which
+  // can contend for — and time out on — a small connection pool (P2024). It runs
+  // after onboardedAt is already set, and getTrackerItems recomputes any missing
+  // score on the fly, so a failure here must not fail the onboarding action.
+  try {
+    await recomputeMatchScores(userId);
+  } catch (err) {
+    console.error("[completeOnboarding] match-score recompute failed:", err);
+  }
   revalidatePath("/tracker");
 
   return { ok: true };
