@@ -51,7 +51,11 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export const educationSchema = z.object({
   university: z.string().trim().min(2, "Tell us where you study").max(120),
   degreeSubject: z.string().trim().min(2, "Add your degree subject").max(120),
-  degreeType: z.enum(DEGREE_TYPES),
+  degreeType: z.enum(DEGREE_TYPES, {
+    // Without this, an unselected/invalid value surfaces Zod's raw
+    // "Invalid enum value. Expected 'BA' | 'BSc' | …" string in the form.
+    errorMap: () => ({ message: "Select your degree type" }),
+  }),
   graduationYear: z
     .number({ message: "Add your graduation year" })
     .int()
@@ -66,7 +70,11 @@ export const educationSchema = z.object({
 
 export const essentialsSchema = educationSchema.extend({
   targetRoleFamilies: z
-    .array(z.enum(ROLE_FAMILY_VALUES))
+    .array(
+      z.enum(ROLE_FAMILY_VALUES, {
+        errorMap: () => ({ message: "Pick from the listed areas" }),
+      }),
+    )
     .min(1, "Pick at least one area you're targeting"),
 });
 
@@ -76,7 +84,12 @@ export const essentialsSchema = educationSchema.extend({
 // ---------------------------------------------------------------------------
 
 export const questionnaireSchema = z.object({
-  workAuth: z.enum(WORK_AUTH_VALUES).nullable().optional(),
+  workAuth: z
+    .enum(WORK_AUTH_VALUES, {
+      errorMap: () => ({ message: "Choose a valid work-authorization option" }),
+    })
+    .nullable()
+    .optional(),
   gradeInfo: z
     .object({
       aLevels: z.string().trim().max(120).optional().or(z.literal("")),
