@@ -32,9 +32,9 @@ export function CvStep({ onContinue }: { onContinue: () => void }) {
         Upload your CV
       </h2>
       <p className="mt-1.5 text-sm leading-relaxed text-muted">
-        Optional, but it powers the apply copilot — answers get grounded in your
-        real experience. PDF or Word, up to 10&nbsp;MB. You can also do this
-        later in Settings.
+        Upload your CV, or have Cyclops build one for you on the CV page — it
+        already knows your basics. PDF or Word, up to 10&nbsp;MB. You can also
+        do this later in Settings.
       </p>
 
       <div className="mt-6">
@@ -55,21 +55,31 @@ export function CvStep({ onContinue }: { onContinue: () => void }) {
         {error && <p className="mt-2 text-sm text-danger">{error}</p>}
       </div>
 
-      <div className="mt-8 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onContinue}
-          disabled={pending}
-          className="text-sm text-muted underline decoration-border-strong underline-offset-4 hover:text-ink hover:decoration-ink/40 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {uploaded ? "Continue" : "Skip for now"}
-        </button>
+      <div className="mt-8 flex flex-col gap-3">
         {uploaded ? (
           <Button onClick={onContinue}>Continue</Button>
         ) : (
-          <Button onClick={upload} disabled={!file || pending}>
-            {pending ? "Uploading…" : "Upload CV"}
-          </Button>
+          <>
+            <Button onClick={upload} disabled={!file || pending}>
+              {pending ? "Uploading…" : "Upload CV"}
+            </Button>
+            <button
+              type="button"
+              onClick={onContinue}
+              disabled={pending}
+              className="text-sm font-medium text-ink underline decoration-border-strong underline-offset-4 hover:decoration-ink/40 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Build one with Cyclops later
+            </button>
+            <button
+              type="button"
+              onClick={onContinue}
+              disabled={pending}
+              className="text-sm text-muted underline decoration-border-strong underline-offset-4 hover:text-ink hover:decoration-ink/40 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Skip for now
+            </button>
+          </>
         )}
       </div>
     </div>
