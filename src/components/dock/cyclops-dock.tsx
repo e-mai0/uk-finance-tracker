@@ -179,10 +179,10 @@ export function CyclopsDock({ badge }: { badge: number }) {
         <CyclopsChat
           key={thread.sessionId}
           sessionId={thread.sessionId}
-          // Ambient: the docked rail starts fresh (empty greeting + composer)
-          // rather than replaying old history. Sends still persist to the Dock
-          // thread; the full conversation lives in "Open in Ask Cyclops →".
-          initialMessages={[]}
+          // Replay the dock thread's saved history so the conversation persists
+          // across reloads and revisits instead of appearing to vanish. The same
+          // thread is also reachable via "Open in Ask Cyclops →".
+          initialMessages={thread.messages}
           compact={!expanded}
           suggestions={dockSuggestions(pathname)}
         />

@@ -105,10 +105,12 @@ export default async function ChatPage({
     redirect(`/chat?t=${threadId}&prefill=${encodeURIComponent(prefill)}`);
   }
 
-  // Load up to 50 threads, newest first — exclude the dock thread (ambient
-  // surface, not a conversation to manage in the rail).
+  // Load up to 50 threads, newest first. The dock thread is included so the
+  // conversation started in the docked rail is findable and manageable here
+  // (the empty-thread reuse above still excludes it, so deep links never land
+  // in the dock thread).
   const threads = await prisma.chatSession.findMany({
-    where: { userId, kind: "cyclops", NOT: { title: DOCK_THREAD_TITLE } },
+    where: { userId, kind: "cyclops" },
     orderBy: { updatedAt: "desc" },
     take: 50,
   });
