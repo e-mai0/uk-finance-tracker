@@ -11,6 +11,8 @@ import {
   answerBankItemSchema,
 } from "../../lib/validation";
 import { extractCvFactsToMemory } from "../cv/facts";
+import { parseCvTextToCvData } from "../cv/generate";
+import { persistCv } from "../cv/store";
 
 export interface ActionResult {
   ok?: boolean;
@@ -107,7 +109,15 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
   // Best-effort: distill the CV into profile.md facts so Cyclops knows it.
   if (cvText) await extractCvFactsToMemory(userId, cvText);
 
+  // Best-effort: parse the uploaded CV into an editable structured CV so it
+  // becomes the single source of truth on /cv. Failure leaves the upload intact.
+  if (cvText) {
+    const cv = await parseCvTextToCvData(userId, cvText);
+    if (cv) await persistCv(userId, cv);
+  }
+
   revalidatePath("/settings");
+  revalidatePath("/cv");
   return { ok: true };
 }
 
