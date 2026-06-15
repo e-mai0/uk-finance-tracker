@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/server/db";
-import { cn } from "@/lib/utils";
+import { cn, ticker } from "@/lib/utils";
 import { Reveal } from "./_landing/reveal";
 import type { CSSProperties } from "react";
 
@@ -226,8 +226,9 @@ export default async function LandingPage() {
             <Stat value="0" label="Auto-submits, ever" agent />
           </section>
           <p className="mt-3 px-1 font-mono text-[0.66rem] uppercase tracking-wider text-faint">
-            Google · McKinsey · Goldman Sachs · Meta · BCG · Jane Street · Amazon ·
-            Stripe · Bain · Barclays · Microsoft · Deloitte · & more
+            Jayden Street · Goldman Sachs · Citadel · Lazard · Alvacore · Morgan
+            Stanley · J.P. Morgan · Barclays · BlackRock · Point72 · Schroders ·
+            Macquarie · & more
           </p>
         </Reveal>
       </main>
@@ -278,57 +279,70 @@ export default async function LandingPage() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Live coverage tape — the product's signature, previewed. CSS marquee
-   (globals.css), pauses on hover, halts under reduced motion. Real firm
-   tickers; the desk renders your tracked roles.
+   Live tape — mirrors the tracker's <TickerTape> (components/tracker/ticker-tape):
+   the same firms, the same ticker(firm) codes, the same glyph law
+   (▲ open · ▼ closing ≤7d · ◆ opening soon) and days-to-deadline. Previewed on
+   the marketing rail. CSS marquee (globals.css); pauses on hover, halts on
+   reduced motion.
 ───────────────────────────────────────────────────────────────────────── */
 function CoverageTape() {
-  const up = "text-[#46c178]";
-  const down = "text-[#f0584f]";
-  const lanes = [
-    ["GOOG", "●", up, "OPEN"],
-    ["MCK", "◆", "text-amber", "SOON"],
-    ["GS", "●", up, "14d"],
-    ["META", "●", up, "NEW"],
-    ["BCG", "◆", "text-amber", "SOON"],
-    ["STRP", "●", up, "OPEN"],
-    ["JANE", "●", up, "11d"],
-    ["DELO", "▼", down, "3d"],
-    ["AMZN", "●", up, "NEW"],
-    ["BARC", "●", up, "22d"],
-    ["BAIN", "◆", "text-amber", "SOON"],
-    ["MSFT", "●", up, "OPEN"],
-    ["P72", "▼", down, "2d"],
-    ["PWC", "●", up, "15d"],
-  ] as const;
+  // The open + opening-soon roles the tracker is watching, soonest first.
+  const feed: { firm: string; days: number | null; soon?: boolean }[] = [
+    { firm: "Point72", days: 4 },
+    { firm: "Citadel", days: 6 },
+    { firm: "Macquarie", days: 8 },
+    { firm: "Morgan Stanley", days: 9 },
+    { firm: "Evercore", days: 11 },
+    { firm: "Jayden Street", days: 12 },
+    { firm: "BlackRock", days: 15 },
+    { firm: "Citi", days: 17 },
+    { firm: "Lazard", days: 22 },
+    { firm: "J.P. Morgan", days: 27 },
+    { firm: "Goldman Sachs", days: 31 },
+    { firm: "Barclays", days: 34 },
+    { firm: "Alvacore", days: null, soon: true },
+    { firm: "Schroders", days: null, soon: true },
+  ];
 
   const Cell = ({
-    code,
-    glyph,
-    tone,
-    chg,
+    firm,
+    days,
+    soon,
   }: {
-    code: string;
-    glyph: string;
-    tone: string;
-    chg: string;
-  }) => (
-    <span className="inline-flex items-center gap-2 px-4 py-1.5">
-      <span className="tabular text-[0.74rem] font-semibold tracking-wide text-amber">
-        {code}
+    firm: string;
+    days: number | null;
+    soon?: boolean;
+  }) => {
+    const closingHard = days != null && days >= 0 && days <= 7;
+    const glyph = soon ? "◆" : closingHard ? "▼" : "▲";
+    const tone = soon
+      ? "text-amber"
+      : closingHard
+        ? "text-[#f0584f]"
+        : "text-[#46c178]";
+    return (
+      <span className="inline-flex items-center gap-2 px-4 py-1.5">
+        <span className="tabular text-[0.74rem] font-semibold tracking-wide text-amber">
+          {ticker(firm)}
+        </span>
+        <span className={cn("text-[0.66rem] leading-none", tone)}>{glyph}</span>
+        <span className={cn("label", soon ? "text-amber" : "text-chrome-dim")}>
+          {soon ? "SOON" : "OPEN"}
+        </span>
+        {days != null && days >= 0 && (
+          <span className="tabular text-[0.72rem] text-chrome-ink-2">{days}d</span>
+        )}
+        <span aria-hidden className="ml-2 text-chrome-line">
+          │
+        </span>
       </span>
-      <span className={cn("text-[0.66rem] leading-none", tone)}>{glyph}</span>
-      <span className={cn("tabular text-[0.72rem]", tone)}>{chg}</span>
-      <span aria-hidden className="ml-2 text-chrome-line">
-        │
-      </span>
-    </span>
-  );
+    );
+  };
 
   const run = (k: string, hidden: boolean) => (
     <div aria-hidden={hidden} className="flex shrink-0 items-center">
-      {lanes.map(([code, glyph, tone, chg]) => (
-        <Cell key={`${k}-${code}`} code={code} glyph={glyph} tone={tone} chg={chg} />
+      {feed.map((f) => (
+        <Cell key={`${k}-${f.firm}`} firm={f.firm} days={f.days} soon={f.soon} />
       ))}
     </div>
   );
@@ -338,7 +352,7 @@ function CoverageTape() {
       <div className="mx-auto flex max-w-6xl items-stretch">
         <div className="flex shrink-0 items-center gap-2 border-r border-chrome-line px-4">
           <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-good-mark" />
-          <span className="label text-[0.6rem] text-chrome-ink-2">Live coverage</span>
+          <span className="label text-[0.6rem] text-chrome-ink-2">Live tape</span>
         </div>
         <div className="ticker relative min-w-0 flex-1 overflow-hidden">
           <div
@@ -364,6 +378,18 @@ const TIER: Record<string, { text: string; bar: string }> = {
   moderate: { text: "text-warning", bar: "var(--color-tier-mod)" },
 };
 
+/* Same banding as the tracker board (components/tracker/board#fitColor). */
+const fitBand = (s: number | null): string =>
+  s == null
+    ? "var(--color-tier-low)"
+    : s >= 75
+      ? "var(--color-tier-strong)"
+      : s >= 50
+        ? "var(--color-tier-good)"
+        : s >= 25
+          ? "var(--color-tier-mod)"
+          : "var(--color-tier-low)";
+
 function FitMeter({ fit, tier }: { fit: number; tier: keyof typeof TIER }) {
   return (
     <div className="flex items-center gap-2">
@@ -388,79 +414,126 @@ function FitMeter({ fit, tier }: { fit: number; tier: keyof typeof TIER }) {
 }
 
 function HeroDesk() {
+  // Financial firms first, drawn from the tracker. The amber-tinted row is the
+  // one Cyclops worked on overnight.
   const rows = [
-    { code: "GOOG", firm: "Google", role: "SWE Intern", status: "Open", tone: "text-success", fit: 91, tier: "strong" as const, agent: false },
-    { code: "MCK", firm: "McKinsey", role: "Summer Associate", status: "Soon", tone: "text-warning", fit: 84, tier: "strong" as const, agent: true },
-    { code: "JANE", firm: "Jane Street", role: "Quant Trading", status: "Open", tone: "text-success", fit: 76, tier: "good" as const, agent: false },
-    { code: "STRP", firm: "Stripe", role: "Product Intern", status: "Open", tone: "text-success", fit: 67, tier: "moderate" as const, agent: false },
+    { mono: "JS", firm: "Jayden Street", role: "Quantitative Trading", desk: "Systematic", deadline: "27 Jun", days: 12, score: 88, status: "OPEN", agent: false, fresh: false },
+    { mono: "GS", firm: "Goldman Sachs", role: "IBD Summer Analyst", desk: "TMT", deadline: "16 Jul", days: 31, score: 91, status: "OPEN", agent: false, fresh: false },
+    { mono: "CI", firm: "Citadel", role: "Investment & Trading", desk: "Global Equities", deadline: "21 Jun", days: 6, score: 79, status: "OPEN", agent: true, fresh: false },
+    { mono: "LA", firm: "Lazard", role: "Financial Advisory", desk: "Restructuring", deadline: "07 Jul", days: 22, score: 64, status: "OPEN", agent: false, fresh: false },
+    { mono: "AL", firm: "Alvacore", role: "Markets Summer Analyst", desk: null, deadline: "—", days: null, score: 57, status: "SOON", agent: false, fresh: true },
   ];
 
   return (
-    <div className="animate-rise relative" style={{ animationDelay: "160ms" }}>
-      {/* Desk panel */}
-      <div className="overflow-hidden rounded-[var(--radius-card)] border border-border-strong bg-surface shadow-[var(--shadow-pop)]">
-        {/* Panel head — mimics the desk chrome */}
-        <div className="flex items-center justify-between border-b border-border bg-surface-2 px-4 py-2.5">
-          <span className="label text-faint">Tracker · 45 live</span>
-          <span className="relative flex items-center gap-1.5">
-            <span className="pointer-events-none absolute inset-0 overflow-hidden">
-              <span className="scanline absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-transparent via-[var(--color-agent-mark)]/25 to-transparent" />
-            </span>
-            <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-good-mark" />
-            <span className="label text-[0.6rem] text-subtle">scanning</span>
-          </span>
-        </div>
-
-        {/* Column heads */}
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-hairline bg-surface-3 px-4 py-1.5">
-          <span className="label text-[0.6rem] text-faint">Firm</span>
-          <span className="label text-[0.6rem] text-faint">Role</span>
-          <span className="label text-[0.6rem] text-faint text-right">Fit</span>
-        </div>
-
-        {/* Rows */}
-        {rows.map((r) => (
-          <div
-            key={r.code}
-            className={cn(
-              "grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-hairline px-4 py-2.5 last:border-b-0",
-              r.agent ? "bg-accent-tint" : "hover:bg-surface-2",
-            )}
-            style={
-              r.agent
-                ? { boxShadow: "inset 3px 0 0 var(--color-agent-mark)" }
-                : undefined
-            }
-          >
-            <div className="flex w-[4.5rem] items-center gap-1.5">
-              {r.agent && (
-                <span aria-hidden className="text-[0.7rem] text-accent">
-                  ◆
-                </span>
-              )}
-              <span className="tabular text-[0.8rem] text-accent">{r.code}</span>
-            </div>
-            <div className="min-w-0">
-              <div className="truncate text-[0.82rem] font-bold text-ink">
-                {r.firm}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="truncate font-mono text-[0.66rem] text-subtle">
-                  {r.role}
-                </span>
-                <span
+    <div className="animate-rise" style={{ animationDelay: "160ms" }}>
+      {/* A faithful slice of the real Tracker board (components/tracker/board):
+          monogram · Firm · Role · desk | Deadline | Days | Fit | Status, with the
+          board's own legend footer. */}
+      <div className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-border-strong bg-surface-3 text-left">
+              <th scope="col" className="label w-9 px-4 py-1.5 text-faint" aria-label="Monogram" />
+              <th scope="col" className="label py-1.5 text-faint">
+                <span className="tabular text-subtle">{rows.length}</span> · Firm · Role
+              </th>
+              <th scope="col" className="label w-16 py-1.5 text-right text-faint">Deadline</th>
+              <th scope="col" className="label w-10 py-1.5 text-right text-faint">Days</th>
+              <th scope="col" className="label w-20 py-1.5 text-right text-faint">Fit</th>
+              <th scope="col" className="label w-16 px-4 py-1.5 text-right text-faint">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr
+                key={r.firm}
+                className={cn(
+                  "h-[2.125rem] border-b border-hairline last:border-b-0",
+                  r.agent &&
+                    "bg-accent-tint shadow-[inset_3px_0_0_var(--color-agent-mark)]",
+                )}
+              >
+                <td className="px-4">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "tabular flex h-5 w-5 items-center justify-center rounded-sm border text-[0.6875rem]",
+                      r.agent
+                        ? "border-border-agent bg-accent-soft text-accent"
+                        : "border-border bg-surface-2 text-subtle",
+                    )}
+                  >
+                    {r.mono}
+                  </span>
+                </td>
+                <td className="max-w-0 truncate pr-3">
+                  <span className="text-[0.8125rem] font-extrabold text-ink">
+                    {r.firm}
+                  </span>
+                  <span className="text-[0.75rem] font-bold text-subtle">
+                    {" · "}
+                    {r.role}
+                    {r.desk ? ` · ${r.desk}` : ""}
+                  </span>
+                  {r.agent && (
+                    <span className="label ml-2 rounded-pill border border-border-agent bg-accent-soft px-1.5 text-accent">
+                      <span aria-hidden>◆ </span>Drafted “Why Citadel?”
+                    </span>
+                  )}
+                  {r.fresh && <span className="label ml-2 text-success">NEW</span>}
+                </td>
+                <td className="py-0 text-right">
+                  <span className="tabular text-[0.75rem] text-muted">
+                    {r.deadline}
+                  </span>
+                </td>
+                <td
                   className={cn(
-                    "tabular text-[0.62rem] uppercase tracking-wide",
-                    r.tone,
+                    "tabular text-right text-[0.75rem]",
+                    r.days != null && r.days <= 14 ? "text-danger" : "text-muted",
                   )}
                 >
-                  {r.status}
-                </span>
-              </div>
-            </div>
-            <FitMeter fit={r.fit} tier={r.tier} />
-          </div>
-        ))}
+                  {r.days != null && r.days <= 14 && <span aria-hidden>▼ </span>}
+                  {r.days ?? "—"}
+                </td>
+                <td className="text-right">
+                  <span className="inline-flex items-center justify-end gap-2">
+                    <span
+                      aria-hidden
+                      className="relative inline-block h-1.5 w-10 overflow-hidden rounded-bar bg-surface-3"
+                    >
+                      <span
+                        className="absolute inset-y-0 left-0 rounded-bar"
+                        style={{ width: `${r.score ?? 0}%`, background: fitBand(r.score) }}
+                      />
+                    </span>
+                    <span
+                      className="tabular w-6 text-right text-[0.75rem]"
+                      style={{ color: fitBand(r.score) }}
+                    >
+                      {r.score ?? "—"}
+                    </span>
+                  </span>
+                </td>
+                <td className="px-4 text-right">
+                  <span
+                    className={cn(
+                      "label",
+                      r.status === "SOON" ? "text-accent" : "text-muted",
+                    )}
+                  >
+                    {r.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="flex gap-4 border-t border-hairline px-4 py-2">
+          <span className="label text-faint">
+            ◆ = CYCLOPS · ▼ = CLOSING ≤14D · ★ = SAVED
+          </span>
+        </div>
       </div>
 
       {/* Agent proposal card — the night's offer, sitting under the desk in flow
@@ -476,8 +549,8 @@ function HeroDesk() {
         <div className="px-4 py-3">
           <p className="text-[0.72rem] leading-relaxed text-muted">
             Drafted your{" "}
-            <span className="font-bold text-ink">&ldquo;Why McKinsey?&rdquo;</span>{" "}
-            answer from your case-competition win and last summer&apos;s internship.
+            <span className="font-bold text-ink">&ldquo;Why Citadel?&rdquo;</span>{" "}
+            answer from your options-pricing project and last summer&apos;s markets internship.
           </p>
           <div className="mt-3 flex items-center gap-2">
             <span className="inline-flex h-7 items-center rounded-pill bg-ink px-3 text-[0.7rem] font-extrabold text-canvas">
@@ -618,9 +691,9 @@ function Stat({
 
 function DeskRows() {
   const rows = [
-    { code: "META", role: "Product Intern", status: "Open", tone: "text-success", fit: 88, tier: "strong" as const },
-    { code: "BCG", role: "Summer Associate", status: "Soon", tone: "text-warning", fit: 73, tier: "good" as const },
-    { code: "AMZN", role: "SDE Intern", status: "Closing", tone: "text-danger", fit: 61, tier: "moderate" as const },
+    { code: "MOST", role: "S&T Summer", status: "Open", tone: "text-success", fit: 88, tier: "strong" as const },
+    { code: "BARC", role: "IBD Spring Week", status: "Soon", tone: "text-warning", fit: 73, tier: "good" as const },
+    { code: "BLAC", role: "Aladdin Intern", status: "Closing", tone: "text-danger", fit: 61, tier: "moderate" as const },
   ];
   return (
     <div className="overflow-hidden rounded-[var(--radius-control)] border border-hairline">
@@ -655,8 +728,8 @@ function DeskRows() {
 
 function AgentTrace() {
   const steps = [
-    ["read memory", "voice.md · stories/case-comp-win"],
-    ["research", "McKinsey · 2027 summer cycle"],
+    ["read memory", "voice.md · stories/markets-internship"],
+    ["research", "Citadel · 2027 summer cycle"],
     ["match", "strong fit · top of your list"],
     ["draft", "answer · 148 words"],
   ];
