@@ -3,7 +3,15 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, isTextUIPart, getToolName } from "ai";
 import type { UIMessage, UIMessagePart, ToolUIPart, DynamicToolUIPart } from "ai";
-import { useRef, useState, useEffect, FormEvent, KeyboardEvent } from "react";
+import {
+  memo,
+  useCallback,
+  useRef,
+  useState,
+  useEffect,
+  FormEvent,
+  KeyboardEvent,
+} from "react";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -148,6 +156,123 @@ function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
 }
 
 // ---------------------------------------------------------------------------
+// MessageRow — one message bubble. Memoised so that (a) composer keystrokes,
+// whose state lives in <Composer/>, never re-render the feed, and (b) a
+// streaming token — which only mutates the last message object — re-renders
+// just that row rather than the whole thread. INP on long threads is dominated
+// by re-rendering every message on each interaction; this confines it.
+// ---------------------------------------------------------------------------
+const MessageRow = memo(function MessageRow({ msg }: { msg: UIMessage }) {
+  return (
+    <div
+      className={cn(
+        "flex",
+        msg.role === "user" ? "justify-end" : "justify-start",
+      )}
+    >
+      <div
+        className={cn(
+          "space-y-1.5",
+          msg.role === "user"
+            ? // ink bubble with a tail — amber means agent, never the user
+              "max-w-[78%] rounded-[14px_14px_4px_14px] bg-ink px-[15px] py-2.5 text-[0.875rem] leading-[1.55] text-canvas"
+            : // agent reply is bare Karla prose
+              "max-w-[64ch] text-[0.875rem] leading-[1.7] text-ink",
+        )}
+      >
+        {msg.parts.map((part, i) => (
+          <MessagePart key={i} part={part as UIMessagePart<never, never>} />
+        ))}
+      </div>
+    </div>
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Composer — owns the input state in isolation. Keystrokes re-render only this
+// small subtree, never the message feed. Memoised with stable callbacks from
+// the parent so it also stays put while a response streams in.
+// ---------------------------------------------------------------------------
+const Composer = memo(function Composer({
+  onSend,
+  onStop,
+  isStreaming,
+  compact,
+  initialInput,
+}: {
+  onSend: (text: string) => void;
+  onStop: () => void;
+  isStreaming: boolean;
+  compact?: boolean;
+  /** Deep-link prefill: seeds the input only, never auto-sent. */
+  initialInput: string;
+}) {
+  const [input, setInput] = useState(initialInput);
+
+  function submit(e?: FormEvent) {
+    e?.preventDefault();
+    const text = input.trim();
+    if (!text || isStreaming) return;
+    setInput("");
+    onSend(text);
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!isStreaming) submit();
+    }
+  }
+
+  return (
+    <div className={cn(compact ? "px-3 pb-3" : "px-4 pb-4")}>
+      <form
+        onSubmit={submit}
+        className="flex items-center gap-2 rounded-[16px] border border-border bg-surface px-2.5 py-1.5 transition-colors focus-within:border-border-interactive"
+      >
+        <span aria-hidden className="select-none pl-1 font-mono text-accent">
+          ›
+        </span>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value.slice(0, 8000))}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask Cyclops…"
+          maxLength={8000}
+          className="min-w-0 flex-1 bg-transparent py-1 text-[0.875rem] text-ink placeholder:text-faint focus:outline-none"
+          aria-label="Chat input"
+        />
+        {/* item 8: stop button while streaming */}
+        {isStreaming ? (
+          <button
+            type="button"
+            onClick={onStop}
+            className="shrink-0 rounded-pill border border-border-interactive bg-surface px-3 py-1.5 text-[0.8125rem] font-bold text-danger transition-colors hover:bg-danger-soft"
+            aria-label="Stop generation"
+          >
+            Stop
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="shrink-0 rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Send
+          </button>
+        )}
+      </form>
+      {!compact && input.length > 7500 && (
+        <p className="mt-1 font-mono text-[0.6875rem] text-warning">
+          {8000 - input.length} chars remaining
+        </p>
+      )}
+    </div>
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Main chat component
 // ---------------------------------------------------------------------------
 export function CyclopsChat({
@@ -166,12 +291,6 @@ export function CyclopsChat({
   /** ≤3 conversation starters shown above the composer on an empty thread; clicking sends immediately. */
   suggestions?: string[];
 }) {
-  // Component is keyed by thread id, so useState init is sufficient.
-  // Only seed from prefill on a fresh thread — after a send/refresh the
-  // thread has messages and a stale ?prefill= must not repopulate the input.
-  const [input, setInput] = useState(
-    initialMessages.length === 0 ? prefill ?? "" : "",
-  );
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -215,20 +334,24 @@ export function CyclopsChat({
     }
   }, [messages]);
 
-  function handleSubmit(e?: FormEvent) {
-    e?.preventDefault();
-    const text = input.trim();
-    if (!text || isStreaming) return;
-    setInput("");
-    sendMessage({ text });
-  }
+  // Stable handlers so the memoised <Composer/> (and the suggestion buttons)
+  // keep their identity across streaming re-renders. sendMessage/stop from
+  // useChat are stable, so these are effectively created once.
+  const handleSend = useCallback(
+    (text: string) => {
+      sendMessage({ text });
+    },
+    [sendMessage],
+  );
+  const handleStop = useCallback(() => {
+    void stop();
+  }, [stop]);
 
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (!isStreaming) handleSubmit();
-    }
-  }
+  // Only seed from prefill on a fresh thread — after a send/refresh the thread
+  // has messages and a stale ?prefill= must not repopulate the input. The whole
+  // CyclopsChat (and thus <Composer/>) is keyed by thread id, so this initial
+  // value is applied exactly once per thread.
+  const initialInput = initialMessages.length === 0 ? prefill ?? "" : "";
 
   return (
     <div className="flex h-full flex-col">
@@ -252,31 +375,7 @@ export function CyclopsChat({
 
         <div className="space-y-4">
           {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "flex",
-                msg.role === "user" ? "justify-end" : "justify-start",
-              )}
-            >
-              <div
-                className={cn(
-                  "space-y-1.5",
-                  msg.role === "user"
-                    ? // ink bubble with a tail — amber means agent, never the user
-                      "max-w-[78%] rounded-[14px_14px_4px_14px] bg-ink px-[15px] py-2.5 text-[0.875rem] leading-[1.55] text-canvas"
-                    : // agent reply is bare Karla prose
-                      "max-w-[64ch] text-[0.875rem] leading-[1.7] text-ink",
-                )}
-              >
-                {msg.parts.map((part, i) => (
-                  <MessagePart
-                    key={i}
-                    part={part as UIMessagePart<never, never>}
-                  />
-                ))}
-              </div>
-            </div>
+            <MessageRow key={msg.id} msg={msg} />
           ))}
         </div>
 
@@ -331,7 +430,7 @@ export function CyclopsChat({
               <button
                 key={s}
                 type="button"
-                onClick={() => sendMessage({ text: s })}
+                onClick={() => handleSend(s)}
                 className="rounded-pill border border-border px-3 py-1.5 text-[0.8125rem] font-bold text-muted transition-colors hover:border-agent-mark hover:text-accent"
               >
                 {s}
@@ -340,51 +439,15 @@ export function CyclopsChat({
           </div>
         )}
 
-      {/* Composer — rounded-16 card, ink Send (GB+); no rectangular input */}
-      <div className={cn(compact ? "px-3 pb-3" : "px-4 pb-4")}>
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-center gap-2 rounded-[16px] border border-border bg-surface px-2.5 py-1.5 transition-colors focus-within:border-border-interactive"
-        >
-          <span aria-hidden className="select-none pl-1 font-mono text-accent">
-            ›
-          </span>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value.slice(0, 8000))}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask Cyclops…"
-            maxLength={8000}
-            className="min-w-0 flex-1 bg-transparent py-1 text-[0.875rem] text-ink placeholder:text-faint focus:outline-none"
-            aria-label="Chat input"
-          />
-          {/* item 8: stop button while streaming */}
-          {isStreaming ? (
-            <button
-              type="button"
-              onClick={() => void stop()}
-              className="shrink-0 rounded-pill border border-border-interactive bg-surface px-3 py-1.5 text-[0.8125rem] font-bold text-danger transition-colors hover:bg-danger-soft"
-              aria-label="Stop generation"
-            >
-              Stop
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="shrink-0 rounded-pill bg-ink px-4 py-1.5 text-[0.8125rem] font-extrabold text-canvas transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Send
-            </button>
-          )}
-        </form>
-        {!compact && input.length > 7500 && (
-          <p className="mt-1 font-mono text-[0.6875rem] text-warning">
-            {8000 - input.length} chars remaining
-          </p>
-        )}
-      </div>
+      {/* Composer — rounded-16 card, ink Send (GB+); no rectangular input.
+          Input state is isolated here so typing never re-renders the feed. */}
+      <Composer
+        onSend={handleSend}
+        onStop={handleStop}
+        isStreaming={isStreaming}
+        compact={compact}
+        initialInput={initialInput}
+      />
     </div>
   );
 }
