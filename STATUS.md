@@ -1,73 +1,18 @@
-# Trackr — Project Status
+# Cyclops — Project Status
 
-_Last updated: 2026-06-11_
-
-> **SHIPPED 2026-06-11 — Cyclops Phases 1–4 are merged to `main` and live in
-> production**, together with the universal-forms extension hardening
-> (`fix/copilot-universal-forms`) and Radar (§3). The notes below predate the
-> merge and are kept for context.
-
-> **Cyclops Phases 1–4 (developed on branch `cyclopslevelup`).**
-> Trackr is being overhauled into **Cyclops**, an AI "application OS"
-> (spec: `docs/superpowers/specs/2026-06-09-cyclops-application-os-design.md`).
-> All four phases are fully implemented and reviewed on the branch:
-> **Phase 1** — per-user markdown memory tree with revisions + anti-rot gardener,
-> AI SDK 6 agent brain behind `POST /api/chat` (six tools, confidence/uncertainty
-> discipline, per-user daily token budget), `/chat` and `/memory` pages, onboarding
-> voice/story seeding, pgvector semantic recall (Voyage embeddings).
-> **Phase 2** — writing engine (draft-voice critique + revision), employer research
-> tool, draft-edit learning (distill to voice.md), outcome tools
-> (update_application_status), story usage write-back (employers_used), eval harness.
-> **Phase 3 (shipped 2026-06-10)** — one-button apply v2: memory-backed suggestions
-> on ask fields (plan endpoint + panel), story exclusion + provenance in answer
-> responses with a "Different story" regeneration affordance, outcome distillation
-> (story strength/failure signals + a superseding strategy.md observation line,
-> triggered by status changes), chat deep links (`/chat?opportunity=` and
-> `?prefill=` with empty-thread reuse + seeded titles) + tracker "Ask Cyclops"
-> affordance, extension panel v2 (suggestion provenance chips, thin-grounding
-> warning, sequential prestaged drafts max 3 with dirty-text + in-flight guards,
-> Discuss in Cyclops link), and server hardening (budget gate on
-> `/api/ext/answer`, exclusion-aware bank skip).
-> **Phase 4 (shipped 2026-06-10)** - agent page-driving fallback (user-invoked
-> "Agent assist" in the extension panel: a bounded 3-round request/response loop
-> against `POST /api/ext/agent`, fail-closed server validation,
-> confirmation-gated applies, budget-gated), overnight prep cron (deadline-near
-> research warmup, capped and time-guarded) plus deterministic morning-brief
-> chat threads, a gardener daily cron, and `vercel.json` carrying both schedules.
-> 259 unit tests green; `tsc` + `next build` clean (web + extension).
-> The deterministic extension autofill is untouched and its API responses are
-> byte-compatible.
->
-> **Eval pre-judge (Haiku, faithfulness pre-check):** new engine 20/0/0 wins vs old;
-> new engine: 45 invented specifics vs old: 62 invented specifics. USER judgment
-> pending (Gate B) — see `src/eval/REPORT.md` after running the eval harness.
->
-> **Before merging `cyclopslevelup` to `main` (main auto-deploys prod!):**
-> 1. Apply the additive SQL to Supabase (SQL editor or `psql "$DIRECT_URL" -f …`),
->    in order: `prisma/sql/2026-06-09-cyclops-memory.sql` then
->    `prisma/sql/2026-06-09-pgvector.sql` (needs the `vector` extension), then
->    `prisma/sql/2026-06-10-cyclops-phase2.sql` (phase 2 schema additions).
-> 2. Set `VOYAGE_API_KEY`, `CYCLOPS_DAILY_TOKEN_BUDGET` and `CRON_SECRET`
->    (random, at least 32 chars) in `.env` + Vercel (only after step 1).
->    Optional backfill: `npx tsx scripts/backfill-embeddings.ts`.
-> 3. Complete Gate B (USER judgment of writing eval) and Gate C checklist items
->    in `docs/MANUAL-TASKS.md`.
-> 4. Smoke test on localhost: /chat ("remember X" → memory diff chip; Stop
->    mid-tool-call then send again), /memory (edit/save/restore), one extension
->    autofill + answer generation round.
->
-> All four phases of the Cyclops overhaul are now implemented. What remains is
-> the manual gates (SQL, env vars, smoke tests, eval judgment) in
-> `docs/MANUAL-TASKS.md` and the merge itself.
->
-> Known fast-follows (logged, not blocking): gardener cron schedule (only the
-> every-10-edits trigger exists), mobile rails for /chat + /memory, gardener
-> question "asked" detection is conservative, `npm run lint` has a pre-existing
-> config failure (`nextVitals is not iterable`).
+_Last updated: 2026-06-15_
 
 A snapshot of where the project is, so any future session (human or agent) can pick
-up without re-deriving context. For product/setup detail see `README.md`; for the
-extension see `extension/README.md`.
+up without re-deriving context. For setup detail see `README.md`; for the
+extension see `extension/README.md`. For manual deploy gates see
+`docs/MANUAL-TASKS.md`.
+
+**Cyclops** (package name still `uk-finance-tracker`) is an AI-powered
+**application OS** for UK internship applicants — tracker, apply copilot,
+persistent memory, and an ambient agent. Evolved from **Trackr**; the public
+landing and app shell are branded Cyclops.
+
+Spec: `docs/superpowers/specs/2026-06-09-cyclops-application-os-design.md`
 
 ---
 
@@ -76,19 +21,36 @@ extension see `extension/README.md`.
 - **Live:** https://trackr-brown.vercel.app — demo login `demo@trackr.local` / `demo1234`
 - **Repo:** `github.com/e-mai0/uk-finance-tracker` (private). Default branch **`main`**;
   **push to `main` auto-deploys to Vercel production.**
-- **Local:** `C:\Users\ericc\dev\uk-finance-tracker` (deliberately outside OneDrive).
-- **Latest deployed commit:** `6ecc334` — _"feat: apply copilot — autofill browser extension + AI drafting backend"_ (state `READY`).
-- **What's live now:** the original tracker MVP **plus** the full Apply Copilot
-  (web backend + API). The browser **extension** is built and working but is loaded
-  **unpacked** locally — it is not yet on the Chrome Web Store.
+- **Latest `main` commit:** `82661c0` — _"Make Cyclops chat directive, adaptive, and easy to act on"_ (#22)
+- **Tests:** 502 passing (`npm test`); CI runs `tsc` + `npm test` on every push/PR.
+- **Extension:** built and working, loaded **unpacked** locally — not on Chrome Web Store.
+
+### Recently shipped (2026-06-13 → 2026-06-15)
+
+| PR | What |
+|----|------|
+| **#3/#4** | 3-step onboarding wizard; memory sync to `profile.md`; shared questionnaire in Settings |
+| **#6** | Tracker live-listings reliability — 8 ATS adapters, 23 seeded sources, deadline inference, health-gated close/reopen |
+| **#7** | Writing engine consolidated into `src/server/engine/skills/index.ts` |
+| **#8** | Sync concurrency — 5 parallel sources, 300s budget |
+| **#10** | Retired curated dataset seed — tracker is live-sourced only |
+| **#11–#13** | CV Builder (`/cv-builder`, `/my-cv`, PDF/Word export); `BuiltCv` + SQL gate |
+| **#14** | Chat stream abort on unmount; broader career scope; 10s timeout on voice/story seeding |
+| **#15** | tal.net lenient HTTP parser |
+| **#17–#19** | Vercel Speed Insights + Web Analytics |
+| **#18** | Landing page revamp — tracker-faithful hero, broadened beyond finance-only |
+| **#20** | Static landing (CDN); functions pinned to `lhr1` (London, co-located with Supabase) |
+| **#21** | **Deployed** — P2024 connection-pool crash fix on onboarding → `/today` (`db.ts` pool 1→5) |
+| **#22** | Cyclops chat prompt: directive, adaptive coach (default-and-confirm, lead with next step) |
 
 ### Open items / TODO
-- [ ] **Rotate two secrets** — `ANTHROPIC_API_KEY` and the Supabase `service_role`
-  key were pasted in chat. Regenerate both; update `.env` + Vercel. The
-  `service_role` key is the priority (bypasses RLS → full DB access).
-- [ ] **Pick a refinement direction** (see §8). Candidates: autofill accuracy,
-  Workday support, answer/CV polish, productize (Web Store).
-- [ ] Extension has **no icons** yet (fine for dev; required before publishing).
+
+- [ ] **Gate D** (`docs/MANUAL-TASKS.md`) — apply remaining SQL, smoke-test UI, verify crons
+- [ ] **Rotate two secrets** — `ANTHROPIC_API_KEY` and Supabase `service_role` were pasted in chat
+- [ ] **Gate B** — human judgment of writing eval (`src/eval/REPORT.md`; automated pre-judge 20/0/0)
+- [ ] Extension **icons** + Chrome Web Store listing
+- [ ] **Password reset** — not implemented (needed before wider beta)
+- [ ] Remove or lock down **demo credentials** on production
 
 ---
 
@@ -96,210 +58,229 @@ extension see `extension/README.md`.
 
 | Layer | Choice |
 |---|---|
-| Framework | Next.js 15 (App Router, Server Components + Server Actions), TypeScript, React 19 |
-| Styling | Tailwind CSS v4 (`@theme` tokens) + hand-built primitives. Theme = "Broadsheet Terminal" (ivory paper, claret `#7c2433` accent, Fraunces serif, mono numerics) |
-| Auth | Auth.js v5 (next-auth beta) — Credentials + bcrypt, JWT sessions, `AUTH_TRUST_HOST` |
-| ORM / DB | Prisma 6 + PostgreSQL (Supabase). Pooled `DATABASE_URL` (6543, pgbouncer) at runtime; `DIRECT_URL` (5432) for migrations |
-| AI | `@anthropic-ai/sdk` — `claude-haiku-4-5` (short answers), `claude-sonnet-4-6` (cover letters). Server-only |
-| File storage | Supabase Storage (private `cvs` bucket) via `@supabase/supabase-js` service role. CV parse: `unpdf` (PDF), `mammoth` (DOCX) |
-| Validation | Zod | 
-| Tests | Vitest (36 tests, all green) |
-| Extension | Manifest V3, TypeScript, Vite + `@crxjs/vite-plugin`, vanilla TS + Shadow-DOM panel |
-| Hosting | Vercel (web). Extension ships separately (Chrome Web Store / unpacked) |
+| Framework | Next.js 15 (App Router, Turbopack), TypeScript, React 19 |
+| Styling | Tailwind CSS v4 (`@theme` tokens) + hand-built primitives. GB+ design: Zilla Slab / Karla / Fragment Mono |
+| Auth | Auth.js v5 (`next-auth@5.0.0-beta.25`) — Credentials + bcrypt, JWT sessions |
+| ORM / DB | Prisma 6 + PostgreSQL (Supabase, eu-west-2). Pooled `DATABASE_URL` (pgbouncer); `DIRECT_URL` for DDL |
+| AI | AI SDK 6 (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/react`); Claude Sonnet 4.6 (reasoning/drafts), Haiku 4.5 (cheap calls) |
+| Embeddings | pgvector + Voyage AI (`voyage-3.5-lite`) |
+| File storage | Supabase Storage (private `cvs` bucket). CV parse: `unpdf` (PDF), `mammoth` (DOCX) |
+| Validation | Zod |
+| Tests | Vitest — 502 tests (64 files in `src/test/`; extension tests not in CI) |
+| Extension | Manifest V3, Vite + `@crxjs/vite-plugin`, Shadow-DOM panel |
+| Hosting | Vercel (`lhr1` region). 3 daily crons in `vercel.json` |
+| Analytics | Vercel Speed Insights + Web Analytics |
 
 ---
 
-## 3. Features
+## 3. Product surfaces
 
-### Tracker MVP (original)
-- Email/password auth (sign up / in / out).
-- Six-step onboarding wizard (education, interests, eligibility, locations, targets), Zod-validated, autosaving.
-- Dashboard tracker: dense sortable/filterable table of UK finance summer internships, summary cards, status badges, **transparent 0–100 fit scoring** (deterministic, no ML) with reasons, "Top matches" panel.
-- Saved roles + private notes. Opportunity detail pages. Settings (edits recompute scores).
-- Seed data: ~24 employers, ~45 opportunities (2027 cycle), original normalized summaries.
+### Public
 
-### Apply Copilot (new — built + deployed 2026-06-05)
-Human-in-the-loop. **Hard rule: never auto-submits, solves captchas, or scrapes** — the user always reviews and submits.
-- **Real CV upload + parsing** (Settings) → private Supabase Storage + extracted text used to ground generation.
-- **Apply profile** (Settings): phone, links, work-auth/sponsorship statements, optional self-ID — the data autofilled into forms.
-- **Answer bank** (Settings + auto-grown): reusable Q&A; near-identical questions reuse a saved answer, otherwise the LLM generates one.
-- **AI generation**: cover-letter draft button on opportunity pages; on-page answer drafts in the extension. Grounded in the user's CV, UK English, finance tone — not boilerplate.
-- **Applications tracker** (`/applications`): every autofilled/submitted role recorded with an editable status (Draft → Submitted → Interviewing → Offer …).
-- **Browser extension** (`extension/`): autofills Greenhouse / Lever / Ashby forms (Workday best-effort) and drafts answers in an on-page Shadow-DOM panel. Records the application back to the dashboard.
+| Route | Purpose |
+|-------|---------|
+| `/` | Static marketing landing (CDN; logged-in users redirected at edge) |
+| `/login`, `/signup` | Email/password auth |
 
-### Radar — live ingestion + Firm Scout (new — built 2026-06-10)
-The growth engine for niche/boutique coverage. Reads **public ATS JSON feeds only** (no HTML scraping, no logins); listing summaries stay original templated text.
-- **Live adapters** (`src/ingestion/adapters/`): Greenhouse, Lever, Ashby — verified against real boards (Point72, Man Group, Wintermute).
-- **Classifier** (`src/ingestion/classify.ts`): deterministic word-boundary rules — internship? summer? UK? which finance role family? — with employer-sector fallback. Pure, 20 unit tests.
-- **Source registry** (`IngestionSource` model): per-board rows with health tracking (`lastStatus`, `lastError`, `consecutiveFailures`; auto-disable after 10 straight failures). Seeded with the evidence-backed Greenhouse boards from `source-plans/` (mangroup, point72).
-- **Cron sync**: `GET /api/ingest/sync` (Bearer `CRON_SECRET`), daily 07:00 UTC via Vercel Cron (Hobby min interval) (`vercel.json`). **Set `CRON_SECRET` in Vercel before deploying.**
-- **Firm Scout** (dashboard sidebar): any user pastes a Greenhouse/Lever/Ashby URL → ATS auto-detected (`src/lib/source-detect.ts`) → board pulled immediately → roles live for everyone. Workday URLs are recognised and stored disabled as a review queue.
-- **Fresh finds** (dashboard sidebar): roles first seen ≤7 days, newest first; the same 7-day window drives a green **● NEW** flag on grid rows (`isFreshListing` in `signals.tsx`).
-- **Deadline export**: `GET /api/saved/calendar` downloads the user's saved-role deadlines (+ opening dates) as an `.ics` file (button on `/saved`; pure builder in `src/lib/ics.ts`).
-- **Stale-score fix**: tracker items without a cached `MatchScore` (i.e. ingested after the user's last recompute) now get scores computed live in `getTrackerItems`.
-- **Custom-ATS monitoring (2026-06-11)**: three tiers, all verified live.
-  (1) Custom JSON feeds — `JaneStreetAdapter` reads the public `/jobs/main.json`
-  (internships are NOT on their Greenhouse board; found a live London summer
-  internship on first run). (2) JSON-LD — `src/ingestion/jsonld.ts` parses
-  schema.org JobPosting structured data from any careers page (TalentBrew /
-  Avature / boutique sites), incl. real `validThrough` deadlines; used by
-  `JsonLdPageAdapter` and by Firm Scout's probe. (3) Watch mode —
-  `src/ingestion/watch.ts` diffs career-sitemap URL sets (Citadel + Citadel
-  Securities verified: 36/66 role URLs) or page hashes (Goldman higher.gs.com,
-  DB, BlackRock); changes set `lastChangedAt` and surface on **/radar**
-  (new nav page) for review — never auto-published. Scout now handles custom
-  URLs via an SSRF-guarded probe (`safePublicUrl`): JSON-LD found → live feed;
-  else → watcher.
-- **Schema change**: `SourceType` gains `ASHBY`; new `IngestionSource` table
-  (+ `watchOnly`, `watchState`, `lastChangedAt`) → additive SQL in
-  `prisma/sql/2026-06-11-radar-ingestion.sql`, applied to Supabase (never
-  `db push` — see AGENTS/memory convention).
+### Authenticated app
+
+| Route | Purpose |
+|-------|---------|
+| `/onboarding` | 3-step wizard: Essentials (required) → CV (optional) → Questionnaire (optional) |
+| `/today` | Home — morning brief, "Needs you" queue, upcoming deadlines |
+| `/tracker` | Dense internship board with fit scoring, keyboard nav, listing peek |
+| `/tracker/[id]` | Listing detail |
+| `/radar` | Fresh finds, Firm Scout, per-source ingestion health |
+| `/applications` | Application pipeline by stage |
+| `/applications/[id]` | Application workspace (status stepper, drafts) |
+| `/chat` | Full-page Ask Cyclops |
+| `/memory` | Markdown memory tree editor |
+| `/cv-builder` | Guided CV form + AI chat assistant |
+| `/my-cv` | Saved CV + PDF/Word download |
+| `/settings` | Profile, questionnaire, apply profile, answer bank, extension token |
+| `/activity` | Agent action log |
+
+**Cyclops dock** — permanent right-rail chat on Today, Tracker, Applications (⌘J expand).
+
+**Command palette** — ⌘K search pages, listings, conversations.
+
+### Hard product rule
+
+Human-in-the-loop only — Cyclops never auto-submits applications, solves captchas,
+or scrapes employer data.
 
 ---
 
-## 4. Apply Copilot architecture
+## 4. Features
 
-The application forms live on **external** ATS sites, so the copilot is a **browser
-extension** backed by a small API on the web app.
+### Cyclops application OS (Phases 1–4, shipped 2026-06-10)
+
+- **Memory core** — per-user markdown tree (`profile.md`, `voice.md`, `strategy.md`,
+  `stories/*`, `companies/*`) with revisions, anti-rot gardener, pgvector recall.
+- **Chat brain** — AI SDK 6 tool-loop agent (`POST /api/chat`): memory CRUD, app/opportunity
+  search, fit check, employer research, draft text, update application status. Per-user
+  daily token budget.
+- **Writing engine** — draft → critique → revision; draft-edit learning to `voice.md`;
+  outcome distillation on status changes.
+- **One-button apply v2** — memory-backed suggestions, story provenance, prestaged drafts
+  (max 3), chat deep links, tracker "Ask Cyclops".
+- **Agent fallback** — bounded 3-round agent assist in extension panel (`POST /api/ext/agent`).
+- **Overnight prep** — deadline-near research warmup, morning brief, gardener daily cron.
+
+### GB+ UI revamp (shipped 2026-06-11)
+
+Attention store, live nav badges, dense tracker board, Cyclops dock, real Today page,
+draft review → answer bank, applications workspace, ⌘K palette, `/activity`.
+
+### Tracker live-listings reliability (shipped 2026-06-13, PR #6)
+
+- **23 live sources** in `prisma/sources.ts` (~22 firms): Greenhouse, Workday, Oracle Cloud,
+  Eightfold, Avature, Radancy, tal.net, Goldman GraphQL, Deutsche Beesite, Jane Street JSON,
+  + Citadel watchers.
+- **Deadline inference** — cycle-based `estimated + rolling`; real deadlines always win.
+- **Health-gated close/reopen** — roles absent for 2 healthy syncs or past a real deadline
+  close; never close on failed fetch.
+- **UI** — estimated deadlines show **"est. · rolling"**.
+- **Sync** — 5 concurrent sources, 270s time guard, daily 07:00 UTC cron.
+
+### Onboarding revamp (shipped 2026-06-13, PR #3/#4)
+
+3-step wizard; essentials alone finishes onboarding. Optional CV distils into `profile.md`;
+optional questionnaire seeds voice/stories. Shared `QuestionnaireForm` in Settings.
+`workAuth` optional — unknown auth neither boosts nor penalises fit score.
+
+### CV Builder (shipped 2026-06-14, PR #11–#13)
+
+`/cv-builder` (form + dedicated chat), `/my-cv` (PDF via `/cv-print`, Word via
+`/api/cv/docx`). Grounding sync to apply profile for extension/LLM use.
+
+### Apply Copilot (extension)
+
+Autofill Greenhouse / Lever / Ashby (Workday best-effort). On-page Shadow-DOM panel
+drafts answers. Bearer token auth via Settings. Records applications to `/applications`.
+
+### Radar + Firm Scout
+
+Live ingestion from public ATS feeds. Firm Scout: paste Greenhouse/Lever/Ashby URL →
+auto-detect → board pulled immediately. Workday URLs recognised but queued as review
+(Firm Scout path; registry Workday sources sync live).
+
+---
+
+## 5. SQL migration gates
+
+Schema changes are applied manually via `prisma/sql/*.sql` (no `prisma/migrations/`).
+Apply in order; all additive and idempotent.
+
+| File | Status | Impact if missing |
+|------|--------|-------------------|
+| `2026-06-09-cyclops-memory.sql` | Applied (Gate A) | Cyclops core broken |
+| `2026-06-09-pgvector.sql` | Applied (Gate A) | Semantic search degraded |
+| `2026-06-10-cyclops-phase2.sql` | Applied (Gate A) | Phase 2 features broken |
+| `2026-06-11-attention-items.sql` | **Open** (Gate D) | Badges/Today queue empty (graceful degrade) |
+| `2026-06-11-radar-ingestion.sql` | **Open** (Gate D) | `/radar`, sync cron, Firm Scout hard-fail |
+| `2026-06-13-tracker-reliability.sql` | **Unconfirmed** | New columns/enums for ingestion + deadlines |
+| `2026-06-14-cv-builder.sql` | Applied (PR #13) | CV routes 500 |
+
+---
+
+## 6. Crons (`vercel.json`)
+
+| Schedule (UTC) | Path | Purpose |
+|----------------|------|---------|
+| 05:30 daily | `/api/cron/overnight` | Morning briefs, deadline-near research warmup |
+| 06:00 daily | `/api/cron/gardener` | Memory anti-rot |
+| 07:00 daily | `/api/ingest/sync` | Live job-board sync (Bearer `CRON_SECRET`) |
+
+All three need verification in Vercel → Cron Jobs (Gate D).
+
+---
+
+## 7. Architecture highlights
 
 ```
-Web app (Next.js)                          Extension (extension/, MV3)
-─────────────────                          ───────────────────────────
-identity, data, CV storage, all LLM   ◄──► service worker (holds token,
-calls; bearer-authed API:                  calls API) + content scripts
-  GET  /api/ext/profile  (field map)        that detect the form, autofill,
-  GET  /api/ext/cv       (signed URL)        and render the panel.
-  POST /api/ext/answer   (bank hit or AI)
-  POST /api/ext/application (track)
+Web app (Next.js, lhr1)                   Extension (MV3)
+──────────────────────                   ─────────────────
+Auth.js sessions                         Service worker (bearer token)
+Prisma + Supabase Postgres               Content scripts (detect, autofill, panel)
+Memory tree + pgvector                   Shadow-DOM draft panel
+AI SDK 6 brain (POST /api/chat)     ◄──► POST /api/ext/{profile,cv,answer,agent,…}
+Overnight prep + attention queue
 ```
 
-- **Auth bridge:** extension can't use the session cookie cross-origin → user mints
-  a **personal API token** in Settings (stored only as a SHA-256 hash in `ApiToken`;
-  revocable). Generating it auto-connects an installed extension (postMessage
-  handoff), or it's pasted into the popup. Sent as `Authorization: Bearer`.
-- **Middleware:** `/api/*` is excluded from the NextAuth session gate; the ext API
-  does its own bearer auth. New gated web pages added to `APP_PREFIXES` in
-  `src/server/auth.config.ts`.
-- **CORS:** not a security boundary here (bearer, not cookies) — `/api/ext/*` allows
-  any origin; the extension fetches from its service worker via `host_permissions`.
+- **Connection pool:** `src/server/db.ts` raises Prisma `connection_limit` to 5 at
+  client construction (PR #21) — fixes P2024 crashes when `/today` fans out concurrent
+  queries against Supabase's `connection_limit=1` pooler URL.
+- **Extension auth:** personal API tokens (SHA-256 hash in `ApiToken`); minted in Settings.
+- **Landing:** fully static `/` — no auth/DB on render; logged-in redirect at edge.
 
 ---
 
-## 5. Data model (Prisma, `prisma/schema.prisma`)
+## 8. Data model
 
-Original: `User`, `Profile`, `Preferences`, `Employer`, `Opportunity`,
-`OpportunityTag`, `OpportunitySource`, `SavedOpportunity`, `MatchScore`,
-`IngestionRun`.
+`prisma/schema.prisma` — **28 models**, including:
 
-Added for the copilot:
-- **`ApplyProfile`** (1:1 User) — reusable apply data + CV (`cvStoragePath`,
-  `cvText`, `cvFileName/Size`). CV was **moved off `Profile`** (the old
-  `Profile.cvFileName/cvFileSize` columns are re-added as nullable/unused for
-  back-compat — see §7).
-- **`AnswerBankItem`** — reusable Q&A (`questionNormalized` for fuzzy match).
-- **`Application`** — tracked external application (`externalUrl`, `ats`, `status`,
-  `source`; unique on `[userId, externalUrl]`).
-- **`GeneratedDraft`** — history of AI artefacts.
-- **`ApiToken`** — extension auth (SHA-256 hash only).
-- Enums: `ATSKind`, `ApplicationStatus`, `ApplicationSource`, `DraftKind`.
+`User`, `Profile`, `Preferences`, `ApplyProfile`, `BuiltCv`, `Employer`,
+`Opportunity`, `SavedOpportunity`, `MatchScore`, `Application`, `AnswerBankItem`,
+`GeneratedDraft`, `ApiToken`, `MemoryFile`, `MemoryRevision`, `ChatSession`,
+`ChatMessage`, `AttentionItem`, `IngestionSource`, `IngestionRun`,
+`EmployerResearch`, `DraftEdit`, `GardenerQuestion`, `ContentEmbedding`,
+`DailyUsage`, and related enums.
 
-Migrations applied to Supabase via the MCP `apply_migration`. New tables have **RLS
-enabled with no policies** (Prisma superuser bypasses; public API locked out).
+RLS enabled on new tables with no policies (Prisma superuser bypasses).
 
 ---
 
-## 6. Repo structure (key paths)
+## 9. Local dev
 
-```
-prisma/schema.prisma            # 15 models
-src/app/
-  (app)/dashboard | saved | settings | applications | opportunities/[id]
-  api/ext/{profile,cv,answer,application}/route.ts   # extension API (bearer)
-  api/auth/[...nextauth]
-src/server/
-  auth.ts auth.config.ts db.ts matching.ts
-  ext-auth.ts ext-http.ts ext-profile.ts             # extension API support
-  storage.ts cv/parse.ts                             # CV upload + parse
-  ai/generate.ts                                     # LLM (Anthropic)
-  actions/{auth,onboarding,saved,settings,applyProfile,extension,copilot,applications}.ts
-  queries/opportunities.ts
-src/lib/{scoring,filters,validation,answers,constants,utils}.ts
-src/components/{ui,tracker,onboarding,settings,applications,copilot}/
-src/test/                        # scoring, filters, validation, answers
-src/ingestion/                   # dataset + import + adapters (stubs)
-extension/                       # standalone MV3 extension (own package.json/build)
-  src/background.ts  src/content/{index,detect→adapters/*,autofill,panel,connect,messaging,field-map}.ts
-  src/popup/  src/shared/
-scripts/mint-test-token.ts       # dev helper: mint an ext API token
-docs/source-research/            # earlier source-research plans (PR #1)
-```
-
----
-
-## 7. Local dev & build
-
-**Web app**
 ```bash
 npm install
 npm run dev            # http://localhost:3000
 npm run build          # prisma generate + next build
-npm run test           # vitest (36 tests)
+npm test               # vitest (502 tests)
 ```
-Env in `.env` (gitignored): `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `AUTH_URL`,
-and (optional, for copilot) `ANTHROPIC_API_KEY`, `SUPABASE_URL`,
-`SUPABASE_SERVICE_ROLE_KEY`. App runs without the copilot keys; those features
-degrade gracefully. See `.env.example`.
 
-**Extension**
 ```bash
-cd extension
-npm install
-npm run build          # -> extension/dist
+cd extension && npm install && npm run build   # -> extension/dist
+# Load unpacked via chrome://extensions
 ```
-Load `extension/dist` via `chrome://extensions` → Developer mode → Load unpacked.
-Connect: Trackr → Settings → Browser extension → Generate token (auto-connects or
-paste in popup). Test on a Greenhouse/Lever/Ashby application form.
+
+Env: see `.env.example`. Required: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`,
+`AUTH_URL`. Optional (features degrade gracefully): `ANTHROPIC_API_KEY`,
+`VOYAGE_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`,
+`CYCLOPS_DAILY_TOKEN_BUDGET`.
 
 **Gotchas**
-- Windows: `next build`/`prisma generate` can hit `EPERM` on the Prisma engine DLL
-  if a stray `node` (dev server) still holds it — kill leftover node processes.
-- `prisma db push` against prod is blocked by tooling; apply schema via Supabase
-  MCP `apply_migration` instead (additive DDL).
-- CV file-attach inputs can't be auto-filled by any extension (browser security) —
-  attach manually.
+- `prisma db push` against prod is blocked; apply additive SQL via Supabase SQL editor.
+- CV file-attach inputs can't be auto-filled (browser security).
+- Tracker may look sparse off-season — listings are live-sourced only (no curated seed).
 
 ---
 
-## 8. Known limitations & candidate next steps
+## 10. Known limitations & fast-follows
 
-- **Autofill accuracy** — heuristic label→key matcher. Known weak spots: Greenhouse
-  typeahead **school/degree** fields (need option-selection, not plain text),
-  demographic dropdowns, graduation **date pickers**. Best refined against real forms.
-- **Workday** — best-effort only (complex multi-step SPA). Matters most if target
-  firms are large banks.
-- **Answer/CV polish** — char-limit adherence (model can overshoot; we trim to a word
-  boundary), per-question-type tone, smarter answer-bank reuse, one-click "download
-  my CV" in the panel.
-- **Productize** — extension icons, Chrome Web Store listing, cleaner first-run.
-- **Model/cost** — answer model is Haiku (cost is negligible at current volume). Model
-  names are isolated constants in `src/server/ai/generate.ts`; could make
-  env-configurable / route via OpenRouter to A/B cheaper models later. (Avoid DeepSeek
-  for CVs — China-hosted, GDPR.)
-- **API hardening** — consider rate limiting on `/api/ext/*`.
+- **Autofill accuracy** — weak on typeaheads, date pickers, demographics.
+- **Workday** — live via registry adapters; Firm Scout queues user-pasted Workday URLs.
+- **Citadel** — watch-only sitemap diff, no live listings.
+- **Mobile** — no responsive rails for `/chat` + `/memory`.
+- **Password reset** — not built.
+- **Extension** — no icons; not on Chrome Web Store.
+- **Writing eval** — Gate B human judgment pending (`src/eval/REPORT.md`).
+- **`npm run lint`** — pre-existing config failure (`nextVitals is not iterable`).
+- **Branding drift** — README/package.json/extension still say Trackr in places.
+- **API hardening** — rate limiting on `/api/ext/*` not yet implemented.
+- **Off-season sparsity** — live-only tracker; expected when few roles are open.
 
 ---
 
-## 9. Operational facts
+## 11. Operational facts
 
-- **Supabase:** project `trackr`, ref `vemgdpahhhabkphgevzx`, region eu-west-2 (London).
-  Pooler host is **aws-1**-eu-west-2 (not aws-0). Private bucket `cvs` (10 MB limit).
-- **Vercel:** team `e-mai0s-projects`, project `trackr`. Prod env vars set:
+- **Supabase:** project `trackr`, ref `vemgdpahhhabkphgevzx`, region **eu-west-2** (London).
+  Pooler host is **aws-1**-eu-west-2. Private bucket `cvs` (10 MB limit).
+- **Vercel:** team `e-mai0s-projects`, project `trackr`. Region **lhr1**. Prod env vars:
   `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `AUTH_TRUST_HOST`, `ANTHROPIC_API_KEY`,
-  `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
-- **Branching note:** copilot work was done on `source-research/uk-finance-source-plans`;
-  PR #1 merged the earlier source-research commit into `main`, then the copilot commit
-  was rebased on top and pushed (`6ecc334`).
-- **Verified live post-deploy:** landing `200`; `/api/ext/profile` → `401` (new API
-  live); `/applications` → `307` to `/login` (gating live). API smoke-tested earlier:
-  profile field map, application upsert, answer save/bank-hit, AI generation, storage
-  round-trip — all OK.
+  `VOYAGE_API_KEY`, `CYCLOPS_DAILY_TOKEN_BUDGET`, `CRON_SECRET`, `SUPABASE_URL`,
+  `SUPABASE_SERVICE_ROLE_KEY`.
+- **Beta readiness:** feature-complete for closed alpha; ops gates (SQL verification,
+  smoke tests, secret rotation, extension distribution) remain. See beta readiness plan
+  in `.cursor/plans/` or session notes from 2026-06-15 review.
