@@ -41,6 +41,14 @@ export const authConfig = {
           return Response.redirect(new URL("/today", nextUrl));
         }
       }
+      // Logged-in users shouldn't land on the public marketing page. Bounce
+      // them at the edge (JWT-only, no DB) so `/` can stay a static prerender
+      // for anonymous visitors — the landing page no longer calls auth() itself.
+      if (p === "/" && isLoggedIn) {
+        return Response.redirect(
+          new URL(onboarded ? "/today" : "/onboarding", nextUrl),
+        );
+      }
       return true;
     },
     jwt({ token, user, trigger, session }) {
