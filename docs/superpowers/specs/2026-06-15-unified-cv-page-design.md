@@ -50,6 +50,9 @@ free-form `sections`. **The schema stays; the rigid form goes.**
 
 - Multiple CVs / CV versioning per user (one CV per user, as today).
 - Per-application tailored CVs.
+- Direct inline field editing on `/cv` (v1 is chat + confirm only; deferred).
+- Auto-running the draft after onboarding (`/cv` always lands on the empty
+  state; the user clicks to build).
 - A bespoke PDF rendering library — keep the existing browser print-to-PDF.
 - Changing the grounding pipeline (`syncCvGrounding`) — it already serialises
   `BuiltCv` → `cvText` → `profile.md` and stays as-is.
@@ -125,18 +128,22 @@ section is removed. `update_cv` tool is unchanged.
   `gatherKnownProfile`, load chat history, render `CvPageClient`.
 - **`CvPageClient`** (replaces `CvBuilderClient`) has two states:
   - **No CV** → entry screen with two actions: **Build with Cyclops**
-    (calls `draftCvFromKnown`, then shows the editor) and **Upload a CV**
-    (file input → `uploadCvAction` → parsed → editor).
+    (calls `draftCvFromKnown`, then shows the CV + chat) and **Upload a CV**
+    (file input → `uploadCvAction` → parsed → CV + chat).
   - **Has CV** → CV document centre stage, a **Refine with Cyclops** chat panel
-    (existing `CvChat` + live preview lift), inline field editing, and
-    **Download PDF / Word**. This absorbs the old `/my-cv` view.
+    (existing `CvChat` + live preview lift), and **Download PDF / Word**. This
+    absorbs the old `/my-cv` view.
+
+  **v1 scope: chat + confirm only — no direct field editing.** All CV changes
+  go through Cyclops chat (`update_cv`). Direct inline field editing is
+  explicitly deferred to a later iteration.
 
   Print stays at `/cv-print` (no rename); only its no-CV fallback `redirect`
   changes from `/cv-builder` to `/cv`.
 - The rigid 3-step `EducationStep`/`AccomplishmentsStep`/`ProjectsStep` form and
-  `buildCv(formInput)` path are **removed**. Direct field editing on the live
-  CV plus chat refinement replace it. `cvFormInputSchema` / `formInputToCvData`
-  become dead code and are deleted with their tests.
+  `buildCv(formInput)` path are **removed**. Chat refinement replaces them.
+  `cvFormInputSchema` / `formInputToCvData` become dead code and are deleted
+  with their tests.
 - **Nav:** `src/components/app-nav.tsx` — replace the two entries (`/cv-builder`
   "CV Builder", `/my-cv` "My CV") with a single `{ href: "/cv", label: "My CV" }`.
 - **Redirects:** `/cv-builder` and `/my-cv` become thin redirects to `/cv` (keep
@@ -152,16 +159,16 @@ section is removed. `update_cv` tool is unchanged.
   lands on (or is nudged to) `/cv` to run `draftCvFromKnown`.
 - **Skip for now** → unchanged.
 
-No build work runs inside onboarding (decision #3). The simplest implementation:
-the "Build with Cyclops" button just continues the wizard and the `/cv` empty
-state is where the draft happens — no new persisted "intent" flag needed unless
-we want to auto-open the draft (deferred; not required for v1).
+No build work runs inside onboarding (decision #3). The "Build with Cyclops"
+button just continues the wizard. **`/cv` always lands on the empty state and
+never auto-runs the draft** — `draftCvFromKnown` fires only when the user clicks
+"Build with Cyclops" on `/cv`. No persisted "intent" flag is needed.
 
 ## Data flow
 
 ```
 Upload file ─▶ extractCvText ─▶ AI parse ─▶ CvData ─┐
-Build w/ Cyclops ─▶ gatherKnownProfile ─▶ AI draft ─┼─▶ BuiltCv.data ◀─ chat update_cv / inline edit
+Build w/ Cyclops ─▶ gatherKnownProfile ─▶ AI draft ─┼─▶ BuiltCv.data ◀─ chat update_cv
                                                      │         │
                                                      │         ├─▶ CvDocument (preview + /cv view)
                                                      │         ├─▶ /cv-print ─▶ browser Save-as-PDF
