@@ -17,6 +17,8 @@ import {
 } from "@/lib/cv";
 import { persistCv } from "@/server/cv/store";
 import { syncCvGrounding } from "@/server/cv/grounding";
+import { gatherKnownProfile } from "@/server/cv/known-profile";
+import { draftCvDataFromKnown } from "@/server/cv/generate";
 
 export interface BuildCvResult {
   ok?: boolean;
@@ -87,5 +89,19 @@ ${JSON.stringify(cv).slice(0, MAX_PROMPT_CHARS)}
   after(() => syncCvGrounding(userId));
   revalidatePath("/my-cv");
   revalidatePath("/cv-builder");
+  return { ok: true, cv: saved };
+}
+
+/** Draft (and persist) a CV from everything the app already knows about the user. */
+export async function draftCvFromKnown(): Promise<BuildCvResult> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { error: "Your session has expired. Sign in again." };
+
+  const known = await gatherKnownProfile(userId);
+  const cv = await draftCvDataFromKnown(userId, known);
+  const saved = await persistCv(userId, cv);
+  after(() => syncCvGrounding(userId));
+  revalidatePath("/cv");
   return { ok: true, cv: saved };
 }
