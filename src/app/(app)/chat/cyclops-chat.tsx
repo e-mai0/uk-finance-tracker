@@ -5,6 +5,7 @@ import { DefaultChatTransport, isToolUIPart, isTextUIPart, getToolName } from "a
 import type { UIMessage, UIMessagePart, ToolUIPart, DynamicToolUIPart } from "ai";
 import { useRef, useState, useEffect, FormEvent, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
+import { Markdown } from "@/components/markdown";
 
 // ---------------------------------------------------------------------------
 // Tool label map
@@ -40,9 +41,16 @@ function friendlyError(error: Error): string {
 // ---------------------------------------------------------------------------
 // MessagePart sub-component
 // ---------------------------------------------------------------------------
-function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
+function MessagePart({ part, markdown }: { part: UIMessagePart<never, never>; markdown?: boolean }) {
   if (isTextUIPart(part)) {
-    return <span className="whitespace-pre-wrap">{part.text}</span>;
+    // Assistant replies are markdown — render headers, bold, lists and tables
+    // instead of leaking literal #, * and - characters. User messages stay
+    // plain (they're typed prose in an ink bubble).
+    return markdown ? (
+      <Markdown>{part.text}</Markdown>
+    ) : (
+      <span className="whitespace-pre-wrap">{part.text}</span>
+    );
   }
 
   if (isToolUIPart(part)) {
@@ -273,6 +281,7 @@ export function CyclopsChat({
                   <MessagePart
                     key={i}
                     part={part as UIMessagePart<never, never>}
+                    markdown={msg.role !== "user"}
                   />
                 ))}
               </div>
