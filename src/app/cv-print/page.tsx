@@ -17,7 +17,7 @@ export default async function CvPrintPage() {
   if (!session?.user) redirect("/login");
 
   const built = await getBuiltCv(session.user.id);
-  if (!built) redirect("/cv-builder");
+  if (!built) redirect("/cv");
 
   return (
     <>
