@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 import { auth } from "@/server/auth";
+import { prisma } from "@/server/db";
 import { getTrackerItems } from "@/server/queries/opportunities";
 import { getOpenAttentionByTarget } from "@/server/queries/attention";
-import { parseFilters, applyFiltersAndSort } from "@/lib/filters";
+import { parseFilters, applyFiltersAndSort, hasActiveFilters } from "@/lib/filters";
 import { daysUntil } from "@/lib/utils";
+import { composeBoard, type BoardListingRow } from "@/lib/tracker-board";
 import { FiltersBar } from "@/components/tracker/filters-bar";
 import { Board } from "@/components/tracker/board";
 import { TickerTape } from "@/components/tracker/ticker-tape";
@@ -20,10 +22,11 @@ export default async function DashboardPage({
   const session = await auth();
   const userId = session!.user.id;
 
-  const [sp, allItems, attention] = await Promise.all([
+  const [sp, allItems, attention, sources] = await Promise.all([
     searchParams,
     getTrackerItems(userId),
     getOpenAttentionByTarget(userId, "opportunity"),
+    prisma.ingestionSource.findMany(),
   ]);
 
   const filters = parseFilters(sp);
@@ -31,7 +34,11 @@ export default async function DashboardPage({
 
   const now = new Date();
 
-  const rows = items.map((it) => ({
+  // Map the filtered view into board rows (fit, freshness, agent tags). All
+  // ordering, the "Opening soon" derivation, and the counts are decided by the
+  // pure composeBoard() so they stay testable.
+  const listingRows: BoardListingRow[] = items.map((it) => ({
+    kind: "listing" as const,
     id: it.id,
     employerName: it.employerName,
     title: it.title,
@@ -44,11 +51,16 @@ export default async function DashboardPage({
     score: it.score,
     saved: it.saved === true,
     fresh: isFreshListing(it.firstSeenAt, now),
-    agentTags: (attention.get(it.id) ?? []).map((a) => ({
-      kind: a.kind,
-      title: a.title,
-    })),
+    agentTags: (attention.get(it.id) ?? []).map((a) => ({ kind: a.kind, title: a.title })),
   }));
+
+  const { rows, stats } = composeBoard({
+    listingRows,
+    allOpportunities: allItems,
+    sources,
+    filtersActive: hasActiveFilters(filters),
+    now,
+  });
 
   return (
     <div className="animate-rise">
@@ -81,7 +93,7 @@ export default async function DashboardPage({
 
       {/* The board — discovery (fresh finds + Firm Scout) now lives on /radar */}
       <div className="p-4">
-        <Board rows={rows} />
+        <Board rows={rows} stats={stats} />
       </div>
     </div>
   );
