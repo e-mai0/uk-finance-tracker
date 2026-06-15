@@ -18,6 +18,7 @@ export interface ActionResult {
   ok?: boolean;
   error?: string;
   fieldErrors?: Record<string, string[]>;
+  cvParsed?: boolean;
 }
 
 const MAX_CV_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -111,10 +112,14 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
 
   // Best-effort: parse the uploaded CV into an editable structured CV so it
   // becomes the single source of truth on /cv. Failure leaves the upload intact.
+  let cvParsed = false;
   if (cvText) {
     try {
       const cv = await parseCvTextToCvData(userId, cvText);
-      if (cv) await persistCv(userId, cv);
+      if (cv) {
+        await persistCv(userId, cv);
+        cvParsed = true;
+      }
     } catch (err) {
       console.error("[cv store] parse-on-upload persist failed:", err);
     }
@@ -122,7 +127,7 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
 
   revalidatePath("/settings");
   revalidatePath("/cv");
-  return { ok: true };
+  return { ok: true, cvParsed };
 }
 
 /** Remove the stored CV file + text. */

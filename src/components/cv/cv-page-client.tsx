@@ -1,4 +1,4 @@
-// src/components/cv/cv-page-client.tsx
+﻿// src/components/cv/cv-page-client.tsx
 // Unified CV client. Two states:
 //  - empty  → Build with Cyclops (AI draft) / Upload a CV
 //  - has CV → document + Refine-with-Cyclops chat + downloads
@@ -32,6 +32,7 @@ export function CvPageClient({
   const [hasCv, setHasCv] = useState(initialHasCv);
   const [pane, setPane] = useState<"preview" | "chat">("preview");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -42,22 +43,33 @@ export function CvPageClient({
 
   function build() {
     setError(null);
+    setNotice(null);
     startTransition(async () => {
       const res = await draftCvFromKnown();
       if (res.error) { setError(res.error); return; }
-      if (res.cv) { setLiveCv(res.cv); setHasCv(true); setPane("chat"); }
+      if (!res.cv) return;
+      setLiveCv(res.cv);
+      setHasCv(true);
+      setPane("chat");
       router.refresh();
     });
   }
 
   function upload(file: File) {
     setError(null);
+    setNotice(null);
     const formData = new FormData();
     formData.set("cv", file);
     startTransition(async () => {
       const res = await uploadCvAction(formData);
       if (res.error) { setError(res.error); return; }
-      router.refresh(); // server page reloads with the parsed CV
+      if (res.cvParsed) {
+        router.refresh(); // server page reloads with the parsed, editable CV
+      } else {
+        setNotice(
+          "We saved your CV file, but could not turn it into an editable CV right now. Try \"Build with Cyclops\", or upload again."
+        );
+      }
     });
   }
 
@@ -70,6 +82,7 @@ export function CvPageClient({
           Let Cyclops draft a CV from what it already knows about you, or upload an existing one to refine.
         </p>
         {error && <p className="text-sm text-danger">{error}</p>}
+        {notice && <p className="text-sm text-muted">{notice}</p>}
         <div className="flex flex-col items-center gap-3">
           <Button variant="primary" onClick={build} disabled={isPending}>
             {isPending ? "Drafting…" : "Build with Cyclops"}
@@ -87,6 +100,7 @@ export function CvPageClient({
             type="file"
             accept=".pdf,.doc,.docx,.txt"
             hidden
+            onClick={(e) => { (e.target as HTMLInputElement).value = ""; }}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }}
           />
         </div>
