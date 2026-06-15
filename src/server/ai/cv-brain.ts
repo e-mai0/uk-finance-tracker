@@ -49,10 +49,11 @@ Your behaviour:
 }
 
 export async function streamCvBuilder(args: { userId: string; messages: UIMessage[] }) {
-  const built = await getBuiltCv(args.userId);
+  const [built, known] = await Promise.all([
+    getBuiltCv(args.userId),
+    gatherKnownProfile(args.userId),
+  ]);
   const cvJson = built ? JSON.stringify(built.cv, null, 2) : JSON.stringify({});
-
-  const known = await gatherKnownProfile(args.userId);
   const knownBlock = toPromptBlock(known);
 
   // ignoreIncompleteToolCalls: an aborted update_cv can't poison the session.
