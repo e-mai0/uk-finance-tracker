@@ -13,6 +13,7 @@ import {
   KeyboardEvent,
 } from "react";
 import { cn } from "@/lib/utils";
+import { Markdown } from "@/components/markdown";
 
 // ---------------------------------------------------------------------------
 // Tool label map
@@ -48,9 +49,16 @@ function friendlyError(error: Error): string {
 // ---------------------------------------------------------------------------
 // MessagePart sub-component
 // ---------------------------------------------------------------------------
-function MessagePart({ part }: { part: UIMessagePart<never, never> }) {
+function MessagePart({ part, markdown }: { part: UIMessagePart<never, never>; markdown?: boolean }) {
   if (isTextUIPart(part)) {
-    return <span className="whitespace-pre-wrap">{part.text}</span>;
+    // Assistant replies are markdown — render headers, bold, lists and tables
+    // instead of leaking literal #, * and - characters. User messages stay
+    // plain (they're typed prose in an ink bubble).
+    return markdown ? (
+      <Markdown>{part.text}</Markdown>
+    ) : (
+      <span className="whitespace-pre-wrap">{part.text}</span>
+    );
   }
 
   if (isToolUIPart(part)) {
@@ -181,7 +189,11 @@ const MessageRow = memo(function MessageRow({ msg }: { msg: UIMessage }) {
         )}
       >
         {msg.parts.map((part, i) => (
-          <MessagePart key={i} part={part as UIMessagePart<never, never>} />
+          <MessagePart
+            key={i}
+            part={part as UIMessagePart<never, never>}
+            markdown={msg.role !== "user"}
+          />
         ))}
       </div>
     </div>
@@ -208,6 +220,16 @@ const Composer = memo(function Composer({
   initialInput: string;
 }) {
   const [input, setInput] = useState(initialInput);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow the composer up to ~6 lines, then scroll. Runs on every input
+  // change so it also shrinks back after a send clears the field.
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "0px";
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  }, [input]);
 
   function submit(e?: FormEvent) {
     e?.preventDefault();
@@ -217,7 +239,8 @@ const Composer = memo(function Composer({
     onSend(text);
   }
 
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    // Enter sends; Shift+Enter inserts a newline (the textarea's default).
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!isStreaming) submit();
@@ -228,19 +251,20 @@ const Composer = memo(function Composer({
     <div className={cn(compact ? "px-3 pb-3" : "px-4 pb-4")}>
       <form
         onSubmit={submit}
-        className="flex items-center gap-2 rounded-[16px] border border-border bg-surface px-2.5 py-1.5 transition-colors focus-within:border-border-interactive"
+        className="flex items-end gap-2 rounded-[16px] border border-border bg-surface px-2.5 py-1.5 transition-colors focus-within:border-border-interactive"
       >
-        <span aria-hidden className="select-none pl-1 font-mono text-accent">
+        <span aria-hidden className="select-none pb-1 pl-1 font-mono text-accent">
           ›
         </span>
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value.slice(0, 8000))}
           onKeyDown={handleKeyDown}
           placeholder="Ask Cyclops…"
           maxLength={8000}
-          className="min-w-0 flex-1 bg-transparent py-1 text-[0.875rem] text-ink placeholder:text-faint focus:outline-none"
+          rows={1}
+          className="min-w-0 flex-1 resize-none bg-transparent py-1 text-[0.875rem] leading-[1.5] text-ink placeholder:text-faint focus:outline-none"
           aria-label="Chat input"
         />
         {/* item 8: stop button while streaming */}
