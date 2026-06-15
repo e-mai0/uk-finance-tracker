@@ -1,23 +1,15 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { auth } from "@/server/auth";
 import { Button } from "@/components/ui/button";
-import { prisma } from "@/server/db";
 import { cn, ticker } from "@/lib/utils";
 import { Reveal } from "./_landing/reveal";
 import type { CSSProperties } from "react";
 
-export default async function LandingPage() {
-  const session = await auth();
-  if (session?.user) {
-    redirect(session.user.onboarded ? "/today" : "/onboarding");
-  }
-
-  const [employers, opportunities] = await Promise.all([
-    prisma.employer.count().catch(() => 0),
-    prisma.opportunity.count().catch(() => 0),
-  ]);
-
+// Public marketing page — fully static (prerendered at build, served from the
+// CDN). It deliberately calls no auth/DB so first byte never waits on a cold
+// function or a database round-trip. Logged-in visitors are redirected to the
+// app at the edge by the `authorized` middleware callback (see auth.config.ts),
+// so this page only ever renders for anonymous visitors.
+export default function LandingPage() {
   return (
     <div className="flex min-h-full flex-col">
       {/* Dark command rail — header + live tape stack into one warm-ink bar, the desk
@@ -220,9 +212,9 @@ export default async function LandingPage() {
         {/* ── Stat ribbon ──────────────────────────────────────────────────── */}
         <Reveal className="mt-16">
           <section className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-4">
-            <Stat value={`${employers || "24"}`} label="Firms watched" />
+            <Stat value="24" label="Firms watched" />
             <Stat value="6h" label="Re-check cycle" />
-            <Stat value={`${opportunities || "45"}`} label="Live openings" />
+            <Stat value="45" label="Live openings" />
             <Stat value="0" label="Auto-submits, ever" agent />
           </section>
           <p className="mt-3 px-1 font-mono text-[0.66rem] uppercase tracking-wider text-faint">
