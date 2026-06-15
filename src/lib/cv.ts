@@ -83,6 +83,20 @@ export type CvData = z.infer<typeof cvDataSchema>;
 
 export const EMPTY_CV: CvData = cvDataSchema.parse({});
 
+/** True when the CV has no substantive content (a fullName-only stub counts as empty). */
+export function isCvEmpty(cv: CvData): boolean {
+  return (
+    cv.education.length === 0 &&
+    cv.experience.length === 0 &&
+    cv.projects.length === 0 &&
+    cv.accomplishments.length === 0 &&
+    cv.skills.length === 0 &&
+    cv.interests.length === 0 &&
+    cv.sections.length === 0 &&
+    !cv.summary
+  );
+}
+
 // ---------------------------------------------------------------------------
 // The 3-step form input. Flatter than CvData; mapped deterministically below.
 // ---------------------------------------------------------------------------
