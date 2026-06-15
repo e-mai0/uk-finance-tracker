@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/server/db";
-import { ROLE_FAMILIES } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, ticker } from "@/lib/utils";
+import { Reveal } from "./_landing/reveal";
 import type { CSSProperties } from "react";
 
 export default async function LandingPage() {
@@ -20,15 +20,16 @@ export default async function LandingPage() {
 
   return (
     <div className="flex min-h-full flex-col">
-      {/* Dark command rail — nav + ticker stack into one black bar, like the desk */}
+      {/* Dark command rail — header + live tape stack into one warm-ink bar, the desk
+          chrome bleeding into the marketing page. */}
       <header className="chrome sticky top-0 z-40 border-b border-chrome-line">
         <div className="mx-auto flex h-12 w-full max-w-6xl items-center justify-between px-6">
           <div className="flex items-baseline gap-4">
             <span className="text-[1.1rem] font-extrabold tracking-tight text-white">
-              Trackr<span className="text-amber">.</span>
+              Cyclops<span className="text-amber">.</span>
             </span>
             <span className="label hidden text-[0.6rem] text-chrome-dim sm:inline">
-              UK Finance · SU27
+              Your internship agent
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -45,29 +46,40 @@ export default async function LandingPage() {
         </div>
       </header>
 
-      <DemoTape />
+      <CoverageTape />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6">
-        {/* Hero */}
-        <section className="grid items-center gap-12 pt-16 sm:pt-24 lg:grid-cols-[1.15fr_0.85fr]">
+        {/* ── Hero ─────────────────────────────────────────────────────────── */}
+        <section className="grid items-center gap-12 pb-8 pt-16 sm:pt-24 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
-            <div className="animate-rise flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-subtle">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-              UK finance · Summer 2027 cycle
+            <div className="animate-rise flex items-center gap-2.5 font-mono text-xs uppercase tracking-[0.18em] text-subtle">
+              <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-good-mark" />
+              One eye, always open · 2027 intern season
             </div>
-            <h1 className="animate-rise mt-5 text-balance text-[2.7rem] leading-[1.04] text-ink sm:text-[3.4rem]">
-              The disciplined desk for UK finance{" "}
-              <em className="font-display italic text-accent">internships</em>.
+            <h1
+              className="animate-rise mt-5 text-balance text-[2.6rem] leading-[1.03] text-ink sm:text-[3.45rem]"
+              style={{ animationDelay: "60ms" }}
+            >
+              One eye on every internship.{" "}
+              <em className="font-display italic text-accent">
+                So you can close the other.
+              </em>
             </h1>
-            <p className="animate-rise mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted sm:text-lg">
-              One dense terminal for every opening across investment banking,
-              markets, asset management, private equity and quant — each scored{" "}
-              <span className="font-mono text-ink">0–100</span> for how well it
-              fits your background, with a plain-English why.
+            <p
+              className="animate-rise mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted sm:text-lg"
+              style={{ animationDelay: "120ms" }}
+            >
+              Cyclops watches every employer you care about, drafts each
+              application in your own voice overnight, and brings you only the
+              decisions that actually need a human — the rest runs while you
+              sleep.
             </p>
-            <div className="animate-rise mt-8 flex flex-wrap items-center gap-5">
+            <div
+              className="animate-rise mt-8 flex flex-wrap items-center gap-5"
+              style={{ animationDelay: "180ms" }}
+            >
               <Link href="/signup">
-                <Button size="lg">Create your tracker</Button>
+                <Button size="lg">Open your desk</Button>
               </Link>
               <Link href="/login">
                 <Button variant="link" size="lg">
@@ -75,46 +87,188 @@ export default async function LandingPage() {
                 </Button>
               </Link>
             </div>
-            <p className="mt-4 font-mono text-xs uppercase tracking-wider text-subtle">
-              Free to start · no card required
+            <p
+              className="animate-rise mt-4 font-mono text-xs uppercase tracking-wider text-subtle"
+              style={{ animationDelay: "240ms" }}
+            >
+              Free · never auto-submits
             </p>
           </div>
 
-          {/* Sample fit-score card — the product, in miniature */}
-          <ScoreCard />
+          {/* The product, in miniature — a live desk with one agent-flagged row and
+              a floating proposal card. The whole loop in one frame. */}
+          <HeroDesk />
         </section>
 
-        {/* Stat ribbon */}
-        <section className="mt-16 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-4">
-          <Stat value={`${opportunities || "45"}`} label="Live opportunities" />
-          <Stat value={`${employers || "24"}`} label="Employers tracked" />
-          <Stat value={`${ROLE_FAMILIES.length}`} label="Role families" />
-          <Stat value="0" suffix="ML" label="Deterministic scoring" />
-        </section>
+        {/* ── The daily loop ───────────────────────────────────────────────── */}
+        <Reveal className="mt-24 sm:mt-28">
+          <SectionHead
+            kicker="The daily loop"
+            title="Four moves, run every night while you sleep."
+          />
+          <div className="mt-8 grid gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+            <LoopStep
+              n="01"
+              glyph="●"
+              glyphTone="text-good-mark"
+              title="Watch"
+              body="Cyclops polls every firm's careers system on a 6-hour cycle. New roles, status changes and closing deadlines — caught the moment they post."
+            />
+            <LoopStep
+              n="02"
+              glyph="▦"
+              glyphTone="text-ink"
+              title="Shortlist"
+              body="It sifts the flood down to the handful that actually fit your background, timing and goals — so your night goes to real contenders, not the listings."
+            />
+            <LoopStep
+              n="03"
+              glyph="◆"
+              glyphTone="text-accent"
+              title="Draft"
+              body="Overnight, the agent researches the firms closing soonest and drafts answers grounded in your own stories and writing voice."
+              agent
+            />
+            <LoopStep
+              n="04"
+              glyph="→"
+              glyphTone="text-ink"
+              title="Decide"
+              body="You wake to a one-screen brief: the few proposals, questions and deadlines that need you. Apply, edit first, or skip."
+            />
+          </div>
+        </Reveal>
 
-        {/* Features — numbered editorial panels */}
-        <section className="mt-16 grid gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border pb-px sm:grid-cols-3">
-          <Feature
-            n="01"
-            title="A desk, not a list"
-            body="Sort, filter and scan dozens of roles at terminal density. Status, deadline pressure and fit, readable in one glance — no twelve open tabs."
+        {/* ── The surfaces ─────────────────────────────────────────────────── */}
+        <Reveal className="mt-24 sm:mt-28">
+          <SectionHead
+            kicker="Inside Cyclops"
+            title="Six surfaces. One model of you."
+            lede="Every part of Cyclops feeds the same private memory — the more you use it, the more it sounds and decides like you."
           />
-          <Feature
-            n="02"
-            title="Transparent fit scores"
-            body="Every 0–100 score breaks down into the exact factors behind it — degree, timing, location, target firms. You see the maths, not a vibe."
-          />
-          <Feature
-            n="03"
-            title="Built to apply"
-            body="Save roles, watch deadlines count down, and let the copilot draft tailored cover material grounded in your CV. You review and submit."
-          />
-        </section>
+        </Reveal>
+
+        <div className="mt-10 grid gap-5 lg:grid-cols-2">
+          <Reveal>
+            <SurfacePanel
+              tag="The Desk · Tracker"
+              title="A desk, not a list"
+              body="Sort, filter and scan dozens of live roles at terminal density. Status, deadline pressure and fit, readable in a single glance — not twelve open tabs."
+            >
+              <DeskRows />
+            </SurfacePanel>
+          </Reveal>
+
+          <Reveal delay={80}>
+            <SurfacePanel
+              tag="The Agent · Ask Cyclops"
+              title="An analyst who never sleeps"
+              body="Ask in plain English. The agent reads your memory, researches the firm, checks fit and drafts the answer — showing every step it took."
+            >
+              <AgentTrace />
+            </SurfacePanel>
+          </Reveal>
+
+          <Reveal>
+            <SurfacePanel
+              tag="Memory"
+              title="Every draft sounds like you"
+              body="Your stories, voice and strategy live in plain files you can read and edit. Cyclops writes from them — and asks before it assumes."
+            >
+              <MemoryCard />
+            </SurfacePanel>
+          </Reveal>
+
+          <Reveal delay={80}>
+            <SurfacePanel
+              tag="Apply · Browser extension"
+              title="One click to autofill"
+              body="Known application forms fill in under a second from your apply profile and answer bank. The submit button stays yours — Cyclops never presses it."
+            >
+              <AutofillCard />
+            </SurfacePanel>
+          </Reveal>
+        </div>
+
+        {/* ── Control manifesto ────────────────────────────────────────────── */}
+        <Reveal className="mt-24 sm:mt-28">
+          <section className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+            <div className="border-b border-hairline px-6 py-10 text-center sm:px-10 sm:py-14">
+              <p className="label text-faint">The line Cyclops won&apos;t cross</p>
+              <h2 className="mx-auto mt-4 max-w-2xl text-balance text-[2rem] leading-[1.08] text-ink sm:text-[2.6rem]">
+                It watches, drafts and researches.{" "}
+                <span className="text-accent">You</span> click submit.
+              </h2>
+            </div>
+            <div className="grid gap-px bg-border sm:grid-cols-3">
+              <Pledge
+                title="You see how it thinks"
+                body="Every shortlist and every draft shows the facts about you it drew on — no black box, no guessing why."
+              />
+              <Pledge
+                title="You own your memory"
+                body="The model of you is a folder of files you can read, edit, correct or delete. Nothing about you is locked away."
+              />
+              <Pledge
+                title="You approve every send"
+                body="The extension autofills and the agent drafts — but no application, message or form is ever submitted without you."
+              />
+            </div>
+          </section>
+        </Reveal>
+
+        {/* ── Stat ribbon ──────────────────────────────────────────────────── */}
+        <Reveal className="mt-16">
+          <section className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-4">
+            <Stat value={`${employers || "24"}`} label="Firms watched" />
+            <Stat value="6h" label="Re-check cycle" />
+            <Stat value={`${opportunities || "45"}`} label="Live openings" />
+            <Stat value="0" label="Auto-submits, ever" agent />
+          </section>
+          <p className="mt-3 px-1 font-mono text-[0.66rem] uppercase tracking-wider text-faint">
+            Jayden Street · Goldman Sachs · Citadel · Lazard · Evercore · Morgan
+            Stanley · J.P. Morgan · Barclays · BlackRock · Point72 · Schroders ·
+            Macquarie · & more
+          </p>
+        </Reveal>
       </main>
 
-      <footer className="mt-20 border-t border-border">
+      {/* ── Closing CTA — back onto the dark rail ──────────────────────────── */}
+      <section className="chrome mt-24 border-t border-chrome-line">
+        <div className="mx-auto max-w-6xl px-6 py-16 text-center sm:py-24">
+          <Reveal>
+            <p className="label text-chrome-dim">Cyclops · your internship agent</p>
+            <h2 className="mx-auto mt-4 max-w-2xl text-balance text-[2.1rem] leading-[1.07] text-chrome-ink sm:text-[2.9rem]">
+              Point one eye at the hunt.
+              <br className="hidden sm:block" /> Spend yours on getting the offer.
+            </h2>
+            <p className="mx-auto mt-5 max-w-md text-pretty text-chrome-ink-2">
+              Build your tracker in two minutes. Cyclops takes the first night
+              shift tonight.
+            </p>
+            <div className="mt-8 flex items-center justify-center gap-5">
+              <Link
+                href="/signup"
+                className="inline-flex h-11 items-center rounded-pill bg-canvas px-6 text-[0.85rem] font-extrabold text-ink transition-colors hover:bg-white"
+              >
+                Open your desk
+              </Link>
+              <Link
+                href="/login"
+                className="label text-[0.62rem] text-chrome-ink-2 transition-colors hover:text-white"
+              >
+                Sign in
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <footer className="border-t border-border">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6 font-mono text-[0.7rem] uppercase tracking-wider text-subtle">
-          <span>Trackr — UK finance internships</span>
+          <span>
+            Cyclops<span className="text-accent">.</span> — the intern&apos;s application agent
+          </span>
           <span className="hidden sm:inline">
             Original product · not affiliated with any employer listed
           </span>
@@ -124,54 +278,71 @@ export default async function LandingPage() {
   );
 }
 
-/** A live-style tape across the top of the landing — the product's signature,
- *  previewed. CSS marquee (globals.css), pauses on hover, halts on reduced
- *  motion. Sample positions; the real desk renders your tracked roles. */
-function DemoTape() {
-  const up = "text-[#46c178]";
-  const down = "text-[#f0584f]";
-  const lanes = [
-    ["MERC", "▲", up, "12d"],
-    ["BLAC", "▲", up, "8d"],
-    ["LAZ", "◆", "text-amber", "SOON"],
-    ["GRNH", "▲", up, "21d"],
-    ["HLVR", "▼", down, "3d"],
-    ["ARDN", "▲", up, "16d"],
-    ["WLTN", "▲", up, "9d"],
-    ["KEST", "◆", "text-amber", "SOON"],
-    ["BRYN", "▲", up, "27d"],
-    ["CALD", "▲", up, "5d"],
-    ["ORML", "▼", down, "2d"],
-    ["VANE", "▲", up, "18d"],
-  ] as const;
+/* ─────────────────────────────────────────────────────────────────────────
+   Live tape — mirrors the tracker's <TickerTape> (components/tracker/ticker-tape):
+   the same firms, the same ticker(firm) codes, the same glyph law
+   (▲ open · ▼ closing ≤7d · ◆ opening soon) and days-to-deadline. Previewed on
+   the marketing rail. CSS marquee (globals.css); pauses on hover, halts on
+   reduced motion.
+───────────────────────────────────────────────────────────────────────── */
+function CoverageTape() {
+  // The open + opening-soon roles the tracker is watching, soonest first.
+  const feed: { firm: string; days: number | null; soon?: boolean }[] = [
+    { firm: "Point72", days: 4 },
+    { firm: "Citadel", days: 6 },
+    { firm: "Macquarie", days: 8 },
+    { firm: "Morgan Stanley", days: 9 },
+    { firm: "Jefferies", days: 11 },
+    { firm: "Jayden Street", days: 12 },
+    { firm: "BlackRock", days: 15 },
+    { firm: "Citi", days: 17 },
+    { firm: "Lazard", days: 22 },
+    { firm: "J.P. Morgan", days: 27 },
+    { firm: "Goldman Sachs", days: 31 },
+    { firm: "Barclays", days: 34 },
+    { firm: "Evercore", days: null, soon: true },
+    { firm: "Schroders", days: null, soon: true },
+  ];
 
   const Cell = ({
-    code,
-    glyph,
-    tone,
-    chg,
+    firm,
+    days,
+    soon,
   }: {
-    code: string;
-    glyph: string;
-    tone: string;
-    chg: string;
-  }) => (
-    <span className="inline-flex items-center gap-2 px-4 py-1.5">
-      <span className="tabular text-[0.74rem] font-semibold tracking-wide text-amber">
-        {code}
+    firm: string;
+    days: number | null;
+    soon?: boolean;
+  }) => {
+    const closingHard = days != null && days >= 0 && days <= 7;
+    const glyph = soon ? "◆" : closingHard ? "▼" : "▲";
+    const tone = soon
+      ? "text-amber"
+      : closingHard
+        ? "text-[#f0584f]"
+        : "text-[#46c178]";
+    return (
+      <span className="inline-flex items-center gap-2 px-4 py-1.5">
+        <span className="tabular text-[0.74rem] font-semibold tracking-wide text-amber">
+          {ticker(firm)}
+        </span>
+        <span className={cn("text-[0.66rem] leading-none", tone)}>{glyph}</span>
+        <span className={cn("label", soon ? "text-amber" : "text-chrome-dim")}>
+          {soon ? "SOON" : "OPEN"}
+        </span>
+        {days != null && days >= 0 && (
+          <span className="tabular text-[0.72rem] text-chrome-ink-2">{days}d</span>
+        )}
+        <span aria-hidden className="ml-2 text-chrome-line">
+          │
+        </span>
       </span>
-      <span className={cn("text-[0.66rem] leading-none", tone)}>{glyph}</span>
-      <span className={cn("tabular text-[0.72rem]", tone)}>{chg}</span>
-      <span aria-hidden className="ml-2 text-chrome-line">
-        │
-      </span>
-    </span>
-  );
+    );
+  };
 
   const run = (k: string, hidden: boolean) => (
     <div aria-hidden={hidden} className="flex shrink-0 items-center">
-      {lanes.map(([code, glyph, tone, chg]) => (
-        <Cell key={`${k}-${code}`} code={code} glyph={glyph} tone={tone} chg={chg} />
+      {feed.map((f) => (
+        <Cell key={`${k}-${f.firm}`} firm={f.firm} days={f.days} soon={f.soon} />
       ))}
     </div>
   );
@@ -180,11 +351,14 @@ function DemoTape() {
     <div className="chrome border-b border-chrome-line">
       <div className="mx-auto flex max-w-6xl items-stretch">
         <div className="flex shrink-0 items-center gap-2 border-r border-chrome-line px-4">
-          <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-success" />
+          <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-good-mark" />
           <span className="label text-[0.6rem] text-chrome-ink-2">Live tape</span>
         </div>
         <div className="ticker relative min-w-0 flex-1 overflow-hidden">
-          <div className="ticker-track" style={{ "--ticker-duration": "46s" } as CSSProperties}>
+          <div
+            className="ticker-track"
+            style={{ "--ticker-duration": "52s" } as CSSProperties}
+          >
             {run("a", false)}
             {run("b", true)}
           </div>
@@ -196,87 +370,315 @@ function DemoTape() {
   );
 }
 
-function ScoreCard() {
-  const reasons = [
-    ["+30", "Matches your interest in Investment Banking"],
-    ["+20", "London is one of your preferred cities"],
-    ["+15", "On your target-employer shortlist"],
-    ["+15", "Graduating 2028 fits the summer cycle"],
-  ];
+/* ── Hero product visual ─────────────────────────────────────────────────── */
+
+const TIER: Record<string, { text: string; bar: string }> = {
+  strong: { text: "text-success", bar: "var(--color-tier-strong)" },
+  good: { text: "text-accent", bar: "var(--color-tier-good)" },
+  moderate: { text: "text-warning", bar: "var(--color-tier-mod)" },
+};
+
+/* Same banding as the tracker board (components/tracker/board#fitColor). */
+const fitBand = (s: number | null): string =>
+  s == null
+    ? "var(--color-tier-low)"
+    : s >= 75
+      ? "var(--color-tier-strong)"
+      : s >= 50
+        ? "var(--color-tier-good)"
+        : s >= 25
+          ? "var(--color-tier-mod)"
+          : "var(--color-tier-low)";
+
+function FitMeter({ fit, tier }: { fit: number; tier: keyof typeof TIER }) {
   return (
-    <div className="animate-rise overflow-hidden rounded-[var(--radius-card)] border border-border-strong bg-surface shadow-[var(--shadow-pop)]">
-      <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
-        <div>
-          <div className="flex items-baseline gap-2">
-            <span className="font-mono text-sm font-semibold text-accent">
-              HELC
+    <div className="flex items-center gap-2">
+      <div
+        className="h-1.5 w-16 overflow-hidden rounded-bar"
+        style={{
+          background:
+            "repeating-linear-gradient(90deg, var(--color-border-strong) 0 4px, transparent 4px 5px)",
+        }}
+      >
+        <div
+          className="h-full"
+          style={{
+            width: `${fit}%`,
+            background: `repeating-linear-gradient(90deg, ${TIER[tier].bar} 0 4px, transparent 4px 5px)`,
+          }}
+        />
+      </div>
+      <span className={cn("tabular text-[0.78rem]", TIER[tier].text)}>{fit}</span>
+    </div>
+  );
+}
+
+function HeroDesk() {
+  // Financial firms first, drawn from the tracker. The amber-tinted row is the
+  // one Cyclops worked on overnight.
+  const rows = [
+    { mono: "JS", firm: "Jayden Street", role: "Quantitative Trading", desk: "Systematic", deadline: "27 Jun", days: 12, score: 88, status: "OPEN", agent: false, fresh: false },
+    { mono: "GS", firm: "Goldman Sachs", role: "IBD Summer Analyst", desk: "TMT", deadline: "16 Jul", days: 31, score: 91, status: "OPEN", agent: false, fresh: false },
+    { mono: "CI", firm: "Citadel", role: "Investment & Trading", desk: "Global Equities", deadline: "21 Jun", days: 6, score: 79, status: "OPEN", agent: true, fresh: false },
+    { mono: "LA", firm: "Lazard", role: "Financial Advisory", desk: "Restructuring", deadline: "07 Jul", days: 22, score: 64, status: "OPEN", agent: false, fresh: false },
+    { mono: "EV", firm: "Evercore", role: "M&A Summer Analyst", desk: null, deadline: "—", days: null, score: 57, status: "SOON", agent: false, fresh: true },
+  ];
+
+  return (
+    <div className="animate-rise" style={{ animationDelay: "160ms" }}>
+      {/* A faithful slice of the real Tracker board (components/tracker/board):
+          monogram · Firm · Role · desk | Deadline | Days | Fit | Status, with the
+          board's own legend footer. */}
+      <div className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-border-strong bg-surface-3 text-left">
+              <th scope="col" className="label w-9 px-4 py-1.5 text-faint" aria-label="Monogram" />
+              <th scope="col" className="label py-1.5 text-faint">
+                <span className="tabular text-subtle">{rows.length}</span> · Firm · Role
+              </th>
+              <th scope="col" className="label w-16 py-1.5 text-right text-faint">Deadline</th>
+              <th scope="col" className="label w-10 py-1.5 text-right text-faint">Days</th>
+              <th scope="col" className="label w-20 py-1.5 text-right text-faint">Fit</th>
+              <th scope="col" className="label w-16 px-4 py-1.5 text-right text-faint">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr
+                key={r.firm}
+                className={cn(
+                  "h-[2.125rem] border-b border-hairline last:border-b-0",
+                  r.agent &&
+                    "bg-accent-tint shadow-[inset_3px_0_0_var(--color-agent-mark)]",
+                )}
+              >
+                <td className="px-4">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "tabular flex h-5 w-5 items-center justify-center rounded-sm border text-[0.6875rem]",
+                      r.agent
+                        ? "border-border-agent bg-accent-soft text-accent"
+                        : "border-border bg-surface-2 text-subtle",
+                    )}
+                  >
+                    {r.mono}
+                  </span>
+                </td>
+                <td className="max-w-0 truncate pr-3">
+                  <span className="text-[0.8125rem] font-extrabold text-ink">
+                    {r.firm}
+                  </span>
+                  <span className="text-[0.75rem] font-bold text-subtle">
+                    {" · "}
+                    {r.role}
+                    {r.desk ? ` · ${r.desk}` : ""}
+                  </span>
+                  {r.agent && (
+                    <span className="label ml-2 rounded-pill border border-border-agent bg-accent-soft px-1.5 text-accent">
+                      <span aria-hidden>◆ </span>Drafted “Why Citadel?”
+                    </span>
+                  )}
+                  {r.fresh && <span className="label ml-2 text-success">NEW</span>}
+                </td>
+                <td className="py-0 text-right">
+                  <span className="tabular text-[0.75rem] text-muted">
+                    {r.deadline}
+                  </span>
+                </td>
+                <td
+                  className={cn(
+                    "tabular text-right text-[0.75rem]",
+                    r.days != null && r.days <= 14 ? "text-danger" : "text-muted",
+                  )}
+                >
+                  {r.days != null && r.days <= 14 && <span aria-hidden>▼ </span>}
+                  {r.days ?? "—"}
+                </td>
+                <td className="text-right">
+                  <span className="inline-flex items-center justify-end gap-2">
+                    <span
+                      aria-hidden
+                      className="relative inline-block h-1.5 w-10 overflow-hidden rounded-bar bg-surface-3"
+                    >
+                      <span
+                        className="absolute inset-y-0 left-0 rounded-bar"
+                        style={{ width: `${r.score ?? 0}%`, background: fitBand(r.score) }}
+                      />
+                    </span>
+                    <span
+                      className="tabular w-6 text-right text-[0.75rem]"
+                      style={{ color: fitBand(r.score) }}
+                    >
+                      {r.score ?? "—"}
+                    </span>
+                  </span>
+                </td>
+                <td className="px-4 text-right">
+                  <span
+                    className={cn(
+                      "label",
+                      r.status === "SOON" ? "text-accent" : "text-muted",
+                    )}
+                  >
+                    {r.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="flex gap-4 border-t border-hairline px-4 py-2">
+          <span className="label text-faint">
+            ◆ = CYCLOPS · ▼ = CLOSING ≤14D · ★ = SAVED
+          </span>
+        </div>
+      </div>
+
+      {/* Agent proposal card — the night's offer, sitting under the desk in flow
+          so it never overlaps the rows awkwardly. */}
+      <div className="mt-4 rounded-[var(--radius-card)] border border-border-agent bg-surface shadow-[var(--shadow-pop)]">
+        <div className="flex items-center gap-2 border-b border-border-agent px-4 py-2.5">
+          <span aria-hidden className="text-[0.8rem] text-accent">
+            ◆
+          </span>
+          <span className="text-[0.78rem] font-bold text-accent">Cyclops</span>
+          <span className="label ml-auto text-[0.58rem] text-faint">drafted 04:12</span>
+        </div>
+        <div className="px-4 py-3">
+          <p className="text-[0.72rem] leading-relaxed text-muted">
+            Drafted your{" "}
+            <span className="font-bold text-ink">&ldquo;Why Citadel?&rdquo;</span>{" "}
+            answer from your options-pricing project and last summer&apos;s markets internship.
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <span className="inline-flex h-7 items-center rounded-pill bg-ink px-3 text-[0.7rem] font-extrabold text-canvas">
+              Apply ⌘⏎
             </span>
-            <span className="text-sm font-semibold text-ink">
-              Helvar Capital
+            <span className="inline-flex h-7 items-center rounded-pill border border-border-interactive px-3 text-[0.7rem] font-bold text-ink">
+              Edit first
             </span>
-          </div>
-          <div className="mt-0.5 font-mono text-[0.7rem] uppercase tracking-wide text-subtle">
-            Investment Banking · Summer Analyst
+            <span className="inline-flex h-7 items-center px-2 text-[0.7rem] font-bold text-subtle">
+              Skip
+            </span>
           </div>
         </div>
-        <span className="font-mono text-[0.62rem] font-semibold uppercase tracking-wide text-success">
-          Strong fit
+      </div>
+    </div>
+  );
+}
+
+/* ── Section scaffolding ─────────────────────────────────────────────────── */
+
+function SectionHead({
+  kicker,
+  title,
+  lede,
+}: {
+  kicker: string;
+  title: string;
+  lede?: string;
+}) {
+  return (
+    <div className="max-w-2xl">
+      <p className="label text-accent">{kicker}</p>
+      <h2 className="mt-3 text-balance text-[1.9rem] leading-[1.1] text-ink sm:text-[2.4rem]">
+        {title}
+      </h2>
+      {lede && (
+        <p className="mt-4 text-pretty text-base leading-relaxed text-muted">
+          {lede}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function LoopStep({
+  n,
+  glyph,
+  glyphTone,
+  title,
+  body,
+  agent,
+}: {
+  n: string;
+  glyph: string;
+  glyphTone: string;
+  title: string;
+  body: string;
+  agent?: boolean;
+}) {
+  return (
+    <div className={cn("bg-surface p-6", agent && "bg-accent-tint")}>
+      <div className="flex items-center justify-between">
+        <span className="tabular text-[0.72rem] text-faint">{n}</span>
+        <span aria-hidden className={cn("text-sm leading-none", glyphTone)}>
+          {glyph}
         </span>
       </div>
-      <div className="px-5 py-4">
-        <div className="flex items-baseline gap-2">
-          <span className="tabular text-5xl font-semibold leading-none text-accent">
-            88
-          </span>
-          <span className="font-mono text-sm text-subtle">/100</span>
-        </div>
-        <div
-          className="mt-3 h-2 w-full"
-          style={{
-            background:
-              "repeating-linear-gradient(90deg, var(--color-border-strong) 0 4px, transparent 4px 5px)",
-          }}
-        >
-          <div
-            className="h-full"
-            style={{
-              width: "88%",
-              background:
-                "repeating-linear-gradient(90deg, var(--color-accent) 0 4px, transparent 4px 5px)",
-            }}
-          />
-        </div>
-        <ul className="mt-4 space-y-2">
-          {reasons.map(([pts, why]) => (
-            <li key={why} className="flex gap-3 text-xs text-muted">
-              <span className="font-mono font-semibold text-success">{pts}</span>
-              <span>{why}</span>
-            </li>
-          ))}
-        </ul>
+      <h3 className="mt-5 text-[1.05rem] font-bold text-ink">{title}</h3>
+      <p className="mt-2 text-[0.84rem] leading-relaxed text-muted">{body}</p>
+    </div>
+  );
+}
+
+function SurfacePanel({
+  tag,
+  title,
+  body,
+  children,
+}: {
+  tag: string;
+  title: string;
+  body: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface shadow-[var(--shadow-card)]">
+      <div className="px-6 pt-6">
+        <p className="label text-faint">{tag}</p>
+        <h3 className="mt-3 text-[1.25rem] font-bold text-ink">{title}</h3>
+        <p className="mt-2 text-[0.9rem] leading-relaxed text-muted">{body}</p>
       </div>
-      <div className="flex items-center justify-between border-t border-border px-5 py-2.5 font-mono text-[0.62rem] uppercase tracking-wider text-subtle">
-        <span>Deterministic · no ML</span>
-        <span>Deadline · 11 Jul</span>
+      <div className="mt-5 flex-1 px-6 pb-6">{children}</div>
+    </div>
+  );
+}
+
+function Pledge({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="bg-surface px-6 py-7">
+      <div className="flex items-center gap-2">
+        <span aria-hidden className="text-success">
+          ✓
+        </span>
+        <h3 className="text-[0.95rem] font-bold text-ink">{title}</h3>
       </div>
+      <p className="mt-2 text-[0.84rem] leading-relaxed text-muted">{body}</p>
     </div>
   );
 }
 
 function Stat({
   value,
-  suffix,
   label,
+  agent,
 }: {
   value: string;
-  suffix?: string;
   label: string;
+  agent?: boolean;
 }) {
   return (
-    <div className="bg-surface px-5 py-5">
-      <div className="tabular text-3xl font-semibold tracking-tight text-ink">
+    <div className="bg-surface px-5 py-6">
+      <div
+        className={cn(
+          "tabular text-3xl font-semibold tracking-tight",
+          agent ? "text-accent" : "text-ink",
+        )}
+      >
         {value}
-        {suffix && <span className="ml-1 text-lg text-accent">{suffix}</span>}
       </div>
       <div className="mt-1.5 font-mono text-[0.68rem] uppercase tracking-wider text-subtle">
         {label}
@@ -285,14 +687,138 @@ function Stat({
   );
 }
 
-function Feature({ n, title, body }: { n: string; title: string; body: string }) {
+/* ── Surface mini-UIs ────────────────────────────────────────────────────── */
+
+function DeskRows() {
+  const rows = [
+    { code: "MOST", role: "S&T Summer", status: "Open", tone: "text-success", fit: 88, tier: "strong" as const },
+    { code: "BARC", role: "IBD Spring Week", status: "Soon", tone: "text-warning", fit: 73, tier: "good" as const },
+    { code: "BLAC", role: "Aladdin Intern", status: "Closing", tone: "text-danger", fit: 61, tier: "moderate" as const },
+  ];
   return (
-    <div className="bg-surface p-6">
-      <div className="font-mono text-xs font-semibold tracking-wider text-accent">
-        {n}
+    <div className="overflow-hidden rounded-[var(--radius-control)] border border-hairline">
+      {rows.map((r, i) => (
+        <div
+          key={r.code}
+          className={cn(
+            "grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2.5",
+            i < rows.length - 1 && "border-b border-hairline",
+          )}
+        >
+          <span className="tabular w-12 text-[0.76rem] text-accent">{r.code}</span>
+          <div className="flex items-center gap-2">
+            <span className="truncate text-[0.78rem] font-bold text-ink">
+              {r.role}
+            </span>
+            <span
+              className={cn(
+                "tabular text-[0.6rem] uppercase tracking-wide",
+                r.tone,
+              )}
+            >
+              {r.status}
+            </span>
+          </div>
+          <FitMeter fit={r.fit} tier={r.tier} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AgentTrace() {
+  const steps = [
+    ["read memory", "voice.md · stories/markets-internship"],
+    ["research", "Citadel · 2027 summer cycle"],
+    ["match", "strong fit · top of your list"],
+    ["draft", "answer · 148 words"],
+  ];
+  return (
+    <div className="rounded-[var(--radius-control)] border border-hairline bg-surface-2 p-3">
+      <div className="space-y-1.5">
+        {steps.map(([tool, detail], i) => (
+          <div key={tool} className="flex items-center gap-2 text-[0.72rem]">
+            <span aria-hidden className="text-accent">
+              ◆
+            </span>
+            <span className="tabular text-subtle">{tool}</span>
+            <span className="truncate font-mono text-[0.66rem] text-faint">
+              {detail}
+            </span>
+            {i === steps.length - 1 && (
+              <span className="ml-auto text-success" aria-hidden>
+                ✓
+              </span>
+            )}
+          </div>
+        ))}
       </div>
-      <h3 className="mt-4 text-base font-semibold text-ink">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
+      <div className="mt-2.5 border-t border-hairline pt-2.5 font-mono text-[0.66rem] text-muted">
+        <span className="text-accent">Cyclops&nbsp;</span>
+        Drafted · grounded in 2 of your stories
+        <span className="caret ml-0.5 text-accent">▍</span>
+      </div>
+    </div>
+  );
+}
+
+function MemoryCard() {
+  return (
+    <div className="overflow-hidden rounded-[var(--radius-control)] border border-hairline">
+      <div className="flex items-center gap-2 border-b border-hairline bg-surface-2 px-3 py-2">
+        <span className="tabular text-[0.66rem] text-subtle">stories/</span>
+        <span className="text-[0.74rem] font-bold text-ink">
+          campus-delivery-app.md
+        </span>
+      </div>
+      <div className="px-3 py-3">
+        <div className="flex flex-wrap gap-1.5">
+          {["product", "0→1", "shipped"].map((t) => (
+            <span
+              key={t}
+              className="tabular rounded-pill bg-surface-3 px-2 py-0.5 text-[0.62rem] text-subtle"
+            >
+              {t}
+            </span>
+          ))}
+          <span className="tabular rounded-pill bg-success-soft px-2 py-0.5 text-[0.62rem] text-success">
+            confidence · high
+          </span>
+        </div>
+        <p className="mt-3 font-mono text-[0.7rem] leading-relaxed text-muted">
+          Built and shipped a campus food-delivery app to 1,200 students in a
+          term, running the two-person engineering team end to end.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AutofillCard() {
+  const fields = [
+    ["Full name", "Ada Whitfield"],
+    ["University", "Cambridge · Computer Science"],
+    ["Right to work", "UK citizen"],
+  ];
+  return (
+    <div className="overflow-hidden rounded-[var(--radius-control)] border border-hairline">
+      <div className="space-y-2.5 px-3 py-3">
+        {fields.map(([label, val]) => (
+          <div key={label}>
+            <div className="label text-[0.58rem] text-faint">{label}</div>
+            <div className="mt-1 flex items-center justify-between rounded-[var(--radius-sm)] border border-hairline bg-surface-2 px-2.5 py-1.5">
+              <span className="text-[0.74rem] text-ink">{val}</span>
+              <span className="text-success" aria-hidden>
+                ✓
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between border-t border-hairline bg-surface-2 px-3 py-2 font-mono text-[0.62rem] uppercase tracking-wide text-subtle">
+        <span>Autofilled · 0.8s</span>
+        <span className="text-accent">Review &amp; submit · yours</span>
+      </div>
     </div>
   );
 }
