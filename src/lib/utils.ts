@@ -53,6 +53,25 @@ export function formatShortDate(d: Date | string | null | undefined): string {
   return `${date.getUTCDate()} ${GBP_MONTHS[date.getUTCMonth()]}`;
 }
 
+/** Compact "time since" for the tracker status line, e.g. "9 min ago",
+ *  "3 hr ago", "2d ago". Returns "never" when there's no timestamp. */
+export function formatRelativeTime(
+  d: Date | string | null | undefined,
+  now: Date = new Date(),
+): string {
+  if (!d) return "never";
+  const date = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return "never";
+  const ms = now.getTime() - date.getTime();
+  if (ms < 60_000) return "just now";
+  const min = Math.floor(ms / 60_000);
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hr ago`;
+  const days = Math.floor(hr / 24);
+  return `${days}d ago`;
+}
+
 /** Whole days from `now` until `d` (negative if in the past). */
 export function daysUntil(
   d: Date | string | null | undefined,
