@@ -55,14 +55,48 @@ disconnectBtn.addEventListener("click", async () => {
   await refresh();
 });
 
+/** Send trackr:activate to a tab; resolves true if a content script received it. */
+function sendActivate(tabId: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, { type: "trackr:activate" }, () => {
+      // lastError === "no receiving end" means no content script is present.
+      resolve(!chrome.runtime.lastError);
+    });
+  });
+}
+
+/**
+ * Two-tier activation:
+ *  - Tier 1 (known ATS): the content script is already injected — just message it.
+ *  - Tier 2 (any other page, e.g. a Google Form or a bespoke careers portal):
+ *    nothing is listening, so inject the content script on demand. activeTab
+ *    (granted by this very click on the extension action) authorises the inject
+ *    without a broad host permission. Then message the fresh script to engage.
+ */
 activateBtn.addEventListener("click", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) { setMsg("No active tab."); return; }
-  // Broadcast to all frames; the frame with a form will engage.
-  chrome.tabs.sendMessage(tab.id, { type: "trackr:activate" }, () => {
-    // Swallow "no receiving end" when the content script isn't injected here.
-    void chrome.runtime.lastError;
-  });
+
+  if (await sendActivate(tab.id)) {
+    setMsg("Activated — look bottom-right of the page.", true);
+    setTimeout(() => window.close(), 700);
+    return;
+  }
+
+  // Tier 2: locate the index content script's built file(s) from the manifest
+  // (CRXJS hashes the name, so we read it at runtime) and inject them.
+  const cs = chrome.runtime
+    .getManifest()
+    .content_scripts?.find((c) => c.js?.some((f) => f.includes("index")));
+  if (!cs?.js?.length) { setMsg("Couldn’t locate the content script to inject."); return; }
+
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: cs.js });
+  } catch {
+    setMsg("Can’t run on this page (e.g. Chrome system or Web Store pages).");
+    return;
+  }
+  await sendActivate(tab.id);
   setMsg("Activated — look bottom-right of the page.", true);
   setTimeout(() => window.close(), 700);
 });

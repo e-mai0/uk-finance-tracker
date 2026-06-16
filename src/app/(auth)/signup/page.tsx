@@ -11,6 +11,9 @@ export default async function SignupPage() {
     redirect(session.user.onboarded ? "/today" : "/onboarding");
   }
 
+  // Gate is active only while EARLY_ACCESS_CODE is set; drives the invite field.
+  const inviteRequired = Boolean(process.env.EARLY_ACCESS_CODE?.trim());
+
   return (
     <div className="border border-border-strong bg-surface shadow-[var(--shadow-card)]">
       <div className="flex items-center justify-between border-b border-border-strong bg-surface-2 px-4 py-2">
@@ -26,7 +29,7 @@ export default async function SignupPage() {
         </p>
 
         <div className="mt-5">
-          <SignupForm />
+          <SignupForm inviteRequired={inviteRequired} />
         </div>
 
         <p className="mt-5 text-center text-sm text-muted">
