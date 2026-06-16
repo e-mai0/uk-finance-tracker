@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { connectExtension, revokeToken } from "@/server/actions/extension";
+import { cn } from "@/lib/utils";
 
 export interface TokenRow {
   id: string;
@@ -48,31 +48,32 @@ export function ExtensionConnect({ tokens }: { tokens: TokenRow[] }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Browser extension</CardTitle>
-        <p className="mt-0.5 text-xs text-muted">
+    <section className="rounded-card border border-border bg-surface shadow-card">
+      <div className="flex items-baseline justify-between border-b border-border px-4 py-2.5">
+        <h2 className="text-[1rem] font-semibold text-ink">Browser extension</h2>
+        <span className="label text-faint">AUTOFILL · trk_</span>
+      </div>
+
+      <div className="space-y-4 px-4 py-4">
+        <p className="text-[0.8125rem] text-muted">
           The Trackr autofill extension fills application forms from your apply
           profile and drafts answers on the page. You always review and submit
           yourself.
         </p>
-      </CardHeader>
-      <CardBody className="space-y-4">
+
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={onConnect} disabled={pending}>
             {pending ? "Generating…" : "Generate connection token"}
           </Button>
           <span className="text-xs text-muted">
-            Paste this into the extension popup to connect it to your account.
+            ▸ Connects an installed extension instantly — or paste it into the popup.
           </span>
         </div>
-        {error && <p className="text-xs text-danger">{error}</p>}
+        {error && <p className="label text-danger">{error}</p>}
 
         {token && (
-          <div className="rounded-[var(--radius-control)] border border-border bg-surface-2 p-3">
-            <p className="text-xs font-medium text-ink">
-              Copy this token now — it won’t be shown again:
-            </p>
+          <div className="rounded-control border border-border bg-surface-2 p-3">
+            <p className="label text-subtle">▸ Copy now — shown once</p>
             <div className="mt-2 flex items-center gap-2">
               <code className="grow break-all rounded bg-surface px-2 py-1.5 text-xs text-ink tabular">
                 {token}
@@ -85,34 +86,48 @@ export function ExtensionConnect({ tokens }: { tokens: TokenRow[] }) {
         )}
 
         {tokens.length > 0 && (
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted">Active tokens</p>
-            <ul className="space-y-2">
+          <div className="rounded-control border border-border">
+            <div className="flex items-baseline justify-between border-b border-border px-3 py-2">
+              <span className="label text-subtle">Active tokens</span>
+              <span className="label text-faint">{tokens.length}</span>
+            </div>
+            <ul className="divide-y divide-hairline">
               {tokens.map((t) => (
                 <li
                   key={t.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
+                  className="flex items-center justify-between gap-3 px-3 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-ink">{t.name}</p>
-                    <p className="text-[0.6875rem] text-subtle">
-                      Added {t.createdAt}
-                      {t.lastUsedAt ? ` · last used ${t.lastUsedAt}` : " · never used"}
+                    <p className="truncate text-[0.8125rem] font-bold text-ink">
+                      {t.name}
                     </p>
+                    <p className="label mt-0.5 text-subtle">Added {t.createdAt}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => startTransition(() => revokeToken(t.id).then())}
-                    className="shrink-0 text-xs font-medium text-danger hover:underline"
-                  >
-                    Revoke
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2.5">
+                    <span
+                      className={cn(
+                        "label rounded-pill px-2.5 py-0.5",
+                        t.lastUsedAt
+                          ? "bg-success-soft text-success"
+                          : "bg-surface-2 text-faint",
+                      )}
+                    >
+                      {t.lastUsedAt ? `Used ${t.lastUsedAt}` : "Never used"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => startTransition(() => revokeToken(t.id).then())}
+                      className="text-xs font-bold text-danger hover:underline"
+                    >
+                      Revoke
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
           </div>
         )}
-      </CardBody>
-    </Card>
+      </div>
+    </section>
   );
 }

@@ -5,7 +5,7 @@ import { signupAction, type AuthFormState } from "@/server/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/input";
 
-export function SignupForm() {
+export function SignupForm({ inviteRequired = false }: { inviteRequired?: boolean }) {
   const [state, formAction, pending] = useActionState<AuthFormState, FormData>(
     signupAction,
     {},
@@ -16,6 +16,22 @@ export function SignupForm() {
       {state.error && (
         <div className="rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
           {state.error}
+        </div>
+      )}
+
+      {inviteRequired && (
+        <div>
+          <Label htmlFor="inviteCode">Invite code</Label>
+          <Input
+            id="inviteCode"
+            name="inviteCode"
+            type="text"
+            autoComplete="off"
+            required
+            className="mt-1.5"
+            placeholder="Early-access invite code"
+          />
+          <FieldError message={state.fieldErrors?.inviteCode?.[0]} />
         </div>
       )}
 

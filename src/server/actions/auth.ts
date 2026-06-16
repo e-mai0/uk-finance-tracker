@@ -19,13 +19,28 @@ export async function signupAction(
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    inviteCode: formData.get("inviteCode"),
   });
 
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const { name, email, password } = parsed.data;
+  const { name, email, password, inviteCode } = parsed.data;
+
+  // Early-access gate: enforced only while EARLY_ACCESS_CODE is set. Trimmed,
+  // case-insensitive compare so a code pasted from a chat message still works.
+  // Unset the env var to open signups to everyone.
+  const required = process.env.EARLY_ACCESS_CODE?.trim();
+  if (required) {
+    if ((inviteCode ?? "").toLowerCase() !== required.toLowerCase()) {
+      return {
+        fieldErrors: {
+          inviteCode: ["That invite code isn’t valid. Trackr is in early access."],
+        },
+      };
+    }
+  }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {

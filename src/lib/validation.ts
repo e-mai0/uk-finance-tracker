@@ -34,6 +34,10 @@ export const signupSchema = z.object({
     .string()
     .min(8, "Use at least 8 characters")
     .max(100, "That password is too long"),
+  // Early-access gate. Optional in the schema (so signup works once the gate is
+  // lifted); when EARLY_ACCESS_CODE is set, signupAction enforces a match. The
+  // secret is checked server-side only and never reaches the client bundle.
+  inviteCode: z.string().trim().max(100).optional(),
 });
 
 export const loginSchema = z.object({

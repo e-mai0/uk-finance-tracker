@@ -46,8 +46,32 @@ function clean(text: string): string {
     .trim();
 }
 
-function esc(id: string): string {
+/** CSS.escape, guarded for non-browser environments (jsdom tests, older hosts). */
+export function esc(id: string): string {
   return typeof CSS !== "undefined" && CSS.escape ? CSS.escape(id) : id;
+}
+
+/**
+ * Count distinct fillable controls in a container, collapsing same-name
+ * radio/checkbox groups to one logical control. Used to decide whether a
+ * shared container label unambiguously belongs to a single field.
+ */
+function logicalControlCount(container: Element): number {
+  const seenGroups = new Set<string>();
+  let count = 0;
+  container.querySelectorAll<FillableEl>("input, textarea, select").forEach((c) => {
+    if (c instanceof HTMLInputElement) {
+      const t = (c.type || "text").toLowerCase();
+      if (["hidden", "submit", "button", "image", "reset"].includes(t)) return;
+      if ((t === "radio" || t === "checkbox") && c.name) {
+        const key = `${t}:${c.name}`;
+        if (seenGroups.has(key)) return;
+        seenGroups.add(key);
+      }
+    }
+    count++;
+  });
+  return count;
 }
 
 /** Best-effort visible label for a field. */
@@ -69,10 +93,15 @@ export function getLabelText(el: Element): string {
     if (ref?.textContent) return clean(ref.textContent);
   }
 
+  // Only trust a shared-container label when it unambiguously belongs to a
+  // single control. With several controls in one container (e.g. two essay
+  // textareas in one fieldset) the label is ambiguous; attributing it to each
+  // field yields identical questions and duplicate drafted answers. Fall
+  // through to the per-field placeholder/name in that case.
   const container = el.closest(
     "[class*=field], [class*=question], .form-group, fieldset, li",
   );
-  if (container) {
+  if (container && logicalControlCount(container) <= 1) {
     const lbl = container.querySelector("label, legend");
     if (lbl?.textContent) return clean(lbl.textContent);
   }

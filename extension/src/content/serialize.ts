@@ -1,4 +1,4 @@
-import { getLabelText, collectFields, type FillableEl } from "./field-map";
+import { getLabelText, collectFields, esc, type FillableEl } from "./field-map";
 import { collectAriaControls } from "./aria-controls";
 import type { FillTarget } from "./autofill";
 import type { FieldSchema, FieldType } from "../shared/types";
@@ -119,7 +119,7 @@ export function currentFieldValue(el: FillTarget): string {
     const group = el.name
       ? Array.from(
           document.querySelectorAll<HTMLInputElement>(
-            `input[type="radio"][name="${CSS.escape(el.name)}"]`,
+            `input[type="radio"][name="${esc(el.name)}"]`,
           ),
         )
       : [el];
@@ -134,7 +134,7 @@ export function currentFieldValue(el: FillTarget): string {
 
 function radioOptions(root: ParentNode, name: string): string[] | undefined {
   const radios = Array.from(
-    root.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${CSS.escape(name)}"]`),
+    root.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${esc(name)}"]`),
   );
   const labels = radios.map((r) => getLabelText(r)).filter(Boolean);
   return labels.length ? labels : undefined;
