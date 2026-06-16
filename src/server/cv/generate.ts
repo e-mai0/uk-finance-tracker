@@ -21,10 +21,17 @@ const MAX_CV_PROMPT_CHARS = 16_000;
 const STYLE = `British English. Concise, action-led bullets starting with a strong past-tense verb. No em dashes. Specific and quantified where the source supports it. Never invent facts, employers, grades, or numbers — only use what the source provides.`;
 
 // The CvData shape, described for a plain-JSON response. Optional keys may be
-// omitted; arrays default to []. Mirrors cvDataSchema in src/lib/cv.ts.
-const CV_JSON_SHAPE = `{"fullName":string,"headline"?:string,"contact":{"email"?:string,"phone"?:string,"location"?:string,"linkedin"?:string,"github"?:string,"website"?:string},"summary"?:string,"education":[{"institution":string,"qualification":string,"dates"?:string,"grade"?:string,"bullets":string[]}],"experience":[{"org":string,"role"?:string,"dates"?:string,"bullets":string[]}],"accomplishments":[{"title":string,"date"?:string,"description"?:string}],"projects":[{"name":string,"result"?:string,"dates"?:string,"skills":string[],"bullets":string[],"link"?:string}],"skills":[{"label":string,"items":string[]}],"interests":string[]}`;
+// omitted; arrays default to []. Mirrors cvDataSchema in src/lib/cv.ts —
+// including `sections` for CV blocks that don't fit the fixed buckets
+// (e.g. Publications, Volunteering), which cv-document.tsx and docx.ts render.
+const CV_JSON_SHAPE = `{"fullName":string,"headline"?:string,"contact":{"email"?:string,"phone"?:string,"location"?:string,"linkedin"?:string,"github"?:string,"website"?:string},"summary"?:string,"education":[{"institution":string,"qualification":string,"dates"?:string,"grade"?:string,"bullets":string[]}],"experience":[{"org":string,"role"?:string,"dates"?:string,"bullets":string[]}],"accomplishments":[{"title":string,"date"?:string,"description"?:string}],"projects":[{"name":string,"result"?:string,"dates"?:string,"skills":string[],"bullets":string[],"link"?:string}],"skills":[{"label":string,"items":string[]}],"interests":string[],"sections"?:[{"heading":string,"entries":[{"primary"?:string,"secondary"?:string,"dates"?:string,"bullets":string[],"text"?:string}]}]}`;
 
-/** Pure: pull a JSON object out of an LLM text response (tolerates code fences / prose). */
+/**
+ * Pure: pull a JSON object out of an LLM text response (tolerates code fences /
+ * prose). Assumes the outermost braces bound the object — safe because the
+ * prompts demand "ONLY minified JSON". Malformed JSON throws; callers catch it
+ * and fall back (null / baseline).
+ */
 export function extractCvJson(text: string): unknown {
   let t = text.trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
