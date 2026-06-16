@@ -7,7 +7,7 @@ vi.mock("@/server/ai/budget", () => ({
   recordUsage: vi.fn(),
 }));
 
-import { parseCvTextToCvData, draftCvDataFromKnown } from "@/server/cv/generate";
+import { parseCvTextToCvData, draftCvDataFromKnown, extractCvJson } from "@/server/cv/generate";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -22,6 +22,30 @@ describe("parseCvTextToCvData (no API key)", () => {
   it("returns null for empty text", async () => {
     process.env.ANTHROPIC_API_KEY = "x";
     expect(await parseCvTextToCvData("u1", "   ")).toBeNull();
+  });
+});
+
+describe("extractCvJson", () => {
+  it("parses a plain JSON object", () => {
+    expect(extractCvJson('{"fullName":"Eric"}')).toEqual({ fullName: "Eric" });
+  });
+
+  it("parses JSON wrapped in a ```json code fence", () => {
+    expect(extractCvJson('```json\n{"fullName":"Eric"}\n```')).toEqual({ fullName: "Eric" });
+  });
+
+  it("parses JSON with surrounding prose", () => {
+    expect(extractCvJson('Here is the CV:\n{"fullName":"Eric"}\nHope that helps!')).toEqual({
+      fullName: "Eric",
+    });
+  });
+
+  it("returns null when there is no object", () => {
+    expect(extractCvJson("no json here")).toBeNull();
+  });
+
+  it("throws on malformed JSON inside braces (caller catches)", () => {
+    expect(() => extractCvJson('{"fullName": }')).toThrow();
   });
 });
 
