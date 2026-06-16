@@ -61,6 +61,15 @@ export const liveSources: LiveSource[] = [
     url: "https://careers.blackrock.com",
     config: { ats: "radancy", base: "https://careers.blackrock.com" } },
   // --- tal.net public job boards (6 confirmed boutiques; real inline deadlines) ---
+  // Board numbers AUDITED & verified correct 2026-06-16 (campus/early-careers
+  // boards). Do NOT "fix" these by chasing a bigger board — verified traps:
+  //   · Evercore board 3 has ~30 roles but they are EXPERIENCED hires (VP/MD);
+  //     board 2 is the campus/intern board. Bigger ≠ right.
+  //   · Nomura board 2 is networking EVENTS ("Women in Banking"); board 1 is roles.
+  //   · A board returning 200 with zero listings (e.g. Lazard) is SEASONAL
+  //     ("no active opportunities"), not a wrong number — recheck when the next
+  //     cycle opens. Closed roles still resolve by direct URL but are correctly
+  //     absent from the active listing, so don't treat their absence as a gap.
   { kind: "TALNET", identifier: "nomura", employerName: "Nomura", sector: "Investment Bank",
     url: "https://nomuracampus.tal.net/candidate/jobboard/vacancy/1/adv/",
     config: { ats: "talnet", host: "nomuracampus.tal.net", board: 1 } },
