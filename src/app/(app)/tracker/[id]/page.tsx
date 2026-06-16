@@ -39,7 +39,11 @@ export default async function ListingPeekPage({
 
   const { opportunity: o, score, reasons, saved, savedNotes } = detail;
   const dl = daysUntil(o.deadlineAt);
-  const applyUrl = o.applicationUrl ?? o.employer.website ?? o.sourceUrl;
+  // Prefer the specific posting (applicationUrl, then its source link) over the
+  // employer's generic site — for board ATSes (e.g. tal.net) employer.website is
+  // the whole job board, so falling back to it would land "Apply" on a search
+  // page instead of the role.
+  const applyUrl = o.applicationUrl ?? o.sourceUrl ?? o.employer.website;
 
   const application = await prisma.application.findFirst({
     where: { userId: session!.user.id, opportunityId: o.id },
