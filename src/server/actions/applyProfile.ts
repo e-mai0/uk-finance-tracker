@@ -11,11 +11,14 @@ import {
   answerBankItemSchema,
 } from "../../lib/validation";
 import { extractCvFactsToMemory } from "../cv/facts";
+import { parseCvTextToCvData } from "../cv/generate";
+import { persistCv } from "../cv/store";
 
 export interface ActionResult {
   ok?: boolean;
   error?: string;
   fieldErrors?: Record<string, string[]>;
+  cvParsed?: boolean;
 }
 
 const MAX_CV_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -107,8 +110,24 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
   // Best-effort: distill the CV into profile.md facts so Cyclops knows it.
   if (cvText) await extractCvFactsToMemory(userId, cvText);
 
+  // Best-effort: parse the uploaded CV into an editable structured CV so it
+  // becomes the single source of truth on /cv. Failure leaves the upload intact.
+  let cvParsed = false;
+  if (cvText) {
+    try {
+      const cv = await parseCvTextToCvData(userId, cvText);
+      if (cv) {
+        await persistCv(userId, cv);
+        cvParsed = true;
+      }
+    } catch (err) {
+      console.error("[cv store] parse-on-upload persist failed:", err);
+    }
+  }
+
   revalidatePath("/settings");
-  return { ok: true };
+  revalidatePath("/cv");
+  return { ok: true, cvParsed };
 }
 
 /** Remove the stored CV file + text. */

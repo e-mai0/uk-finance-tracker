@@ -83,6 +83,20 @@ export type CvData = z.infer<typeof cvDataSchema>;
 
 export const EMPTY_CV: CvData = cvDataSchema.parse({});
 
+/** True when the CV has no substantive content (a fullName-only stub counts as empty). */
+export function isCvEmpty(cv: CvData): boolean {
+  return (
+    cv.education.length === 0 &&
+    cv.experience.length === 0 &&
+    cv.projects.length === 0 &&
+    cv.accomplishments.length === 0 &&
+    cv.skills.length === 0 &&
+    cv.interests.length === 0 &&
+    cv.sections.length === 0 &&
+    !cv.summary
+  );
+}
+
 // ---------------------------------------------------------------------------
 // The 3-step form input. Flatter than CvData; mapped deterministically below.
 // ---------------------------------------------------------------------------
@@ -115,86 +129,6 @@ export const cvFormInputSchema = z.object({
     .default([]),
 });
 export type CvFormInput = z.infer<typeof cvFormInputSchema>;
-
-export type CvPrefill = {
-  fullName: string;
-  email?: string;
-  phone?: string;
-  location?: string;
-  linkedin?: string;
-  github?: string;
-  website?: string;
-};
-
-// --- pure helpers -----------------------------------------------------------
-
-function splitLines(text?: string): string[] {
-  if (!text) return [];
-  return text
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^[-•*]\s*/, "").trim())
-    .filter(Boolean);
-}
-
-function splitCsv(text?: string): string[] {
-  if (!text) return [];
-  return text
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean);
-}
-
-function composeYears(start?: string, end?: string): string | undefined {
-  const a = start?.trim();
-  const b = end?.trim();
-  if (a && b) return `${a} – ${b}`;
-  return a || b || undefined;
-}
-
-function clean<T extends Record<string, unknown>>(obj: T): T {
-  // Drop undefined keys so optional() fields stay absent.
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
-}
-
-/** Deterministically map the 3-step form to a valid CvData — NO AI required. */
-export function formInputToCvData(formInput: CvFormInput, prefill: CvPrefill): CvData {
-  return cvDataSchema.parse({
-    fullName: prefill.fullName,
-    contact: clean({
-      email: prefill.email,
-      phone: prefill.phone,
-      location: prefill.location,
-      linkedin: prefill.linkedin,
-      github: prefill.github,
-      website: prefill.website,
-    }),
-    education: formInput.education
-      .filter((e) => e.institution || e.qualification)
-      .map((e) =>
-        clean({
-          institution: e.institution,
-          qualification: e.qualification,
-          dates: composeYears(e.startYear, e.endYear),
-          grade: e.grade,
-          bullets: splitLines(e.modules),
-        }),
-      ),
-    accomplishments: formInput.accomplishments
-      .filter((a) => a.title)
-      .map((a) => clean({ title: a.title, date: a.date, description: a.description })),
-    projects: formInput.projects
-      .filter((p) => p.name)
-      .map((p) =>
-        clean({
-          name: p.name,
-          dates: p.dates,
-          skills: splitCsv(p.skills),
-          bullets: splitLines(p.description),
-          link: p.link,
-        }),
-      ),
-  });
-}
 
 /** Slugify a user name for use in a download filename, e.g. "Eric Mai" → "Eric_Mai". */
 export function slugifyName(name: string): string {

@@ -18,7 +18,7 @@ export async function GET() {
   const built = await getBuiltCv(session.user.id);
   if (!built) {
     return Response.json(
-      { error: "No CV found. Build your CV at /cv-builder first." },
+      { error: "No CV found. Build your CV at /cv first." },
       { status: 404 },
     );
   }

@@ -1,7 +1,7 @@
 // src/components/cv/cv-document.tsx
 // Shared CV preview component. Renders CvData to styled HTML using design
 // tokens. All text is rendered as React text nodes — never dangerouslySetInnerHTML.
-// Used by /my-cv, /cv-builder live preview, and /cv-print.
+// Used by /cv (My CV / Refine with Cyclops) and /cv-print.
 import type { CvData } from "@/lib/cv";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {

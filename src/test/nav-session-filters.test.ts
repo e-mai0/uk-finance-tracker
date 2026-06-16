@@ -1,9 +1,9 @@
 // src/test/nav-session-filters.test.ts
-// Task 15: verify nav entries (CV Builder, My CV) and session kind filter.
+// Verify nav entries (unified /cv "My CV") and session kind filter.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ---------------------------------------------------------------------------
-// Nav: verify CV Builder and My CV appear in the NAV array
+// Nav: verify unified /cv "My CV" appears in the NAV array
 // ---------------------------------------------------------------------------
 // `app-nav.tsx` is a "use client" module; we must stub the Next.js hooks
 // before importing so the module doesn't crash in a Node test environment.
@@ -16,30 +16,25 @@ vi.mock("next/link", () => ({ default: ({ children }: { children: unknown }) => 
 import { NAV } from "@/components/app-nav";
 
 describe("NAV entries", () => {
-  it("includes /cv-builder with label 'CV Builder'", () => {
-    const entry = NAV.find((n) => n.href === "/cv-builder");
-    expect(entry).toBeDefined();
-    expect(entry?.label).toBe("CV Builder");
-  });
-
-  it("includes /my-cv with label 'My CV'", () => {
-    const entry = NAV.find((n) => n.href === "/my-cv");
+  it("includes /cv with label 'My CV'", () => {
+    const entry = NAV.find((n) => n.href === "/cv");
     expect(entry).toBeDefined();
     expect(entry?.label).toBe("My CV");
   });
 
-  it("cv-builder and my-cv have no badgeKey (non-nested, no badge)", () => {
-    const cvBuilder = NAV.find((n) => n.href === "/cv-builder");
-    const myCv = NAV.find((n) => n.href === "/my-cv");
-    expect(cvBuilder?.badgeKey).toBeUndefined();
-    expect(myCv?.badgeKey).toBeUndefined();
+  it("/cv has no badgeKey (non-nested, no badge)", () => {
+    const cv = NAV.find((n) => n.href === "/cv");
+    expect(cv?.badgeKey).toBeUndefined();
   });
 
-  it("cv-builder comes before my-cv (logical ordering)", () => {
-    const cvBuilderIdx = NAV.findIndex((n) => n.href === "/cv-builder");
-    const myCvIdx = NAV.findIndex((n) => n.href === "/my-cv");
-    expect(cvBuilderIdx).toBeGreaterThan(-1);
-    expect(myCvIdx).toBeGreaterThan(cvBuilderIdx);
+  it("does not include retired /cv-builder or /my-cv routes", () => {
+    expect(NAV.find((n) => n.href === "/cv-builder")).toBeUndefined();
+    expect(NAV.find((n) => n.href === "/my-cv")).toBeUndefined();
+  });
+
+  it("/cv appears in the nav (sanity check on index)", () => {
+    const cvIdx = NAV.findIndex((n) => n.href === "/cv");
+    expect(cvIdx).toBeGreaterThan(-1);
   });
 });
 
