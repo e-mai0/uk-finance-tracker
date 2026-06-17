@@ -250,6 +250,43 @@ describe("degree-subject affinity", () => {
     const { reasons } = scoreOpportunity(profile, quantPrefs, quantOpp);
     expect(reasons.some((r) => r.toLowerCase().includes("degree"))).toBe(true);
   });
+
+  it("unknown/empty/missing degreeSubject contributes exactly 0 — no hidden penalty against absolute baseline", () => {
+    // Absolute baseline: QUANT opp + QUANT prefs, ideal grad year, London exact,
+    // UK_CITIZEN, no employer match, no skills, no degree affinity.
+    // Expected breakdown: roleFamily(25) + timing(12) + locationExact(18) + workAuth(12) = 67.
+    // Any variant that makes unknown subjects subtract points would drop below 67 and fail.
+    const ABSOLUTE_BASELINE = 67;
+
+    const sharedProfile: Omit<ScoreProfile, "degreeSubject"> = {
+      workAuth: "UK_CITIZEN",
+      graduationYear: INTERNSHIP_CYCLE_SUMMER_YEAR + 1, // ideal penultimate year
+      currentYear: 2,
+      skills: [],
+    };
+    const neutralPrefs: ScorePreferences = {
+      targetRoleFamilies: ["QUANT"],
+      preferredLocations: ["London"],
+      openToAnywhereUk: false,
+      targetEmployers: [], // no employer bonus
+    };
+
+    const cases: Array<{ label: string; degreeSubject: ScoreProfile["degreeSubject"] }> = [
+      { label: "unrelated subject (History)", degreeSubject: "History" },
+      { label: "empty string",               degreeSubject: "" },
+      { label: "undefined",                  degreeSubject: undefined },
+      { label: "null",                       degreeSubject: null },
+    ];
+
+    for (const { label, degreeSubject } of cases) {
+      const { score } = scoreOpportunity(
+        { ...sharedProfile, degreeSubject },
+        neutralPrefs,
+        quantOpp,
+      );
+      expect(score, `degreeSubject=${label} should equal absolute baseline`).toBe(ABSOLUTE_BASELINE);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
