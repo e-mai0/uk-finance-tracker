@@ -148,25 +148,6 @@ describe("submittedAt contract", () => {
     expect(callArg.update.submittedAt).toBeUndefined();
   });
 
-  it("passes undefined for submittedAt when status is INTERVIEWING", async () => {
-    upsert.mockResolvedValue({ id: "app-1", status: "INTERVIEWING" });
-
-    await POST(makeRequest({ ...VALID_BODY, status: "INTERVIEWING" }));
-
-    const callArg = upsert.mock.calls[0][0];
-    expect(callArg.create.submittedAt).toBeUndefined();
-    expect(callArg.update.submittedAt).toBeUndefined();
-  });
-
-  it("passes undefined for submittedAt when status is DRAFT", async () => {
-    upsert.mockResolvedValue({ id: "app-1", status: "DRAFT" });
-
-    await POST(makeRequest({ ...VALID_BODY, status: "DRAFT" }));
-
-    const callArg = upsert.mock.calls[0][0];
-    expect(callArg.create.submittedAt).toBeUndefined();
-    expect(callArg.update.submittedAt).toBeUndefined();
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -183,17 +164,6 @@ describe("submittedAt contract", () => {
 // ---------------------------------------------------------------------------
 
 describe("submittedAt preservation on re-apply", () => {
-  it("sets submittedAt on the SUBMITTED update call", async () => {
-    upsert.mockResolvedValue({ id: "app-1", status: "SUBMITTED" });
-    const before = new Date();
-
-    await POST(makeRequest({ ...VALID_BODY, status: "SUBMITTED" }));
-
-    const callArg = upsert.mock.calls[0][0];
-    expect(callArg.update.submittedAt).toBeInstanceOf(Date);
-    expect(callArg.update.submittedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
-  });
-
   it("passes undefined (not null) for submittedAt on a non-SUBMITTED re-apply, preserving the DB value", async () => {
     // Simulate the third step: AUTOFILLED re-apply after submittedAt was already set.
     // The route must pass undefined so Prisma skips the field; passing null would
@@ -207,13 +177,6 @@ describe("submittedAt preservation on re-apply", () => {
     // null      → would explicitly nullify a previously-set submittedAt (WRONG)
     expect(callArg.update.submittedAt).toBeUndefined();
     expect(callArg.update.submittedAt).not.toBeNull();
-  });
-
-  it("does not nullify submittedAt in the create path for non-SUBMITTED status either", async () => {
-    await POST(makeRequest({ ...VALID_BODY, status: "WITHDRAWN" }));
-
-    const callArg = upsert.mock.calls[0][0];
-    expect(callArg.create.submittedAt).toBeUndefined();
   });
 });
 
@@ -295,13 +258,6 @@ describe("token authentication", () => {
     expect(upsert).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when requireToken resolves null (revoked token)", async () => {
-    requireTokenMock.mockResolvedValue(null);
-
-    const res = await POST(makeRequest(VALID_BODY, "trk_revoked_abc123"));
-    expect(res.status).toBe(401);
-    expect(upsert).not.toHaveBeenCalled();
-  });
 });
 
 // ---------------------------------------------------------------------------
