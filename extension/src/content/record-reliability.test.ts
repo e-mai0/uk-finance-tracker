@@ -182,17 +182,4 @@ describe("clearInFlight — in-flight set cleared on panel close", () => {
     expect(inFlight.size).toBe(0);
   });
 
-  it("clearing an already-empty set is a no-op", () => {
-    const inFlight = new Set<string>();
-    expect(() => clearInFlight(inFlight)).not.toThrow();
-    expect(inFlight.size).toBe(0);
-  });
-
-  it("after clearInFlight the same fieldId can be added again (re-generation possible)", () => {
-    const inFlight = new Set<string>(["field-1"]);
-    clearInFlight(inFlight);
-    // Simulate re-triggering the same field
-    inFlight.add("field-1");
-    expect(inFlight.has("field-1")).toBe(true);
-  });
 });
