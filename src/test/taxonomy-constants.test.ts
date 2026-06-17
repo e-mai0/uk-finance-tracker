@@ -8,12 +8,12 @@ import {
 // The full set of taxonomy members, written out independently of the source so
 // the test pins the contract rather than echoing whatever the source happens to
 // export (guards future drift / accidental additions or removals).
-// Region was removed (ADR-005, UK-only); only programme season remains.
+// Region was removed (ADR-005, UK-only); industrial placement was removed
+// (ADR-006, excluded "for now") — only the 3 core internship seasons remain.
 const ALL_PROGRAMME_TYPES: ProgrammeType[] = [
   "SPRING_WEEK",
   "SUMMER_INTERNSHIP",
   "OFF_CYCLE",
-  "INDUSTRIAL_PLACEMENT",
 ];
 
 describe("PROGRAMME_TYPES option list", () => {
@@ -25,12 +25,11 @@ describe("PROGRAMME_TYPES option list", () => {
     }
   });
 
-  it("is ordered: Spring Week, Summer Internship, Off-Cycle, Industrial Placement", () => {
+  it("is ordered: Spring Week, Summer Internship, Off-Cycle", () => {
     expect(PROGRAMME_TYPES.map((p) => p.value)).toEqual([
       "SPRING_WEEK",
       "SUMMER_INTERNSHIP",
       "OFF_CYCLE",
-      "INDUSTRIAL_PLACEMENT",
     ]);
   });
 
@@ -39,7 +38,6 @@ describe("PROGRAMME_TYPES option list", () => {
       { value: "SPRING_WEEK", label: "Spring Week" },
       { value: "SUMMER_INTERNSHIP", label: "Summer Internship" },
       { value: "OFF_CYCLE", label: "Off-Cycle" },
-      { value: "INDUSTRIAL_PLACEMENT", label: "Industrial Placement" },
     ]);
   });
 });
@@ -56,7 +54,6 @@ describe("PROGRAMME_TYPE_LABELS map", () => {
       SPRING_WEEK: "Spring Week",
       SUMMER_INTERNSHIP: "Summer Internship",
       OFF_CYCLE: "Off-Cycle",
-      INDUSTRIAL_PLACEMENT: "Industrial Placement",
     });
   });
 

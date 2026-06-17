@@ -62,14 +62,19 @@ describe("normalizeOpportunity season (UK-only)", () => {
     expect(n.country).toBe("UK");
   });
 
-  it("derives the industrial-placement legacy label, still UK", () => {
+  // ADR-006: INDUSTRIAL_PLACEMENT was removed from the ProgrammeType enum
+  // (industrial placements are now excluded upstream, never normalized). The
+  // three retained buckets (SPRING_WEEK / SUMMER_INTERNSHIP / OFF_CYCLE) carry
+  // through with their correct legacy labels — asserted above and here for the
+  // SUMMER default, which keeps isSummerInternship=true.
+  it("derives the summer legacy label and a true summer flag, UK", () => {
     const n = normalizeOpportunity(
-      { ...base, programmeType: "INDUSTRIAL_PLACEMENT" },
+      { ...base, programmeType: "SUMMER_INTERNSHIP" },
       now,
     );
-    expect(n.programmeTypeEnum).toBe("INDUSTRIAL_PLACEMENT");
-    expect(n.programmeType).toBe("Industrial Placement");
-    expect(n.isSummerInternship).toBe(false);
+    expect(n.programmeTypeEnum).toBe("SUMMER_INTERNSHIP");
+    expect(n.programmeType).toBe("Summer Internship");
+    expect(n.isSummerInternship).toBe(true);
     expect(n.isUkBased).toBe(true);
     expect(n.country).toBe("UK");
   });

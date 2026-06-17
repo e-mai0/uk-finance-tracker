@@ -38,21 +38,18 @@ export const ROLE_FAMILY_SHORT: Record<RoleFamily, string> = Object.fromEntries(
 // spelling). Mirrors the ROLE_FAMILIES option-list / label-map shape so the
 // tracker filters + UI consume them the same way.
 //
-// The tracker is UK-only (ADR-005); region was removed. Programme season stays
-// first-class classified data (Spring Week / Summer / Off-Cycle / Placement).
+// The tracker is UK-only (ADR-005); region was removed. ADR-006 narrows the
+// tracked scope to the 3 core competitive finance internship seasons — Spring
+// Week / Summer / Off-Cycle. Industrial placements (plus pre-university and
+// apprenticeships) are EXCLUDED upstream in classify.ts, "for now".
 // ---------------------------------------------------------------------------
 
-export type ProgrammeType =
-  | "SPRING_WEEK"
-  | "SUMMER_INTERNSHIP"
-  | "OFF_CYCLE"
-  | "INDUSTRIAL_PLACEMENT";
+export type ProgrammeType = "SPRING_WEEK" | "SUMMER_INTERNSHIP" | "OFF_CYCLE";
 
 export const PROGRAMME_TYPES: { value: ProgrammeType; label: string }[] = [
   { value: "SPRING_WEEK", label: "Spring Week" },
   { value: "SUMMER_INTERNSHIP", label: "Summer Internship" },
   { value: "OFF_CYCLE", label: "Off-Cycle" },
-  { value: "INDUSTRIAL_PLACEMENT", label: "Industrial Placement" },
 ];
 
 export const PROGRAMME_TYPE_LABELS: Record<ProgrammeType, string> =

@@ -10,9 +10,15 @@ import type { ProgrammeType } from "@/lib/constants";
  *
  * The tracker is UK-only (ADR-005): a posting whose location is NOT UK is
  * EXCLUDED (`not-uk`). Programme SEASON, however, is CLASSIFIED not gatekept —
- * a Spring Week, off-cycle or placement UK role is included and tagged rather
- * than discarded (the ADR-003 bug fix, retained). Retained exclusions are
- * `not-internship`, `not-finance` and `not-uk`.
+ * a Spring Week or off-cycle UK role is included and tagged rather than
+ * discarded (the ADR-003 bug fix, retained).
+ *
+ * ADR-006 narrows the tracked scope to the 3 core competitive finance
+ * internship seasons — SPRING_WEEK / SUMMER_INTERNSHIP / OFF_CYCLE. Industrial
+ * placements ("industry"), pre-university/school-leaver programmes ("y12") and
+ * apprenticeships ("apprentice") are all EXCLUDED. Retained exclusions are
+ * `not-internship`, `not-finance`, `not-uk`, `pre-university`, `apprenticeship`
+ * and `industrial-placement`.
  */
 
 export interface RawPosting {
@@ -32,7 +38,8 @@ export type ExcludeReason =
   | "not-finance"
   | "not-uk"
   | "pre-university"
-  | "apprenticeship";
+  | "apprenticeship"
+  | "industrial-placement";
 
 export type Classification =
   | {
@@ -69,12 +76,13 @@ const NON_INTERN_SIGNALS = [
 
 /**
  * Is this an in-scope early-careers programme (internship, OR a Spring Week /
- * insight / off-cycle / placement)? Spring Weeks and insight programmes often
- * carry NO "intern" word in the title, so a recognised non-summer programme
- * signal (see detectProgrammeType) also qualifies — otherwise AC1/AC3 ("Spring
- * Insight Week", "Industrial Placement") would be dropped as not-internship.
- * The graduate/full-time exclusion in NON_INTERN_SIGNALS stays authoritative:
- * a "Graduate Programme" is still out of scope.
+ * insight / off-cycle role)? Spring Weeks and insight programmes often carry NO
+ * "intern" word in the title, so a recognised non-summer programme signal (see
+ * detectProgrammeType) also qualifies — otherwise a "Spring Insight Week" would
+ * be dropped as not-internship. The graduate/full-time exclusion in
+ * NON_INTERN_SIGNALS stays authoritative: a "Graduate Programme" is still out of
+ * scope. (Industrial placements are excluded upstream in classifyPosting before
+ * this runs — ADR-006.)
  */
 function isInternship(p: RawPosting): boolean {
   const title = p.title;
@@ -88,26 +96,15 @@ function isInternship(p: RawPosting): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Programme-type (season) detection
+// Industrial-placement signal set (ADR-006: now an EXCLUSION, not a bucket)
 //
-// Precedence (ADR-005, researched UK taxonomy — uk-programme-taxonomy.md
-// §"Precedence rule"). CHANGED from the ADR-003 SPRING-first order: industrial
-// placement is the most specific, rarely-wrong UK signal ("industrial
-// placement" essentially never means a spring week or summer internship), so it
-// now wins outright — this also resolves the genuine 12-month OFF_CYCLE vs
-// INDUSTRIAL_PLACEMENT overlap (placement vocabulary wins).
-//
-//   INDUSTRIAL_PLACEMENT → SPRING_WEEK → OFF_CYCLE → SUMMER_INTERNSHIP (default)
-//
-// First-match wins; all matching is WORD-BOUNDARY regex (preserves the existing
-// guardrail so "Spring 2027" start dates and "Ukraine"-style strings don't
-// false-hit). Winter folds into OFF_CYCLE (no separate WINTER value).
+// Industrial placements ("industry") are dropped from the tracker for now, so
+// these signals drive an EXCLUSION (classifyPosting → `industrial-placement`)
+// rather than a programme-type label. The word "placement" is OVERLOADED in the
+// UK ("work placement", "trading floor placement", a 6-week summer placement),
+// so we require a year/sandwich/industrial qualifier — bare "placement" alone is
+// NOT an industrial placement (research edge case 5) and stays a SUMMER role.
 // ---------------------------------------------------------------------------
-
-// Bucket 4 — INDUSTRIAL_PLACEMENT. The word "placement" is OVERLOADED in the UK
-// ("work placement", "trading floor placement", a 6-week summer placement), so
-// we require a year/sandwich/industrial qualifier — bare "placement" alone is
-// NOT industrial placement (research edge case 5).
 const INDUSTRIAL_PLACEMENT_SIGNALS: RegExp[] = [
   /\bindustrial placement\b/i,
   /\bplacement year\b/i,
@@ -120,6 +117,22 @@ const INDUSTRIAL_PLACEMENT_SIGNALS: RegExp[] = [
   /\b12[- ]month\b[\s\S]*\b(placement|industrial)\b/i,
   /\b(placement|industrial)\b[\s\S]*\b12[- ]month\b/i,
 ];
+
+/** Title fires an industrial-placement signal → EXCLUDED (ADR-006). */
+function isIndustrialPlacement(p: RawPosting): boolean {
+  return INDUSTRIAL_PLACEMENT_SIGNALS.some((s) => s.test(p.title));
+}
+
+// ---------------------------------------------------------------------------
+// Programme-type (season) detection
+//
+// Precedence (ADR-006): SPRING_WEEK → OFF_CYCLE → SUMMER_INTERNSHIP (default
+// sink). Industrial placement is no longer a bucket here — it is excluded by
+// classifyPosting BEFORE this runs, so detectProgrammeType only ever returns one
+// of the 3 retained seasons. First-match wins; all matching is WORD-BOUNDARY
+// regex (preserves the guardrail so "Spring 2027" start dates and "Ukraine"-
+// style strings don't false-hit). Winter folds into OFF_CYCLE.
+// ---------------------------------------------------------------------------
 
 // Bucket 1 — SPRING_WEEK (first-year / early insight). GUARD: bare "spring" is
 // SPRING_WEEK ONLY when paired with an insight/week/first-year/"spring into"
@@ -167,8 +180,6 @@ const OFF_CYCLE_SIGNALS: RegExp[] = [
 
 export function detectProgrammeType(p: RawPosting): ProgrammeType {
   const title = p.title;
-  if (INDUSTRIAL_PLACEMENT_SIGNALS.some((s) => s.test(title)))
-    return "INDUSTRIAL_PLACEMENT";
   if (SPRING_WEEK_SIGNALS.some((s) => s.test(title))) return "SPRING_WEEK";
   if (OFF_CYCLE_SIGNALS.some((s) => s.test(title))) return "OFF_CYCLE";
   return "SUMMER_INTERNSHIP";
@@ -205,22 +216,22 @@ function isPreUniversity(p: RawPosting): boolean {
 //
 // UK degree / level-3 / level-6 / school-leaver apprenticeships are full-time,
 // MULTI-YEAR routes — jobs, not internships — and the benchmark (the-trackr)
-// keeps them out of its internship tabs. So a BARE apprenticeship is EXCLUDED
-// (`apprenticeship`). CRUCIAL ordering: a genuine INDUSTRIAL placement that
-// merely uses the word "apprentice" ("Year in Industry Apprentice") must STILL
-// classify INDUSTRIAL_PLACEMENT — so the exclusion fires ONLY when NO
-// industrial-placement signal is present (placement wins). Title-scoped, like
-// the pre-university and graduate exclusions. Edge case 6 also notes a stray
-// `intern` token must not rescue an apprenticeship, so this guard runs in the
-// exclusion phase ahead of the generic isInternship/not-internship fallthrough.
+// keeps them out of its internship tabs. So an apprenticeship is EXCLUDED
+// (`apprenticeship`). Title-scoped, like the pre-university and graduate
+// exclusions. Edge case 6 also notes a stray `intern` token must not rescue an
+// apprenticeship, so this guard runs in the exclusion phase ahead of the
+// generic isInternship/not-internship fallthrough.
+//
+// ADR-006 ordering note: the industrial-placement exclusion runs BEFORE this in
+// classifyPosting, so a "Year in Industry Apprentice" (which fires an
+// industrial-placement signal) is already excluded as `industrial-placement`
+// and never reaches this guard. Industry is dropped "for now", so there is no
+// longer a placement-wins carve-out here.
 // ---------------------------------------------------------------------------
 
 const APPRENTICE_SIGNAL = /\bapprentice(ship)?s?\b/i;
 
 function isExcludedApprenticeship(p: RawPosting): boolean {
-  // Placement wins: if a real industrial-placement signal is present, this is a
-  // year-in-industry / sandwich placement, not a bare apprenticeship — keep it.
-  if (INDUSTRIAL_PLACEMENT_SIGNALS.some((s) => s.test(p.title))) return false;
   return APPRENTICE_SIGNAL.test(p.title);
 }
 
@@ -399,14 +410,24 @@ export function classifyPosting(
   // for them (the-trackr has a separate Pre-University tab).
   if (isPreUniversity(p)) return { include: false, reason: "pre-university" };
 
+  // Industrial placement (ADR-006): "industry" is dropped from the tracked
+  // scope for now, so a placement-year / year-in-industry / sandwich /
+  // industrial-placement title is EXCLUDED. Evaluated BEFORE programme-type
+  // assignment (so a co-occurring spring/insight signal can't pull it into
+  // SPRING_WEEK) AND before the apprenticeship guard (so "Year in Industry
+  // Apprentice" is excluded as `industrial-placement`, not `apprenticeship`).
+  // The bare-"placement"-needs-a-qualifier rule lives in the signal set, so a
+  // 6-week summer placement is NOT swept up here.
+  if (isIndustrialPlacement(p))
+    return { include: false, reason: "industrial-placement" };
+
   // Apprenticeship (research edge case 6): UK degree/school-leaver
-  // apprenticeships are full-time multi-year ROUTES, not internships, so a bare
-  // apprenticeship is EXCLUDED. Runs ONLY when no industrial-placement signal is
-  // present (see isExcludedApprenticeship) — a "Year in Industry Apprentice"
-  // keeps its placement classification. Placed ahead of isInternship so a stray
+  // apprenticeships are full-time multi-year ROUTES, not internships, so an
+  // apprenticeship is EXCLUDED. Placed ahead of isInternship so a stray
   // `intern` token can't rescue it and the reason is `apprenticeship`, not the
-  // vaguer `not-internship`. Pre-university already ran above, so a school-leaver
-  // degree apprenticeship is excluded there first — either exclusion is correct.
+  // vaguer `not-internship`. Pre-university and industrial-placement already ran
+  // above, so a school-leaver degree apprenticeship / year-in-industry
+  // apprentice is excluded there first — either exclusion is correct.
   if (isExcludedApprenticeship(p))
     return { include: false, reason: "apprenticeship" };
 
@@ -419,8 +440,7 @@ export function classifyPosting(
 
   // UK-only gate (ADR-005): a posting located outside the UK is excluded. The
   // programme SEASON, by contrast, is CLASSIFIED not gatekept (ADR-003 bug fix
-  // retained) — a Spring Week / off-cycle / placement UK role is tagged, not
-  // discarded.
+  // retained) — a Spring Week / off-cycle UK role is tagged, not discarded.
   if (!isInternship(p)) return { include: false, reason: "not-internship" };
   if (!isUkLocation(p.location)) return { include: false, reason: "not-uk" };
 

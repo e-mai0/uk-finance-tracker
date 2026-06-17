@@ -131,65 +131,29 @@ describe("detectProgrammeType", () => {
     );
   });
 
-  it("detects placement-year / industrial-placement as INDUSTRIAL_PLACEMENT", () => {
-    expect(
-      detectProgrammeType({ title: "Industrial Placement, Finance", location: "London" }),
-    ).toBe("INDUSTRIAL_PLACEMENT");
-    expect(
-      detectProgrammeType({ title: "Placement Year Analyst", location: "London" }),
-    ).toBe("INDUSTRIAL_PLACEMENT");
-    expect(
-      detectProgrammeType({ title: "12-month Placement — Risk", location: "London" }),
-    ).toBe("INDUSTRIAL_PLACEMENT");
-  });
+  // ----- Phase 3 (ADR-006): industrial placement is now an EXCLUSION, not a
+  // tracked bucket. detectProgrammeType only ever returns the 3 retained
+  // buckets; placement-year titles are excluded by classifyPosting (asserted in
+  // the "industrial-placement exclusion" block below). The detectProgrammeType
+  // precedence is now SPRING_WEEK > OFF_CYCLE > SUMMER_INTERNSHIP (default sink).
 
   // ----- Phase 2: sharpened taxonomy (ADR-005, uk-programme-taxonomy.md) -----
 
-  // Precedence CHANGED to INDUSTRIAL_PLACEMENT > SPRING_WEEK > OFF_CYCLE > SUMMER
-  // (research §"Precedence rule"): industrial placement is the most specific,
-  // rarely-wrong UK signal, so it now outranks spring week.
-  it("honours the new precedence INDUSTRIAL_PLACEMENT > SPRING_WEEK > OFF_CYCLE > SUMMER", () => {
-    // Placement now beats spring (changed from the old SPRING-first order):
-    // "Summer Industrial Placement starting Spring 2027" is a placement year.
-    expect(
-      detectProgrammeType({
-        title: "Summer Industrial Placement starting Spring 2027",
-        location: "London",
-      }),
-    ).toBe("INDUSTRIAL_PLACEMENT");
-    // Spring still beats off-cycle and summer.
+  // Precedence (ADR-006): SPRING_WEEK > OFF_CYCLE > SUMMER. (The industrial-
+  // placement arm was removed; placement titles never reach detectProgrammeType
+  // because classifyPosting excludes them first.)
+  it("honours the precedence SPRING_WEEK > OFF_CYCLE > SUMMER", () => {
+    // Spring beats off-cycle and summer.
     expect(
       detectProgrammeType({
         title: "Spring Off-Cycle Insight Week",
         location: "London",
       }),
     ).toBe("SPRING_WEEK");
-    // Placement beats off-cycle (both can be "12-month").
-    expect(
-      detectProgrammeType({
-        title: "12-month Industrial Placement (off-cycle intake)",
-        location: "London",
-      }),
-    ).toBe("INDUSTRIAL_PLACEMENT");
     // Off-cycle beats the summer default.
     expect(
       detectProgrammeType({ title: "Off-cycle Summer Cover Intern", location: "London" }),
     ).toBe("OFF_CYCLE");
-  });
-
-  // Pins INDUSTRIAL_PLACEMENT > SPRING_WEEK with a GENUINE dual-signal collision:
-  // this title fires a real SPRING_WEEK signal ("spring insight" / "insight week")
-  // AND a real INDUSTRIAL_PLACEMENT signal ("industrial placement" / "placement
-  // year") at the same time. Unlike "...starting Spring 2027" (a bare start date
-  // that does NOT fire SPRING_WEEK), this actually exercises the precedence order —
-  // INDUSTRIAL_PLACEMENT must win.
-  it("INDUSTRIAL_PLACEMENT outranks a genuine co-occurring SPRING_WEEK signal", () => {
-    expect(
-      detectProgrammeType({
-        title: "Spring Insight Week & Industrial Placement Year",
-        location: "London",
-      }),
-    ).toBe("INDUSTRIAL_PLACEMENT");
   });
 
   it("recognises new SPRING_WEEK insight/first-year/diversity signals", () => {
@@ -236,28 +200,27 @@ describe("detectProgrammeType", () => {
     }
   });
 
-  it("recognises new INDUSTRIAL_PLACEMENT signals (year/sandwich/industrial qualifiers)", () => {
-    for (const title of [
-      "Year in Industry — Risk",
-      "Sandwich Placement, Finance",
-      "Sandwich Year Analyst",
-      "Industrial Year Trainee",
-      "12-month Industrial Placement Year Programme",
-    ]) {
-      expect(detectProgrammeType({ title, location: "London" })).toBe("INDUSTRIAL_PLACEMENT");
-    }
-  });
-
   // Research edge case 5 / bucket-4 note: bare "placement" is OVERLOADED in the
   // UK — require a year/sandwich/industrial qualifier. A 6-week summer placement
-  // is a summer internship, not an industrial placement.
-  it("does NOT classify a bare 'placement' as INDUSTRIAL_PLACEMENT", () => {
+  // is a summer internship (NOT excluded as industrial placement), and a "Trading
+  // Floor Placement Intern" stays a SUMMER_INTERNSHIP. These keep the bare-
+  // "placement"-needs-a-qualifier rule that protects against over-excluding.
+  it("does NOT exclude a bare 'placement' as industrial-placement (keeps SUMMER)", () => {
     expect(
       detectProgrammeType({ title: "Summer Placement (6 weeks) — Markets", location: "London" }),
     ).toBe("SUMMER_INTERNSHIP");
     expect(
       detectProgrammeType({ title: "Trading Floor Placement Intern", location: "London" }),
     ).toBe("SUMMER_INTERNSHIP");
+    // And classifyPosting does NOT industrial-placement-exclude a bare-placement
+    // role: a "Trading Floor Placement Intern" (carries an `intern` token, so it
+    // passes the not-internship gate) is included as a SUMMER_INTERNSHIP.
+    const a = classifyPosting(
+      { title: "Trading Floor Placement Intern", location: "London" },
+      "MARKETS",
+    );
+    expect(a.include).toBe(true);
+    if (a.include) expect(a.programmeType).toBe("SUMMER_INTERNSHIP");
   });
 
   it("recognises new SUMMER_INTERNSHIP signals and keeps it as the default sink", () => {
@@ -342,12 +305,8 @@ describe("classifyPosting — Phase 2 exclusions", () => {
   // Apprenticeships (research edge case 6, taxonomy §"Recommended EXCLUDE
   // signals"): UK degree / school-leaver apprenticeships are full-time,
   // multi-year ROUTES, not internships — the-trackr keeps them out of its
-  // internship tabs. A BARE apprenticeship (no genuine placement signal) is
-  // EXCLUDED. Order matters: the apprenticeship exclusion runs ONLY when no
-  // industrial-placement signal is present, so "Year in Industry Apprentice"
-  // (a real placement that happens to use the word) STILL classifies
-  // INDUSTRIAL_PLACEMENT (placement wins — asserted in detectProgrammeType /
-  // the classifyPosting block below).
+  // internship tabs. A BARE apprenticeship (no industrial-placement signal) is
+  // EXCLUDED with reason "apprenticeship".
   it("excludes a bare degree apprenticeship (no placement signal)", () => {
     const v = classifyPosting(
       { title: "Degree Apprenticeship — Finance", location: "London" },
@@ -368,33 +327,66 @@ describe("classifyPosting — Phase 2 exclusions", () => {
     if (!v.include)
       expect(["apprenticeship", "pre-university"]).toContain(v.reason);
   });
+});
 
-  // Control: a genuine industrial placement that uses the word "apprentice"
-  // must STILL classify INDUSTRIAL_PLACEMENT — the placement signal ("year in
-  // industry") wins over the apprenticeship exclusion.
-  it("KEEPS 'Year in Industry Apprentice' as INDUSTRIAL_PLACEMENT (placement wins)", () => {
-    expect(
-      detectProgrammeType({ title: "Year in Industry Apprentice", location: "London" }),
-    ).toBe("INDUSTRIAL_PLACEMENT");
+// Industrial-placement EXCLUSION (ADR-006). Industrial placements ("industry")
+// are no longer a tracked bucket — they are EXCLUDED. The exclusion is evaluated
+// BEFORE programme-type assignment (and before the apprenticeship exclusion, so
+// "Year in Industry Apprentice" is excluded as industrial-placement). The bare-
+// "placement"-needs-a-qualifier rule is preserved (covered above) so a 6-week
+// summer placement is NOT swept up.
+describe("classifyPosting — industrial-placement exclusion (ADR-006)", () => {
+  it("excludes placement-year / year-in-industry / sandwich / industrial-placement titles", () => {
+    for (const title of [
+      "Industrial Placement, Finance",
+      "Placement Year Analyst",
+      "Year in Industry — Risk",
+      "Sandwich Placement, Finance",
+      "Sandwich Year Analyst",
+      "Sandwich Course — Markets",
+      "Industrial Year Trainee",
+      "12-month Industrial Placement Year Programme",
+      "12-month Placement — Risk",
+    ]) {
+      const v = classifyPosting({ title, location: "London" }, "IB");
+      expect(v.include).toBe(false);
+      if (!v.include) expect(v.reason).toBe("industrial-placement");
+    }
+  });
+
+  // Held-out: a genuine UK "Industrial Placement" finance role → excluded
+  // (novel title not used elsewhere; carries a real role family + UK location).
+  it("excludes a genuine UK industrial-placement finance role (held-out)", () => {
+    const v = classifyPosting(
+      {
+        title: "Investment Banking Industrial Placement — 12 Months",
+        location: "London, United Kingdom",
+      },
+      "IB",
+    );
+    expect(v).toEqual({ include: false, reason: "industrial-placement" });
+  });
+
+  // "Year in Industry Apprentice" fires the industrial-placement signal, so it is
+  // EXCLUDED as industrial-placement (industry is dropped "for now", ADR-006).
+  // The exclusion runs ahead of the apprenticeship guard.
+  it("excludes 'Year in Industry Apprentice' as industrial-placement", () => {
     const v = classifyPosting(
       { title: "Year in Industry Apprentice", location: "London" },
       "IB",
     );
-    expect(v.include).toBe(true);
-    if (v.include) expect(v.programmeType).toBe("INDUSTRIAL_PLACEMENT");
+    expect(v).toEqual({ include: false, reason: "industrial-placement" });
   });
 
-  // Control: a real industrial placement with NO apprentice word is unaffected.
-  it("KEEPS a plain 'Industrial Placement' as INDUSTRIAL_PLACEMENT", () => {
-    expect(
-      detectProgrammeType({ title: "Industrial Placement", location: "London" }),
-    ).toBe("INDUSTRIAL_PLACEMENT");
+  // The industrial-placement exclusion fires BEFORE programme-type assignment:
+  // a title that ALSO carries a spring-insight signal is still excluded, not
+  // tagged SPRING_WEEK.
+  it("excludes even when a spring/insight signal co-occurs (exclusion runs first)", () => {
     const v = classifyPosting(
-      { title: "Industrial Placement", location: "London" },
+      { title: "Spring Insight Week & Industrial Placement Year", location: "London" },
       "IB",
     );
-    expect(v.include).toBe(true);
-    if (v.include) expect(v.programmeType).toBe("INDUSTRIAL_PLACEMENT");
+    expect(v).toEqual({ include: false, reason: "industrial-placement" });
   });
 });
 
@@ -444,10 +436,12 @@ describe("classifyPosting", () => {
     ).toEqual({ include: false, reason: "not-internship" });
   });
 
-  // NOTE (ADR-003): the classifier TAGS programme season instead of discarding
-  // Spring Weeks / off-cycle / placements (the retained bug fix). Region is gone
+  // NOTE (ADR-003 retained, ADR-006 narrowed): the classifier TAGS programme
+  // season instead of discarding Spring Weeks / off-cycle (the retained bug fix).
+  // Industrial placements are no longer a tracked bucket — they are EXCLUDED
+  // (asserted in the industrial-placement-exclusion block). Region is gone
   // (ADR-005, UK-only) so these no longer carry a `region` field.
-  it("classifies spring weeks, off-cycle and placements instead of discarding", () => {
+  it("classifies spring weeks and off-cycle instead of discarding", () => {
     expect(
       classifyPosting({ title: "Spring Insight Week", location: "London" }, "IB"),
     ).toEqual({
@@ -466,17 +460,6 @@ describe("classifyPosting", () => {
       roleFamily: "MARKETS",
       via: "keyword",
       programmeType: "OFF_CYCLE",
-    });
-    expect(
-      classifyPosting(
-        { title: "Industrial Placement — Finance (12 months)", location: "London" },
-        "IB",
-      ),
-    ).toEqual({
-      include: true,
-      roleFamily: "IB",
-      via: "fallback",
-      programmeType: "INDUSTRIAL_PLACEMENT",
     });
   });
 

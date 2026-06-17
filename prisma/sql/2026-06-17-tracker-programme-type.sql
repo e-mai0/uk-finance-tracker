@@ -9,6 +9,15 @@
 -- The tracker is UK-only (ADR-005); the previously-planned "region" column +
 -- "Region" enum were dropped before merge, so this migration never adds them.
 --
+-- ADR-006 narrows the tracked scope to the 3 core internship seasons
+-- (SPRING_WEEK / SUMMER_INTERNSHIP / OFF_CYCLE); industrial placements are
+-- EXCLUDED upstream in classify.ts and never persisted, so the "ProgrammeType"
+-- enum no longer contains INDUSTRIAL_PLACEMENT. On a clean DB the CREATE TYPE
+-- below makes the 3-value enum directly. (This file has not yet been applied to
+-- prod; if a DB already created the enum WITH the old 4th value, the value is
+-- simply unused — Postgres cannot drop an enum value in place, and no rows ever
+-- carry it.)
+--
 -- Backfill is correct by default: every existing row is genuinely a summer
 -- internship under the old pipeline, so the column default (SUMMER_INTERNSHIP)
 -- is the right value. No data-migration script needed; the next idempotent sync
@@ -24,8 +33,7 @@ BEGIN
     CREATE TYPE "ProgrammeType" AS ENUM (
       'SPRING_WEEK',
       'SUMMER_INTERNSHIP',
-      'OFF_CYCLE',
-      'INDUSTRIAL_PLACEMENT'
+      'OFF_CYCLE'
     );
   END IF;
 END $$;
