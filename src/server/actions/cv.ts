@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { auth } from "@/server/auth";
-import { type CvData } from "@/lib/cv";
+import { isCvEmpty, type CvData } from "@/lib/cv";
 import { persistCv } from "@/server/cv/store";
 import { syncCvGrounding } from "@/server/cv/grounding";
 import { gatherKnownProfile } from "@/server/cv/known-profile";
@@ -25,6 +25,16 @@ export async function draftCvFromKnown(): Promise<BuildCvResult> {
 
   const known = await gatherKnownProfile(userId);
   const cv = await draftCvDataFromKnown(userId, known);
+  if (!cv) {
+    return {
+      error:
+        "We couldn't draft an editable CV from your uploaded CV right now. Your uploaded CV is still saved.",
+    };
+  }
+  if (isCvEmpty(cv)) {
+    return { ok: true };
+  }
+
   const saved = await persistCv(userId, cv);
   after(() => syncCvGrounding(userId));
   revalidatePath("/cv");

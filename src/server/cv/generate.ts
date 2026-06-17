@@ -1,7 +1,7 @@
 // src/server/cv/generate.ts
 // AI helpers for the CV feature. Both are best-effort and budget-checked:
 // failure never blocks the caller (upload still stores the file; draft falls
-// back to the deterministic baseline).
+// back to the deterministic baseline only when no uploaded CV text would be lost).
 //
 // We deliberately use generateText + a lenient cvDataSchema.safeParse rather
 // than generateObject. Anthropic's native structured-output path compiles the
@@ -70,13 +70,15 @@ ${cvText.slice(0, MAX_CV_PROMPT_CHARS)}
   }
 }
 
-/** Draft a CvData from known profile/memory data. Falls back to the deterministic baseline. */
-export async function draftCvDataFromKnown(userId: string, known: KnownProfile): Promise<CvData> {
+/** Draft a CvData from known profile/memory data. Avoid replacing uploaded text with a baseline stub. */
+export async function draftCvDataFromKnown(userId: string, known: KnownProfile): Promise<CvData | null> {
   const baseline = knownToBaselineCv(known);
+  const hasUploadedCvText = Boolean(known.uploadedCvText?.trim());
+  const fallback = () => (hasUploadedCvText ? null : baseline);
   try {
-    if (!process.env.ANTHROPIC_API_KEY) return baseline;
+    if (!process.env.ANTHROPIC_API_KEY) return fallback();
     const budget = await checkBudget(userId).catch(() => ({ ok: false }));
-    if (!budget.ok) return baseline;
+    if (!budget.ok) return fallback();
 
     const { text, usage } = await generateText({
       model: sonnet,
@@ -96,9 +98,9 @@ ${JSON.stringify(baseline)}
     });
     recordUsage(userId, usage?.totalTokens ?? 0).catch(() => {});
     const parsed = cvDataSchema.safeParse(extractCvJson(text));
-    return parsed.success ? parsed.data : baseline;
+    return parsed.success ? parsed.data : fallback();
   } catch (err) {
-    console.error("[cv generate] draft failed; using baseline:", err);
-    return baseline;
+    console.error("[cv generate] draft failed; using safe fallback:", err);
+    return fallback();
   }
 }

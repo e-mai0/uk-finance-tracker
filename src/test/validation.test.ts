@@ -19,6 +19,17 @@ describe("signupSchema", () => {
     if (r.success) expect(r.data.email).toBe("alex@example.com");
   });
 
+  it("accepts a missing FormData invite code when signups are open", () => {
+    const r = signupSchema.safeParse({
+      name: "Alex Morgan",
+      email: "alex@example.com",
+      password: "supersecret",
+      inviteCode: null,
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.inviteCode).toBeUndefined();
+  });
+
   it("rejects short passwords", () => {
     const r = signupSchema.safeParse({
       name: "Alex Morgan",

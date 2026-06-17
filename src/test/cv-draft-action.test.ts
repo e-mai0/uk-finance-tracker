@@ -39,6 +39,30 @@ describe("draftCvFromKnown", () => {
     expect(persist).toHaveBeenCalledOnce();
   });
 
+  it("does not persist a fallback when uploaded CV text could not be drafted", async () => {
+    gather.mockResolvedValueOnce({
+      fullName: "Eric Mai",
+      uploadedCvText: "Eric Mai\nSpring week at Deloitte\nPython trading project",
+      memoryFacts: [],
+    });
+    draft.mockResolvedValueOnce(null);
+
+    const res = await draftCvFromKnown();
+
+    expect(res.error).toMatch(/uploaded CV is still saved/i);
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("does not persist an empty draft", async () => {
+    draft.mockResolvedValueOnce(cvDataSchema.parse({ fullName: "Eric Mai" }));
+
+    const res = await draftCvFromKnown();
+
+    expect(res.ok).toBe(true);
+    expect(res.cv).toBeUndefined();
+    expect(persist).not.toHaveBeenCalled();
+  });
+
   it("returns an error when not signed in", async () => {
     vi.mocked(auth).mockResolvedValueOnce(null as never);
     const res = await draftCvFromKnown();

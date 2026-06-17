@@ -62,8 +62,22 @@ describe("draftCvDataFromKnown (no API key → deterministic baseline)", () => {
       graduationYear: 2028,
       memoryFacts: [],
     });
-    expect(cv.fullName).toBe("Eric Mai");
-    expect(cv.education[0].institution).toBe("University of Cambridge");
+    expect(cv).not.toBeNull();
+    expect(cv!.fullName).toBe("Eric Mai");
+    expect(cv!.education[0].institution).toBe("University of Cambridge");
+  });
+
+  it("does not replace uploaded CV text with the baseline when drafting is unavailable", async () => {
+    const cv = await draftCvDataFromKnown("u1", {
+      fullName: "Eric Mai",
+      university: "University of Cambridge",
+      degreeSubject: "Economics",
+      degreeType: "BA",
+      graduationYear: 2028,
+      uploadedCvText: "Eric Mai\nInvestment banking spring week\nPython project\nHackathon winner",
+      memoryFacts: [],
+    });
+    expect(cv).toBeNull();
   });
 });
 
@@ -99,7 +113,22 @@ describe("generateText → extractCvJson → safeParse wiring (mocked model)", (
       graduationYear: 2028,
       memoryFacts: [],
     });
-    expect(cv.fullName).toBe("Eric Mai");
-    expect(cv.education[0].institution).toBe("University of Cambridge");
+    expect(cv).not.toBeNull();
+    expect(cv!.fullName).toBe("Eric Mai");
+    expect(cv!.education[0].institution).toBe("University of Cambridge");
+  });
+
+  it("returns null instead of a baseline when uploaded CV text cannot be drafted", async () => {
+    generateText.mockResolvedValueOnce({ text: '{"fullName": }', usage: { totalTokens: 5 } });
+    const cv = await draftCvDataFromKnown("u1", {
+      fullName: "Eric Mai",
+      university: "University of Cambridge",
+      degreeSubject: "Economics",
+      degreeType: "BA",
+      graduationYear: 2028,
+      uploadedCvText: "Rich uploaded CV text with internships and projects",
+      memoryFacts: [],
+    });
+    expect(cv).toBeNull();
   });
 });
