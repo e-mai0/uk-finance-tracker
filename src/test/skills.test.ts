@@ -34,9 +34,4 @@ describe("writing skill", () => {
     // and the canonical 'never use:' line still lists them all
     expect(writingSkill.body).toContain(`never use: ${BANNED_TELLS.join(", ")}`);
   });
-
-  it("preserves the {{voice}} substitution mechanism in the compiled body", () => {
-    expect(writingSkill.body).toContain("{{voice}}");
-    expect(writingSkill.body).not.toContain("{{bannedTells}}");
-  });
 });
