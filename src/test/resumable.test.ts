@@ -1,5 +1,5 @@
 // src/test/resumable.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
 describe("resumable stream store", () => {
   afterEach(() => {
@@ -8,6 +8,8 @@ describe("resumable stream store", () => {
   });
 
   it("activeStreamKey namespaces by session id", async () => {
+    vi.stubEnv("REDIS_URL", "");
+    vi.resetModules();
     const { activeStreamKey } = await import("@/server/ai/resumable");
     expect(activeStreamKey("sess-1")).toBe("resumable:chat:sess-1");
   });
