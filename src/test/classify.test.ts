@@ -177,6 +177,21 @@ describe("detectProgrammeType", () => {
     ).toBe("OFF_CYCLE");
   });
 
+  // Pins INDUSTRIAL_PLACEMENT > SPRING_WEEK with a GENUINE dual-signal collision:
+  // this title fires a real SPRING_WEEK signal ("spring insight" / "insight week")
+  // AND a real INDUSTRIAL_PLACEMENT signal ("industrial placement" / "placement
+  // year") at the same time. Unlike "...starting Spring 2027" (a bare start date
+  // that does NOT fire SPRING_WEEK), this actually exercises the precedence order —
+  // INDUSTRIAL_PLACEMENT must win.
+  it("INDUSTRIAL_PLACEMENT outranks a genuine co-occurring SPRING_WEEK signal", () => {
+    expect(
+      detectProgrammeType({
+        title: "Spring Insight Week & Industrial Placement Year",
+        location: "London",
+      }),
+    ).toBe("INDUSTRIAL_PLACEMENT");
+  });
+
   it("recognises new SPRING_WEEK insight/first-year/diversity signals", () => {
     for (const title of [
       "Spring into JPMorganChase 2027",
