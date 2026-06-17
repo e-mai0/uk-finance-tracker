@@ -12,8 +12,10 @@ import {
   FormEvent,
   KeyboardEvent,
 } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/markdown";
+import { nextNavigationPush } from "@/lib/cv-handoff";
 
 // ---------------------------------------------------------------------------
 // Tool label map
@@ -317,6 +319,14 @@ export function CyclopsChat({
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  // Once-guard for navigation signals (U4b): the ids (tool-call ids) of
+  // go_to_cv / future kind:"navigate" signals we have already routed on. A
+  // streamed turn re-renders this component many times carrying the SAME tool
+  // part; without the guard we would router.push on every render. We push
+  // exactly ONCE per signal id and remember it here so re-renders / re-streams
+  // of the same signal are no-ops.
+  const handledNavRef = useRef<Set<string>>(new Set());
 
   const { messages, sendMessage, regenerate, stop, status, error } = useChat({
     id: sessionId,
@@ -357,6 +367,23 @@ export function CyclopsChat({
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  // Navigation-signal interpreter (U4b). When a tool emits a kind:"navigate"
+  // output (the go_to_cv handoff), route ONCE to the target carrying the
+  // request + pane as query params. Detection is generic (kind === "navigate"),
+  // so any future navigation tool works; the CV page reads ?handoff=&pane= and
+  // auto-sends. The once-guard (handledNavRef) makes this fire a single push
+  // per signal even though the effect re-runs on every streaming re-render.
+  useEffect(() => {
+    for (const msg of messages) {
+      const push = nextNavigationPush(msg.parts, handledNavRef.current);
+      if (push) {
+        handledNavRef.current.add(push.id);
+        router.push(push.url);
+        break; // route at most one signal per pass; the guard handles the rest
+      }
+    }
+  }, [messages, router]);
 
   // Stable handlers so the memoised <Composer/> (and the suggestion buttons)
   // keep their identity across streaming re-renders. sendMessage/stop from

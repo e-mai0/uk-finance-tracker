@@ -34,6 +34,7 @@ export function CvShell({
   initialMessages,
   initialCv,
   initialPane = "preview",
+  handoff,
 }: {
   sessionId: string;
   initialMessages: UIMessage[];
@@ -47,6 +48,12 @@ export function CvShell({
    * unchanged; passing "preview" keeps today's mobile default.
    */
   initialPane?: "preview" | "chat";
+  /**
+   * U4b dock→CV handoff: a request forwarded from the main brain. Passed
+   * straight through to the chat pane, which auto-sends it to the coach exactly
+   * once and strips the carrying query param.
+   */
+  handoff?: string;
 }) {
   const [liveCv, setLiveCv] = useState<CvData>(initialCv);
   // Mobile-only: which pane the narrow segmented toggle shows. Desktop ignores
@@ -125,6 +132,7 @@ export function CvShell({
             sessionId={sessionId}
             initialMessages={initialMessages}
             onCvUpdate={handleCvUpdate}
+            handoff={handoff}
           />
         </div>
       </div>

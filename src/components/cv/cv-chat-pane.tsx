@@ -22,10 +22,16 @@ export function CvChatPane({
   sessionId,
   initialMessages,
   onCvUpdate,
+  handoff,
 }: {
   sessionId: string;
   initialMessages: UIMessage[];
   onCvUpdate?: (cv: CvData) => void;
+  /**
+   * U4b dock→CV handoff: a request forwarded from the main brain. <CvChat>
+   * auto-sends it to the coach exactly once on mount and strips the param.
+   */
+  handoff?: string;
 }) {
   return (
     <CvChat
@@ -33,6 +39,7 @@ export function CvChatPane({
       sessionId={sessionId}
       initialMessages={initialMessages}
       onCvUpdate={onCvUpdate}
+      handoff={handoff}
     />
   );
 }

@@ -13,8 +13,10 @@ import {
 } from "ai";
 import type { UIMessage, UIMessagePart, ToolUIPart, DynamicToolUIPart } from "ai";
 import { useRef, useState, useEffect, FormEvent, KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { CvData } from "@/lib/cv";
+import { decideAutoSend, CV_PATH } from "@/lib/cv-handoff";
 
 // ---------------------------------------------------------------------------
 // Coach chips (U1) — suggested-move chips seeded with the coach's opening
@@ -188,15 +190,29 @@ export function CvChat({
   sessionId,
   initialMessages,
   onCvUpdate,
+  handoff,
 }: {
   sessionId: string;
   initialMessages: UIMessage[];
   /** Called whenever update_cv produces a new CvData so the parent can refresh the preview. */
   onCvUpdate?: (cv: CvData) => void;
+  /**
+   * U4b dock→CV handoff: a request forwarded from the main brain via the ?handoff=
+   * query param. Auto-sent to the coach as an ordinary user message exactly once
+   * on mount; the carrying param is then stripped so a refresh can't replay it.
+   */
+  handoff?: string;
 }) {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  // Once-guard for the handoff auto-send (U4b). Strict Mode double-invokes
+  // effects and the component re-renders as the coach streams its reply; this
+  // ref makes the auto-send fire EXACTLY ONCE for a given handoff. The strip
+  // (router.replace to a bare /cv) then removes the param so a refresh — which
+  // remounts with a fresh ref — has no handoff to replay.
+  const autoSentRef = useRef(false);
 
   const { messages, sendMessage, regenerate, stop, status, error } = useChat({
     id: sessionId,
@@ -222,6 +238,28 @@ export function CvChat({
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  // Dock→CV handoff auto-send (U4b). When the page arrived with a ?handoff=
+  // request, send it to the coach as an ordinary user message exactly ONCE
+  // (the autoSentRef guard survives the streaming re-renders + Strict Mode's
+  // double effect), then strip the param via router.replace("/cv") so a refresh
+  // does not replay the send. The message goes through the normal sendMessage
+  // path, so it honours the /api/cv/chat "last message must be user" rule — no
+  // route change needed. A normal visit (no handoff) is a no-op.
+  useEffect(() => {
+    const decision = decideAutoSend(handoff, autoSentRef.current);
+    if (decision.send) {
+      autoSentRef.current = true;
+      sendMessage({ text: decision.text });
+    }
+    if (decision.strip) {
+      router.replace(CV_PATH);
+    }
+    // Intentionally keyed on the handoff value only: this runs on mount for a
+    // given handoff. The autoSentRef guard prevents a double-send if React
+    // re-invokes the effect; sendMessage/router identities are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handoff]);
 
   function handleSubmit(e?: FormEvent) {
     e?.preventDefault();

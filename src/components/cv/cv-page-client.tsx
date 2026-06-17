@@ -29,17 +29,31 @@ export function CvPageClient({
   initialMessages,
   initialCv,
   initialHasCv,
+  handoff,
+  initialPane = "preview",
 }: {
   sessionId: string;
   initialMessages: UIMessage[];
   initialCv: CvData;
   initialHasCv: boolean;
+  /**
+   * U4b dock→CV handoff: a request forwarded from the main brain via the ?handoff=
+   * query param. When present, the CV chat auto-sends it to the coach exactly
+   * once on mount and then strips the param. Undefined on a normal visit.
+   */
+  handoff?: string;
+  /**
+   * Which pane to open on first mount. The server sets this to "chat" when a
+   * handoff (or ?pane=refine) is present so the user lands in the coach view.
+   */
+  initialPane?: "preview" | "chat";
 }) {
   const [hasCv, setHasCv] = useState(initialHasCv);
   const [cv, setCv] = useState<CvData>(initialCv);
   // After a draft we land the user in the refine pane (matches prior behaviour);
-  // a normal page load opens the preview pane.
-  const [shellPane, setShellPane] = useState<"preview" | "chat">("preview");
+  // a normal page load opens the preview pane. A handoff arrives with
+  // initialPane="chat" so the user lands mid-conversation in the coach view.
+  const [shellPane, setShellPane] = useState<"preview" | "chat">(initialPane);
 
   const handleBuilt = useCallback((built: CvData) => {
     setCv(built);
@@ -66,6 +80,7 @@ export function CvPageClient({
       initialMessages={initialMessages}
       initialCv={cv}
       initialPane={shellPane}
+      handoff={handoff}
     />
   );
 }
