@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { consumeStream } from "ai";
+import { consumeStream, generateId, JsonToSseTransformStream, createUIMessageStreamResponse, UI_MESSAGE_STREAM_HEADERS } from "ai";
 import { z } from "zod";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
@@ -8,6 +8,11 @@ import { checkBudget } from "@/server/ai/budget";
 import { gardenerDue, runGardenerForUser } from "@/server/memory/gardener";
 import type { UIMessage } from "ai";
 import { rowToUIMessage } from "@/server/chat/messages";
+import {
+  getStreamContext,
+  setActiveStream,
+  clearActiveStream,
+} from "@/server/ai/resumable";
 
 export const maxDuration = 120;
 
@@ -137,89 +142,102 @@ export async function POST(req: Request) {
     }
   });
 
-  // Run the LLM stream to completion server-side even if the client disconnects
-  // (e.g. user navigates to another page mid-stream), so onFinish still fires
-  // and the assistant message is persisted for the next page load.
+  // Run the LLM stream to completion server-side even if the client
+  // disconnects, so onFinish still fires and the assistant message persists.
   result.consumeStream(); // no await
 
-  return result.toUIMessageStreamResponse({
-    // originalMessages is the server-rebuilt array (item 1)
-    originalMessages: serverMessages,
-    // Ensures onFinish fires (with isAborted) when the response stream is
-    // aborted via the Stop button, so the partial message is persisted.
-    consumeSseStream: consumeStream,
-    onFinish: async ({ responseMessage, isAborted }) => {
-      const lastUserMsg = incomingMessage as UIMessage;
-      const toSave = [lastUserMsg, responseMessage];
+  const onFinish = async ({
+    responseMessage,
+    isAborted,
+  }: {
+    responseMessage: UIMessage;
+    isAborted: boolean;
+  }) => {
+    const lastUserMsg = incomingMessage as UIMessage;
+    const toSave = [lastUserMsg, responseMessage];
 
-      // 1. Persist chat messages with clientId + skipDuplicates (items 6 & 7)
-      try {
-        await prisma.chatMessage.createMany({
-          data: toSave.map((m) => ({
-            sessionId: chatSession.id,
-            clientId: m.id ?? null,
-            role: m.role,
-            parts: JSON.stringify(m.parts),
-            aborted: m === responseMessage ? isAborted : false,
-          })),
-          skipDuplicates: true,
-        });
-      } catch (err) {
-        console.error("[chat] failed to persist messages", { sessionId: chatSession.id, err });
-      }
+    // 1. Persist chat messages with clientId + skipDuplicates
+    try {
+      await prisma.chatMessage.createMany({
+        data: toSave.map((m) => ({
+          sessionId: chatSession.id,
+          clientId: m.id ?? null,
+          role: m.role,
+          parts: JSON.stringify(m.parts),
+          aborted: m === responseMessage ? isAborted : false,
+        })),
+        skipDuplicates: true,
+      });
+    } catch (err) {
+      console.error("[chat] failed to persist messages", { sessionId: chatSession.id, err });
+    }
 
-      // 2. Mark gardener questions asked if assistant text contains distinctive chunk (item 4)
-      try {
-        if (pendingQuestions.length > 0) {
-          // Collect all text from the assistant response
-          const assistantText = responseMessage.parts
-            .filter((p): p is { type: "text"; text: string } => p.type === "text")
-            .map((p) => p.text)
-            .join(" ")
-            .toLowerCase();
-
-          const toMarkAsked = pendingQuestions
-            .filter((q) => {
-              const chunk = q.question.trim().slice(0, 25).toLowerCase();
-              return chunk.length > 0 && assistantText.includes(chunk);
-            })
-            .map((q) => q.id);
-
-          if (toMarkAsked.length > 0) {
-            await prisma.gardenerQuestion.updateMany({
-              where: { id: { in: toMarkAsked } },
-              data: { status: "asked" },
-            });
-          }
-        }
-      } catch (err) {
-        console.error("[chat] failed to mark questions asked", { userId, err });
-      }
-
-      // 3. Auto-title the session on first user message.
-      try {
-        if (chatSession.title === "New conversation" && lastUserMsg?.role === "user") {
-          const textPart = lastUserMsg.parts.find((p) => p.type === "text");
-          const title =
-            textPart && "text" in textPart ? textPart.text.slice(0, 60) : "Conversation";
-          await prisma.chatSession.update({
-            where: { id: chatSession.id },
-            data: { title },
+    // 2. Mark gardener questions asked if the assistant echoed a distinctive chunk
+    try {
+      if (pendingQuestions.length > 0) {
+        const assistantText = responseMessage.parts
+          .filter((p): p is { type: "text"; text: string } => p.type === "text")
+          .map((p) => p.text)
+          .join(" ")
+          .toLowerCase();
+        const toMarkAsked = pendingQuestions
+          .filter((q) => {
+            const chunk = q.question.trim().slice(0, 25).toLowerCase();
+            return chunk.length > 0 && assistantText.includes(chunk);
+          })
+          .map((q) => q.id);
+        if (toMarkAsked.length > 0) {
+          await prisma.gardenerQuestion.updateMany({
+            where: { id: { in: toMarkAsked } },
+            data: { status: "asked" },
           });
         }
-      } catch (err) {
-        console.error("[chat] failed to auto-title session", { sessionId: chatSession.id, err });
       }
+    } catch (err) {
+      console.error("[chat] failed to mark questions asked", { userId, err });
+    }
 
-      // 4. Touch updatedAt so the session list stays ordered.
-      try {
-        await prisma.chatSession.update({
-          where: { id: chatSession.id },
-          data: { updatedAt: new Date() },
-        });
-      } catch (err) {
-        console.error("[chat] failed to update session timestamp", { sessionId: chatSession.id, err });
+    // 3. Auto-title the session on first user message
+    try {
+      if (chatSession.title === "New conversation" && lastUserMsg?.role === "user") {
+        const textPart = lastUserMsg.parts.find((p) => p.type === "text");
+        const title = textPart && "text" in textPart ? textPart.text.slice(0, 60) : "Conversation";
+        await prisma.chatSession.update({ where: { id: chatSession.id }, data: { title } });
       }
-    },
+    } catch (err) {
+      console.error("[chat] failed to auto-title session", { sessionId: chatSession.id, err });
+    }
+
+    // 4. Touch updatedAt so the session list stays ordered
+    try {
+      await prisma.chatSession.update({ where: { id: chatSession.id }, data: { updatedAt: new Date() } });
+    } catch (err) {
+      console.error("[chat] failed to update session timestamp", { sessionId: chatSession.id, err });
+    }
+
+    // 5. Stream is done — drop the resume pointer so GET returns 204 hereafter.
+    await clearActiveStream(chatSession.id);
+  };
+
+  const uiStream = result.toUIMessageStream({
+    originalMessages: serverMessages,
+    onFinish,
+  });
+
+  // Without Redis, behave exactly as before: stream straight to the client.
+  const streamContext = getStreamContext();
+  if (!streamContext) {
+    return createUIMessageStreamResponse({ stream: uiStream, consumeSseStream: consumeStream });
+  }
+
+  // With Redis: register a resumable stream and record the session pointer so a
+  // remount (e.g. opening another session and coming back) can reattach.
+  const streamId = generateId();
+  await setActiveStream(chatSession.id, streamId);
+  const sseStream = uiStream.pipeThrough(new JsonToSseTransformStream());
+  const resumable = await streamContext.resumableStream(streamId, () => sseStream);
+
+  return new Response(resumable ?? sseStream, {
+    headers: UI_MESSAGE_STREAM_HEADERS,
   });
 }
