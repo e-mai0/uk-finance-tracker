@@ -43,6 +43,7 @@ export async function getTrackerItems(userId: string): Promise<TrackerItem[]> {
       graduationYear: profile.graduationYear,
       currentYear: profile.currentYear,
       skills: profile.skills,
+      degreeSubject: profile.degreeSubject,
     };
     const scorePrefs: ScorePreferences = {
       targetRoleFamilies: prefs.targetRoleFamilies,
@@ -138,6 +139,7 @@ export async function getOpportunityDetail(
       graduationYear: profile.graduationYear,
       currentYear: profile.currentYear,
       skills: profile.skills,
+      degreeSubject: profile.degreeSubject,
     };
     const scorePrefs: ScorePreferences = {
       targetRoleFamilies: prefs.targetRoleFamilies,
