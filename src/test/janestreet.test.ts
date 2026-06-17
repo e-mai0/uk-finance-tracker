@@ -44,12 +44,25 @@ const FEED = [
 ];
 
 describe("mapJaneStreetJobs", () => {
-  it("keeps only London summer internships", () => {
+  it("keeps the London summer internship and classifies the NYC one by region", () => {
     const out = mapJaneStreetJobs(FEED, js);
-    expect(out).toHaveLength(1);
-    expect(out[0].title).toBe("Quantitative Trader — Summer Internship");
-    expect(out[0].location).toBe("London");
-    expect(out[0].roleFamily).toBe("QUANT");
+    // London summer intern (1001) + NYC summer intern (1005, now classified with
+    // region US rather than discarded per ADR-003). The winter/December cycles
+    // (1002, 1003) are still dropped by the adapter's season filter, and the
+    // full-time AML analyst (1004) is still excluded as not-internship.
+    expect(out).toHaveLength(2);
+
+    const ldn = out.find((o) => o.location === "London");
+    expect(ldn).toBeDefined();
+    expect(ldn!.title).toBe("Quantitative Trader — Summer Internship");
+    expect(ldn!.roleFamily).toBe("QUANT");
+    expect(ldn!.region).toBe("UK");
+
+    // The previously-dropped New York summer internship is now present AND
+    // tagged region US.
+    const nyc = out.find((o) => o.location === "New York");
+    expect(nyc).toBeDefined();
+    expect(nyc!.region).toBe("US");
   });
 
   it("builds the verified position URL pattern", () => {

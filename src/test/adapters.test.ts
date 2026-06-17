@@ -29,7 +29,7 @@ describe("mapGreenhouseJobs", () => {
         id: 3,
         title: "Summer Analyst, Investment Team",
         absolute_url: "https://job-boards.greenhouse.io/acme/jobs/3",
-        location: { name: "New York" }, // non-UK → excluded
+        location: { name: "New York" }, // non-UK → INCLUDED + tagged region US (ADR-003)
         departments: [],
       },
     ],
@@ -37,17 +37,28 @@ describe("mapGreenhouseJobs", () => {
 
   it("maps included jobs and applies the classifier", () => {
     const out = mapGreenhouseJobs(payload, fund);
-    expect(out).toHaveLength(1);
-    const opp = out[0];
-    expect(opp.employer).toBe("Acme Capital");
-    expect(opp.roleFamily).toBe("QUANT");
-    expect(opp.location).toBe("London, United Kingdom");
-    expect(opp.status).toBe("OPEN");
-    expect(opp.sourceType).toBe("GREENHOUSE");
-    expect(opp.applicationUrl).toBe(
-      "https://job-boards.greenhouse.io/acme/jobs/1",
-    );
-    expect(opp.tags).toContain("research");
+    // job #1 (UK summer intern) + job #3 (NY summer analyst, now classified
+    // rather than discarded per ADR-003). Job #2 (full-time) stays excluded.
+    expect(out).toHaveLength(2);
+
+    const uk = out.find((o) => o.applicationUrl?.endsWith("/jobs/1"));
+    expect(uk).toBeDefined();
+    expect(uk!.employer).toBe("Acme Capital");
+    expect(uk!.roleFamily).toBe("QUANT");
+    expect(uk!.location).toBe("London, United Kingdom");
+    expect(uk!.region).toBe("UK");
+    expect(uk!.status).toBe("OPEN");
+    expect(uk!.sourceType).toBe("GREENHOUSE");
+    expect(uk!.tags).toContain("research");
+
+    // The previously-dropped New York role is now present AND tagged region US.
+    const ny = out.find((o) => o.applicationUrl?.endsWith("/jobs/3"));
+    expect(ny).toBeDefined();
+    expect(ny!.title).toBe("Summer Analyst, Investment Team");
+    expect(ny!.region).toBe("US");
+
+    // The full-time role (#2) is still excluded (not-internship is untouched).
+    expect(out.find((o) => o.applicationUrl?.endsWith("/jobs/2"))).toBeUndefined();
   });
 
   it("never republishes the employer-written description", () => {
