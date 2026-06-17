@@ -1,5 +1,6 @@
 import type { NormalizedOpportunity, RawOpportunity } from "./types";
 import { inferDeadline } from "./deadline-infer";
+import { PROGRAMME_TYPE_LABELS } from "@/lib/constants";
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null;
@@ -31,16 +32,24 @@ export function normalizeOpportunity(
   // exactly this inferred case; a published deadline that is itself rolling
   // can't yet be flagged independently (no signal for it in RawOpportunity).
   const inferred = realDeadline ? null : inferDeadline(parseDate(raw.firstSeen) ?? now);
+  // Season + region come from classification (carried on RawOpportunity). Seed/
+  // manual datasets omit them → default to SUMMER_INTERNSHIP / UK. Legacy
+  // string/boolean fields are DERIVED so nothing downstream breaks while they
+  // remain (retired in a later cycle).
+  const programmeTypeEnum = raw.programmeType ?? "SUMMER_INTERNSHIP";
+  const region = raw.region ?? "UK";
   return {
     employer: raw.employer.trim(),
     title: raw.title.trim(),
-    programmeType: "Summer Internship",
+    programmeType: PROGRAMME_TYPE_LABELS[programmeTypeEnum],
+    programmeTypeEnum,
+    region,
     roleFamily: raw.roleFamily,
     divisionDesk: raw.divisionDesk?.trim() || null,
     location: raw.location.trim(),
-    country: "UK",
-    isUkBased: true,
-    isSummerInternship: true,
+    country: region,
+    isUkBased: region === "UK",
+    isSummerInternship: programmeTypeEnum === "SUMMER_INTERNSHIP",
     status: raw.status,
     opensAt: parseDate(raw.opensAt),
     deadlineAt: realDeadline ?? inferred!.deadlineAt,

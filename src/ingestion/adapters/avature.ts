@@ -17,6 +17,7 @@ export function mapMacquarie(html: string, base: string, employer: AdapterEmploy
     if (!verdict.include) continue;
     const url = href.startsWith("http") ? href : `${base}${href}`;
     out.push({ employer: employer.name, title: title.trim(), roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType, region: verdict.region,
       location: location.trim() || "London", status: "OPEN",
       summary: originalSummary({ title: title.trim(), employer: employer.name, atsLabel: "careers site (Avature)", location: location.trim() || "UK" }),
       applicationUrl: url, sourceUrl: url, sourceType: "AVATURE", tags: [] });
@@ -35,6 +36,7 @@ export function mapUbsEmbedded(html: string, base: string, employer: AdapterEmpl
     if (!verdict.include) continue;
     const url = `${base}/TGnewUI/Search/Home/HomeWithPreLoad?partnerid=25008&siteid=5131&PageType=JobDetails&jobid=${reqid}`;
     out.push({ employer: employer.name, title: title.trim(), roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType, region: verdict.region,
       location: /united kingdom|london/i.test(country) ? "London" : country || "UK", status: "OPEN",
       summary: originalSummary({ title: title.trim(), employer: employer.name, atsLabel: "careers site (Avature)", location: "London" }),
       applicationUrl: url, sourceUrl: url, sourceType: "AVATURE", tags: [] });

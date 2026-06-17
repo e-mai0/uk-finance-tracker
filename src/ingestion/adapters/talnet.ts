@@ -108,6 +108,7 @@ export function mapTalNetBoard(html: string, baseUrl: string, employer: AdapterE
 
     out.push({
       employer: employer.name, title, roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType, region: verdict.region,
       location, status: "OPEN",
       summary: originalSummary({ title, employer: employer.name, atsLabel: "careers job board (tal.net)", location }),
       applicationUrl: url, sourceUrl: url, sourceType: "TALNET",
