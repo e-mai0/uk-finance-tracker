@@ -16,6 +16,7 @@ import {
 } from "./panel";
 import { send } from "./messaging";
 import { looksLikeApplication, hasAnyField, mountCue } from "./detect";
+import { sendTrackApplicationWithRetry, clearInFlight } from "./record";
 import type {
   AgentResultPayload,
   DraftProvenance,
@@ -234,6 +235,9 @@ const panel = new Panel({
     });
     return res.ok;
   },
+  // Clear any in-flight draft generations when the user closes the panel so
+  // the same field can be re-generated after the panel is re-opened.
+  onClose: () => clearInFlight(inFlight),
 });
 
 function formContainer(): ParentNode | null {
@@ -297,13 +301,23 @@ async function engage(force = false) {
     panel.setDiscussLink(`${apiBase}/chat?prefill=${encodeURIComponent(prefill)}`);
   }
 
-  void send({
-    type: "trackApplication",
-    payload: {
-      externalUrl: location.href.split("#")[0], ats: adapter.kind,
+  // Record the application with retry on transient errors (network / 5xx / 429).
+  // Runs in the background — does not block triage from rendering. On permanent
+  // failure the user sees an in-panel error so they know the record was not saved.
+  void (async () => {
+    const trackPayload = {
+      externalUrl: location.href.split("#")[0], ats: adapter.kind as string,
       employerName: employer, roleTitle: role, status: "AUTOFILLED",
-    },
-  });
+    };
+    const result = await sendTrackApplicationWithRetry(trackPayload, (p) =>
+      send({ type: "trackApplication", payload: p }),
+    );
+    if (!result.ok && panel.isOpen()) {
+      panel.showRecordError(
+        "Couldn't save this application — click Apply to retry",
+      );
+    }
+  })();
 
   // Pre-stage drafts for the first three draft fields, sequentially (kind to
   // the generation budget). Abort between calls if the panel was closed or a
