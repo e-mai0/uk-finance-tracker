@@ -12,10 +12,20 @@ const HTML = `<article class="article--result">
   <img alt="Office Location:"><span>Sao Paulo</span></article>`;
 
 describe("mapMacquarie", () => {
-  it("keeps London internships keyed on jobId", () => {
+  it("keeps both internships keyed on jobId and classifies them by region", () => {
     const out = mapMacquarie(HTML, "https://recruitment.macquarie.com", mq);
-    expect(out).toHaveLength(1);
-    expect(out[0].applicationUrl).toContain("jobId=22679");
-    expect(out[0].sourceType).toBe("AVATURE");
+    // London intern (22679) + São Paulo intern (22680, now classified with
+    // region OTHER rather than discarded per ADR-003).
+    expect(out).toHaveLength(2);
+
+    const london = out.find((o) => o.applicationUrl?.includes("jobId=22679"));
+    expect(london).toBeDefined();
+    expect(london!.sourceType).toBe("AVATURE");
+    expect(london!.region).toBe("UK");
+
+    // The previously-dropped São Paulo role is now present AND tagged region OTHER.
+    const saoPaulo = out.find((o) => o.applicationUrl?.includes("jobId=22680"));
+    expect(saoPaulo).toBeDefined();
+    expect(saoPaulo!.region).toBe("OTHER");
   });
 });

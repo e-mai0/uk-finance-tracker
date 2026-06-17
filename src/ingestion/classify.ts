@@ -1,10 +1,16 @@
 import type { RoleFamily } from "@prisma/client";
+import type { ProgrammeType, Region } from "@/lib/constants";
 
 /**
- * Pure classification of a raw ATS posting into "UK finance summer internship
- * we should publish" or an exclusion reason. Shared by every live adapter
- * (Greenhouse / Lever / Ashby) so the inclusion rules live in one tested
- * place. Deterministic, keyword-based — same philosophy as lib/scoring.
+ * Pure classification of a raw ATS posting into "a finance internship we should
+ * publish" (tagged with its programme season + region) or an exclusion reason.
+ * Shared by every live adapter (Greenhouse / Lever / Ashby / …) so the rules
+ * live in one tested place. Deterministic, keyword-based — same philosophy as
+ * lib/scoring.
+ *
+ * Season and region are CLASSIFIED, not gatekept: a Spring Week, off-cycle,
+ * placement, or non-UK role is included and tagged rather than discarded (see
+ * ADR-003). The only retained exclusions are `not-internship` and `not-finance`.
  */
 
 export interface RawPosting {
@@ -19,14 +25,16 @@ export interface RawPosting {
   descriptionText?: string | null;
 }
 
-export type ExcludeReason =
-  | "not-internship"
-  | "wrong-season"
-  | "not-uk"
-  | "not-finance";
+export type ExcludeReason = "not-internship" | "not-finance";
 
 export type Classification =
-  | { include: true; roleFamily: RoleFamily; via: "keyword" | "fallback" }
+  | {
+      include: true;
+      roleFamily: RoleFamily;
+      via: "keyword" | "fallback";
+      programmeType: ProgrammeType;
+      region: Region;
+    }
   | { include: false; reason: ExcludeReason };
 
 function norm(s: string | null | undefined): string {
@@ -45,19 +53,6 @@ const INTERN_TITLE_SIGNALS = [
   /\bsummer associate\b/i,
 ];
 
-// Programmes that are early-careers but NOT a summer internship. "intern" in
-// the title does not rescue these — "Off-cycle Intern" is still out of scope.
-const NON_SUMMER_SIGNALS = [
-  "off-cycle",
-  "off cycle",
-  "spring",
-  "insight",
-  "winter",
-  "apprentice",
-  "industrial placement",
-  "placement year",
-];
-
 // Roles that are not internships at all.
 const NON_INTERN_SIGNALS = [
   /\bgraduate\b/i,
@@ -66,19 +61,78 @@ const NON_INTERN_SIGNALS = [
   /\bfull[- ]time\b/i,
 ];
 
+/**
+ * Is this an in-scope early-careers programme (internship, OR a Spring Week /
+ * insight / off-cycle / placement)? Spring Weeks and insight programmes often
+ * carry NO "intern" word in the title, so a recognised non-summer programme
+ * signal (see detectProgrammeType) also qualifies — otherwise AC1/AC3 ("Spring
+ * Insight Week", "Industrial Placement") would be dropped as not-internship.
+ * The graduate/full-time exclusion in NON_INTERN_SIGNALS stays authoritative:
+ * a "Graduate Programme" is still out of scope.
+ */
 function isInternship(p: RawPosting): boolean {
   const title = p.title;
+  if (NON_INTERN_SIGNALS.some((s) => s.test(title))) return false;
   const byTitle = INTERN_TITLE_SIGNALS.some((s) => s.test(title));
   const byType = /\bintern(ship)?s?\b/i.test(p.employmentType ?? "");
-  if (!byTitle && !byType) return false;
-  // A title signal like "Graduate Software Intern" is contradictory; treat
-  // explicit non-intern words in the TITLE as authoritative.
-  return !NON_INTERN_SIGNALS.some((s) => s.test(title));
+  // A recognised non-summer programme word (spring/insight/placement/off-cycle/
+  // winter) marks an in-scope early-careers programme even without "intern".
+  const byProgramme = detectProgrammeType(p) !== "SUMMER_INTERNSHIP";
+  return byTitle || byType || byProgramme;
 }
 
-function isWrongSeason(p: RawPosting): boolean {
+// ---------------------------------------------------------------------------
+// Programme-type (season) detection
+//
+// LOCKED precedence (ADR-003 §2.1, SPEC-CHECK §8.1): most specific first —
+//   SPRING_WEEK → INDUSTRIAL_PLACEMENT → OFF_CYCLE → SUMMER_INTERNSHIP (default)
+// Winter folds into OFF_CYCLE (no separate WINTER value). A title naming
+// multiple seasons (e.g. "Summer Industrial Placement") resolves to the most
+// specific match by this order, NOT the first word in the string.
+// ---------------------------------------------------------------------------
+
+const SPRING_WEEK_SIGNALS = [
+  "spring week",
+  "spring insight",
+  "spring into",
+  "spring programme",
+  "spring program",
+  "insight day",
+  "insight week",
+  "insight programme",
+  "insight program",
+  "insight series",
+  "discovery day",
+  "discovery week",
+  "discovery programme",
+  "discovery program",
+  "first-year insight",
+  "first year insight",
+  "sophomore",
+];
+
+const INDUSTRIAL_PLACEMENT_SIGNALS = [
+  "industrial placement",
+  "placement year",
+  "year in industry",
+  "sandwich placement",
+  "12-month placement",
+  "12 month placement",
+  "12-month industrial",
+  "apprentice",
+  "apprenticeship",
+];
+
+// Off-cycle proper, plus winter (folded here per ADR-003).
+const OFF_CYCLE_SIGNALS = ["off-cycle", "off cycle", "winter"];
+
+export function detectProgrammeType(p: RawPosting): ProgrammeType {
   const title = norm(p.title);
-  return NON_SUMMER_SIGNALS.some((s) => title.includes(s));
+  if (SPRING_WEEK_SIGNALS.some((s) => title.includes(s))) return "SPRING_WEEK";
+  if (INDUSTRIAL_PLACEMENT_SIGNALS.some((s) => title.includes(s)))
+    return "INDUSTRIAL_PLACEMENT";
+  if (OFF_CYCLE_SIGNALS.some((s) => title.includes(s))) return "OFF_CYCLE";
+  return "SUMMER_INTERNSHIP";
 }
 
 // ---------------------------------------------------------------------------
@@ -87,6 +141,7 @@ function isWrongSeason(p: RawPosting): boolean {
 
 const UK_LOCATION_SIGNALS = [
   "london",
+  "canary wharf",
   "united kingdom",
   "england",
   "scotland",
@@ -111,6 +166,46 @@ export function isUkLocation(location: string): boolean {
   const loc = norm(location);
   if (UK_LOCATION_SIGNALS.some((s) => loc.includes(s))) return true;
   return UK_WORD.test(location);
+}
+
+// ---------------------------------------------------------------------------
+// Region detection (UK | US | HK | OTHER)
+//
+// Layered on top of isUkLocation. UK-FIRST for multi-office strings (SPEC §2.3,
+// §8.1): any UK office ⇒ UK. Then unambiguous US signals, then HK, else OTHER.
+//
+// SC3 (binding): bare two-letter codes are ambiguous — ", CA" is California (US)
+// but "CA" is also Canada's country code, so "Toronto, CA" must NOT read as US.
+// We therefore use only UNAMBIGUOUS US signals (full city names + "United
+// States"/"USA"); a lone ambiguous token yields OTHER, never a US guess.
+// ---------------------------------------------------------------------------
+
+const US_LOCATION_SIGNALS = [
+  "new york",
+  "chicago",
+  "san francisco",
+  "boston",
+  "houston",
+  "jersey city",
+  "stamford",
+  "united states",
+];
+
+/** "USA" as a word; deliberately NOT bare "US" (too collision-prone). */
+const US_WORD = /\busa\b/i;
+
+const HK_LOCATION_SIGNALS = ["hong kong", "hongkong"];
+const HK_WORD = /\bhk\b/i;
+
+export function detectRegion(location: string): Region {
+  // UK-first: a co-listed UK office makes the whole listing UK.
+  if (isUkLocation(location)) return "UK";
+  const loc = norm(location);
+  if (US_LOCATION_SIGNALS.some((s) => loc.includes(s)) || US_WORD.test(location))
+    return "US";
+  if (HK_LOCATION_SIGNALS.some((s) => loc.includes(s)) || HK_WORD.test(location))
+    return "HK";
+  return "OTHER";
 }
 
 // ---------------------------------------------------------------------------
@@ -228,9 +323,9 @@ export function classifyPosting(
   p: RawPosting,
   fallbackRoleFamily: RoleFamily | null = null,
 ): Classification {
-  if (isWrongSeason(p)) return { include: false, reason: "wrong-season" };
+  // Season + region are CLASSIFIED, not gatekept (ADR-003). The only retained
+  // exclusions are not-internship and not-finance.
   if (!isInternship(p)) return { include: false, reason: "not-internship" };
-  if (!isUkLocation(p.location)) return { include: false, reason: "not-uk" };
 
   const titleAndDepts = ` ${norm(p.title)} ${(p.departments ?? [])
     .map(norm)
@@ -238,9 +333,25 @@ export function classifyPosting(
   if (NON_FINANCE_SIGNALS.some((s) => titleAndDepts.includes(s)))
     return { include: false, reason: "not-finance" };
 
+  const programmeType = detectProgrammeType(p);
+  const region = detectRegion(p.location);
+
   const inferred = inferRoleFamily(p);
-  if (inferred) return { include: true, roleFamily: inferred, via: "keyword" };
+  if (inferred)
+    return {
+      include: true,
+      roleFamily: inferred,
+      via: "keyword",
+      programmeType,
+      region,
+    };
   if (fallbackRoleFamily)
-    return { include: true, roleFamily: fallbackRoleFamily, via: "fallback" };
+    return {
+      include: true,
+      roleFamily: fallbackRoleFamily,
+      via: "fallback",
+      programmeType,
+      region,
+    };
   return { include: false, reason: "not-finance" };
 }

@@ -17,6 +17,7 @@ export function mapGoldmanRoles(payload: unknown, employer: AdapterEmployer): Ra
     if (!verdict.include) continue;
     const url = `https://higher.gs.com/roles/${r.externalSource?.sourceId ?? ""}`;
     out.push({ employer: employer.name, title: r.jobTitle.trim(), roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType, region: verdict.region,
       divisionDesk: r.division?.trim() || undefined, location: loc.city ?? "London", status: "OPEN",
       summary: originalSummary({ title: r.jobTitle.trim(), employer: employer.name, atsLabel: "Goldman Sachs careers (higher.gs.com)", department: r.division ?? null, location: loc.city ?? "London" }),
       applicationUrl: url, sourceUrl: url, sourceType: "CAREERS_PAGE", tags: [] });
