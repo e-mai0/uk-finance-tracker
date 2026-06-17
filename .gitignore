@@ -46,3 +46,7 @@ next-env.d.ts
 # local agent skill packs (installed via 'skills add')
 .agents/
 .superpowers/
+
+# Cyclops autonomous-loop ledger (mutable per-cycle state, kept local; the operating model IS tracked)
+/.agent/*
+!/.agent/OPERATING_MODEL.md
