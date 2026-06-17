@@ -323,6 +323,64 @@ describe("classifyPosting — Phase 2 exclusions", () => {
       classifyPosting({ title: "VP, M&A", location: "London" }),
     ).toEqual({ include: false, reason: "not-internship" });
   });
+
+  // Apprenticeships (research edge case 6, taxonomy §"Recommended EXCLUDE
+  // signals"): UK degree / school-leaver apprenticeships are full-time,
+  // multi-year ROUTES, not internships — the-trackr keeps them out of its
+  // internship tabs. A BARE apprenticeship (no genuine placement signal) is
+  // EXCLUDED. Order matters: the apprenticeship exclusion runs ONLY when no
+  // industrial-placement signal is present, so "Year in Industry Apprentice"
+  // (a real placement that happens to use the word) STILL classifies
+  // INDUSTRIAL_PLACEMENT (placement wins — asserted in detectProgrammeType /
+  // the classifyPosting block below).
+  it("excludes a bare degree apprenticeship (no placement signal)", () => {
+    const v = classifyPosting(
+      { title: "Degree Apprenticeship — Finance", location: "London" },
+      "IB",
+    );
+    expect(v.include).toBe(false);
+    if (!v.include) expect(v.reason).toBe("apprenticeship");
+  });
+
+  it("excludes a school-leaver technology degree apprenticeship", () => {
+    const v = classifyPosting(
+      { title: "Technology Degree Apprenticeship (school leaver)", location: "London" },
+      "QUANT",
+    );
+    expect(v.include).toBe(false);
+    // School-leaver hits pre-university OR apprenticeship — either exclusion is
+    // fine per spec (both keep it off the board).
+    if (!v.include)
+      expect(["apprenticeship", "pre-university"]).toContain(v.reason);
+  });
+
+  // Control: a genuine industrial placement that uses the word "apprentice"
+  // must STILL classify INDUSTRIAL_PLACEMENT — the placement signal ("year in
+  // industry") wins over the apprenticeship exclusion.
+  it("KEEPS 'Year in Industry Apprentice' as INDUSTRIAL_PLACEMENT (placement wins)", () => {
+    expect(
+      detectProgrammeType({ title: "Year in Industry Apprentice", location: "London" }),
+    ).toBe("INDUSTRIAL_PLACEMENT");
+    const v = classifyPosting(
+      { title: "Year in Industry Apprentice", location: "London" },
+      "IB",
+    );
+    expect(v.include).toBe(true);
+    if (v.include) expect(v.programmeType).toBe("INDUSTRIAL_PLACEMENT");
+  });
+
+  // Control: a real industrial placement with NO apprentice word is unaffected.
+  it("KEEPS a plain 'Industrial Placement' as INDUSTRIAL_PLACEMENT", () => {
+    expect(
+      detectProgrammeType({ title: "Industrial Placement", location: "London" }),
+    ).toBe("INDUSTRIAL_PLACEMENT");
+    const v = classifyPosting(
+      { title: "Industrial Placement", location: "London" },
+      "IB",
+    );
+    expect(v.include).toBe(true);
+    if (v.include) expect(v.programmeType).toBe("INDUSTRIAL_PLACEMENT");
+  });
 });
 
 describe("classifyPosting", () => {

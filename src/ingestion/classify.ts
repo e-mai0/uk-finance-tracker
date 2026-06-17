@@ -31,7 +31,8 @@ export type ExcludeReason =
   | "not-internship"
   | "not-finance"
   | "not-uk"
-  | "pre-university";
+  | "pre-university"
+  | "apprenticeship";
 
 export type Classification =
   | {
@@ -196,6 +197,31 @@ const PRE_UNIVERSITY_SIGNALS: RegExp[] = [
 
 function isPreUniversity(p: RawPosting): boolean {
   return PRE_UNIVERSITY_SIGNALS.some((s) => s.test(p.title));
+}
+
+// ---------------------------------------------------------------------------
+// Apprenticeship guard (research edge case 6, taxonomy §"Recommended EXCLUDE
+// signals")
+//
+// UK degree / level-3 / level-6 / school-leaver apprenticeships are full-time,
+// MULTI-YEAR routes — jobs, not internships — and the benchmark (the-trackr)
+// keeps them out of its internship tabs. So a BARE apprenticeship is EXCLUDED
+// (`apprenticeship`). CRUCIAL ordering: a genuine INDUSTRIAL placement that
+// merely uses the word "apprentice" ("Year in Industry Apprentice") must STILL
+// classify INDUSTRIAL_PLACEMENT — so the exclusion fires ONLY when NO
+// industrial-placement signal is present (placement wins). Title-scoped, like
+// the pre-university and graduate exclusions. Edge case 6 also notes a stray
+// `intern` token must not rescue an apprenticeship, so this guard runs in the
+// exclusion phase ahead of the generic isInternship/not-internship fallthrough.
+// ---------------------------------------------------------------------------
+
+const APPRENTICE_SIGNAL = /\bapprentice(ship)?s?\b/i;
+
+function isExcludedApprenticeship(p: RawPosting): boolean {
+  // Placement wins: if a real industrial-placement signal is present, this is a
+  // year-in-industry / sandwich placement, not a bare apprenticeship — keep it.
+  if (INDUSTRIAL_PLACEMENT_SIGNALS.some((s) => s.test(p.title))) return false;
+  return APPRENTICE_SIGNAL.test(p.title);
 }
 
 // ---------------------------------------------------------------------------
@@ -372,6 +398,17 @@ export function classifyPosting(
   // guard runs FIRST, before any programme-type assignment. We have no bucket
   // for them (the-trackr has a separate Pre-University tab).
   if (isPreUniversity(p)) return { include: false, reason: "pre-university" };
+
+  // Apprenticeship (research edge case 6): UK degree/school-leaver
+  // apprenticeships are full-time multi-year ROUTES, not internships, so a bare
+  // apprenticeship is EXCLUDED. Runs ONLY when no industrial-placement signal is
+  // present (see isExcludedApprenticeship) — a "Year in Industry Apprentice"
+  // keeps its placement classification. Placed ahead of isInternship so a stray
+  // `intern` token can't rescue it and the reason is `apprenticeship`, not the
+  // vaguer `not-internship`. Pre-university already ran above, so a school-leaver
+  // degree apprenticeship is excluded there first — either exclusion is correct.
+  if (isExcludedApprenticeship(p))
+    return { include: false, reason: "apprenticeship" };
 
   // Off-cycle return-offer / FT conversion (research edge case 3): off-cycle +
   // full-time/permanent with NO intern token is a permanent role, not an
