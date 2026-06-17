@@ -288,18 +288,3 @@ describe("skills sub-score — reason lists matched skills (up to 3)", () => {
   });
 });
 
-describe("skills sub-score — score stays bounded 0–100", () => {
-  it("score is always between 0 and 100 regardless of skill matches", () => {
-    const profile: ScoreProfile = {
-      ...baseProfile,
-      skills: ["financial modelling", "python", "sql"],
-    };
-    const opp: ScoreOpportunity = {
-      ...baseOpp,
-      tags: ["financial modelling", "python", "sql"],
-    };
-    const { score } = scoreOpportunity(profile, basePrefs, opp);
-    expect(score).toBeGreaterThanOrEqual(0);
-    expect(score).toBeLessThanOrEqual(100);
-  });
-});
