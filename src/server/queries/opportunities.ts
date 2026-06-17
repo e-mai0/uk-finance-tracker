@@ -71,6 +71,8 @@ export async function getTrackerItems(userId: string): Promise<TrackerItem[]> {
     logoHint: o.employer.logoHint,
     title: o.title,
     roleFamily: o.roleFamily,
+    programmeType: o.programmeTypeEnum,
+    region: o.region,
     divisionDesk: o.divisionDesk,
     location: o.location,
     status: o.status,
