@@ -24,6 +24,43 @@ describe("normalizeOpportunity deadline handling", () => {
   });
 });
 
+describe("normalizeOpportunity season-aware deadline inference", () => {
+  it("preserves a real deadline for every season (never overridden)", () => {
+    for (const season of ["SPRING_WEEK", "SUMMER_INTERNSHIP", "OFF_CYCLE"] as const) {
+      const n = normalizeOpportunity(
+        { ...base, programmeType: season, deadlineAt: "2026-09-30" },
+        now,
+      );
+      expect(n.deadlineEstimated).toBe(false);
+      expect(n.isRolling).toBe(false);
+      expect(n.deadlineAt?.getUTCMonth()).toBe(8); // September — the stated date
+    }
+  });
+
+  it("SUMMER_INTERNSHIP infers the end-of-November cycle close (unchanged)", () => {
+    const n = normalizeOpportunity({ ...base, programmeType: "SUMMER_INTERNSHIP" }, now);
+    expect(n.deadlineEstimated).toBe(true);
+    expect(n.isRolling).toBe(true);
+    expect(n.deadlineAt?.getUTCMonth()).toBe(10); // November
+  });
+
+  it("SPRING_WEEK infers an earlier (October) close than summer", () => {
+    const spring = normalizeOpportunity({ ...base, programmeType: "SPRING_WEEK" }, now);
+    const summer = normalizeOpportunity({ ...base, programmeType: "SUMMER_INTERNSHIP" }, now);
+    expect(spring.deadlineEstimated).toBe(true);
+    expect(spring.isRolling).toBe(true);
+    expect(spring.deadlineAt?.getUTCMonth()).toBe(9); // October
+    expect(spring.deadlineAt!.getTime()).toBeLessThan(summer.deadlineAt!.getTime());
+  });
+
+  it("OFF_CYCLE fabricates no deadline — null date, rolling, not estimated", () => {
+    const n = normalizeOpportunity({ ...base, programmeType: "OFF_CYCLE" }, now);
+    expect(n.deadlineAt).toBeNull();
+    expect(n.deadlineEstimated).toBe(false); // nothing was estimated
+    expect(n.isRolling).toBe(true); // honestly rolling
+  });
+});
+
 describe("normalizeOpportunity season (UK-only)", () => {
   // ADR-005: the tracker is UK-only, so every normalized row is UK
   // (country=UK, isUkBased=true) and there is no region field. Programme season
