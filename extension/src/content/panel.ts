@@ -44,6 +44,7 @@ export interface PanelHandlers {
   onAgentAssist: () => void;                                           // start / continue an agent round
   onAgentApply: (fieldId: string, value: string) => boolean;           // write one approved value to the page
   onAgentAnswer: (fieldId: string, value: string) => Promise<boolean>; // fill + save for an unresolved question
+  onClose?: () => void;                                                // panel dismissed by user (× button)
 }
 
 /** Per-card hooks so the content script can drive pre-staged drafting. */
@@ -137,7 +138,10 @@ export class Panel {
     this.statusEl = el("span", "status") as HTMLSpanElement;
     const close = el("button", "close");
     close.textContent = "×";
-    close.addEventListener("click", () => this.remove());
+    close.addEventListener("click", () => {
+      this.remove();
+      this.handlers.onClose?.();
+    });
     head.append(brand, this.statusEl, close);
 
     this.body = el("div", "body") as HTMLDivElement;
@@ -746,6 +750,20 @@ export class Panel {
 
   showError(text: string) {
     const e = el("p", "err");
+    e.textContent = text;
+    this.body.append(e);
+  }
+
+  /**
+   * Show a persistent recording-failure error in the panel body (below any
+   * existing content). Used when sendTrackApplicationWithRetry exhausts all
+   * retries so the user knows the Application row was not saved.
+   */
+  showRecordError(text: string) {
+    // Remove any previous record-error element to avoid stacking duplicates
+    // (e.g. if engage is somehow called twice on the same panel state).
+    this.root.querySelector(".record-err")?.remove();
+    const e = el("p", "err record-err");
     e.textContent = text;
     this.body.append(e);
   }
