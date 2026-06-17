@@ -27,7 +27,11 @@ export interface RawPosting {
   descriptionText?: string | null;
 }
 
-export type ExcludeReason = "not-internship" | "not-finance" | "not-uk";
+export type ExcludeReason =
+  | "not-internship"
+  | "not-finance"
+  | "not-uk"
+  | "pre-university";
 
 export type Classification =
   | {
@@ -85,55 +89,134 @@ function isInternship(p: RawPosting): boolean {
 // ---------------------------------------------------------------------------
 // Programme-type (season) detection
 //
-// LOCKED precedence (ADR-003 §2.1, SPEC-CHECK §8.1): most specific first —
-//   SPRING_WEEK → INDUSTRIAL_PLACEMENT → OFF_CYCLE → SUMMER_INTERNSHIP (default)
-// Winter folds into OFF_CYCLE (no separate WINTER value). A title naming
-// multiple seasons (e.g. "Summer Industrial Placement") resolves to the most
-// specific match by this order, NOT the first word in the string.
+// Precedence (ADR-005, researched UK taxonomy — uk-programme-taxonomy.md
+// §"Precedence rule"). CHANGED from the ADR-003 SPRING-first order: industrial
+// placement is the most specific, rarely-wrong UK signal ("industrial
+// placement" essentially never means a spring week or summer internship), so it
+// now wins outright — this also resolves the genuine 12-month OFF_CYCLE vs
+// INDUSTRIAL_PLACEMENT overlap (placement vocabulary wins).
+//
+//   INDUSTRIAL_PLACEMENT → SPRING_WEEK → OFF_CYCLE → SUMMER_INTERNSHIP (default)
+//
+// First-match wins; all matching is WORD-BOUNDARY regex (preserves the existing
+// guardrail so "Spring 2027" start dates and "Ukraine"-style strings don't
+// false-hit). Winter folds into OFF_CYCLE (no separate WINTER value).
 // ---------------------------------------------------------------------------
 
-const SPRING_WEEK_SIGNALS = [
-  "spring week",
-  "spring insight",
-  "spring into",
-  "spring programme",
-  "spring program",
-  "insight day",
-  "insight week",
-  "insight programme",
-  "insight program",
-  "insight series",
-  "discovery day",
-  "discovery week",
-  "discovery programme",
-  "discovery program",
-  "first-year insight",
-  "first year insight",
-  "sophomore",
+// Bucket 4 — INDUSTRIAL_PLACEMENT. The word "placement" is OVERLOADED in the UK
+// ("work placement", "trading floor placement", a 6-week summer placement), so
+// we require a year/sandwich/industrial qualifier — bare "placement" alone is
+// NOT industrial placement (research edge case 5).
+const INDUSTRIAL_PLACEMENT_SIGNALS: RegExp[] = [
+  /\bindustrial placement\b/i,
+  /\bplacement year\b/i,
+  /\byear[- ]in[- ]industry\b/i,
+  /\bsandwich (placement|year|course)\b/i,
+  /\bsandwich\b/i,
+  /\bindustrial year\b/i,
+  /\bindustrial trainee\b/i,
+  // "12-month" ONLY when paired with a placement/industrial context.
+  /\b12[- ]month\b[\s\S]*\b(placement|industrial)\b/i,
+  /\b(placement|industrial)\b[\s\S]*\b12[- ]month\b/i,
 ];
 
-const INDUSTRIAL_PLACEMENT_SIGNALS = [
-  "industrial placement",
-  "placement year",
-  "year in industry",
-  "sandwich placement",
-  "12-month placement",
-  "12 month placement",
-  "12-month industrial",
-  "apprentice",
-  "apprenticeship",
+// Bucket 1 — SPRING_WEEK (first-year / early insight). GUARD: bare "spring" is
+// SPRING_WEEK ONLY when paired with an insight/week/first-year/"spring into"
+// token — a bare "Spring 2027" start date must NOT be spring week (edge case 1).
+const SPRING_WEEK_SIGNALS: RegExp[] = [
+  /\bspring week\b/i,
+  /\bspring insight\b/i,
+  /\bspring into\b/i,
+  /\binsight day\b/i,
+  /\binsight week\b/i,
+  /\binsight evening\b/i,
+  /\binsight programme\b/i,
+  /\binsight program\b/i,
+  /\binsight series\b/i,
+  /\bearly insight\b/i,
+  /\bfirst[- ]year\b/i,
+  /\b1st year\b/i,
+  /\bsophomore\b/i,
+  /\bdiscovery\b/i,
+  /\bexplore\b/i,
+  /\bspotlight\b/i,
+  /\bimmersion\b/i,
+  /\bhorizons?\b/i,
+  // Diversity-insight variants (medium-confidence; insight/early-careers context).
+  /\bwomen'?s insight\b/i,
+  /\bdiversity insight\b/i,
+  /\bblack heritage\b/i,
+  /\bsocial mobility\b/i,
+  // Bare "spring" only when paired with an insight/week/first-year token.
+  /\bspring\b[\s\S]*\b(insight|week|first[- ]year|1st year)\b/i,
+  /\b(insight|week|first[- ]year|1st year)\b[\s\S]*\bspring\b/i,
 ];
 
-// Off-cycle proper, plus winter (folded here per ADR-003).
-const OFF_CYCLE_SIGNALS = ["off-cycle", "off cycle", "winter"];
+// Bucket 3 — OFF_CYCLE (off-cycle; winter folds here). 3-/6-month internships,
+// rolling / quarterly intakes.
+const OFF_CYCLE_SIGNALS: RegExp[] = [
+  /\boff[- ]?cycle\b/i,
+  /\bwinter internship\b/i,
+  /\bwinter intern\b/i,
+  /\bwinter\b/i,
+  /\b[36][- ]month\b/i,
+  /\brolling\b/i,
+  /\bquarterly intake\b/i,
+];
 
 export function detectProgrammeType(p: RawPosting): ProgrammeType {
-  const title = norm(p.title);
-  if (SPRING_WEEK_SIGNALS.some((s) => title.includes(s))) return "SPRING_WEEK";
-  if (INDUSTRIAL_PLACEMENT_SIGNALS.some((s) => title.includes(s)))
+  const title = p.title;
+  if (INDUSTRIAL_PLACEMENT_SIGNALS.some((s) => s.test(title)))
     return "INDUSTRIAL_PLACEMENT";
-  if (OFF_CYCLE_SIGNALS.some((s) => title.includes(s))) return "OFF_CYCLE";
+  if (SPRING_WEEK_SIGNALS.some((s) => s.test(title))) return "SPRING_WEEK";
+  if (OFF_CYCLE_SIGNALS.some((s) => s.test(title))) return "OFF_CYCLE";
   return "SUMMER_INTERNSHIP";
+}
+
+// ---------------------------------------------------------------------------
+// Pre-University / school-leaver guard (research edge case 10)
+//
+// the-trackr has a separate Pre-University tab; we have NO bucket for it. These
+// programmes carry insight/spring language and would leak into SPRING_WEEK, so
+// the guard MUST run BEFORE programme-type assignment in classifyPosting. A
+// "Spring Insight for Year 12 students" is EXCLUDED, not tagged SPRING_WEEK.
+// Title-scoped (consistent with the graduate exclusion).
+// ---------------------------------------------------------------------------
+
+const PRE_UNIVERSITY_SIGNALS: RegExp[] = [
+  /\bschool[- ]leavers?\b/i,
+  /\byear 1[23]\b/i,
+  /\bsixth form\b/i,
+  /\ba[- ]levels?\b/i,
+  /\bgcses?\b/i,
+  /\bpre[- ]universit(y|ies)\b/i,
+  /\bpre[- ]uni\b/i,
+  /\baged 1[67]\b/i,
+];
+
+function isPreUniversity(p: RawPosting): boolean {
+  return PRE_UNIVERSITY_SIGNALS.some((s) => s.test(p.title));
+}
+
+// ---------------------------------------------------------------------------
+// Off-cycle return-offer / FT-conversion guard (research edge case 3)
+//
+// "Off-cycle analyst — full-time" can be a permanent hire, not an internship.
+// If off-cycle co-occurs with full-time/permanent and there is NO intern token,
+// it is a full-time role → excluded. An off-cycle INTERNSHIP (has `intern`)
+// stays in scope and classifies as OFF_CYCLE.
+// ---------------------------------------------------------------------------
+
+const OFF_CYCLE_TOKEN = /\boff[- ]?cycle\b/i;
+const FULL_TIME_OR_PERMANENT = /\b(full[- ]time|permanent)\b/i;
+const INTERN_TOKEN = /\bintern(ship)?s?\b/i;
+
+function isOffCycleFullTimeConversion(p: RawPosting): boolean {
+  return (
+    OFF_CYCLE_TOKEN.test(p.title) &&
+    FULL_TIME_OR_PERMANENT.test(p.title) &&
+    !INTERN_TOKEN.test(p.title)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -284,6 +367,19 @@ export function classifyPosting(
   p: RawPosting,
   fallbackRoleFamily: RoleFamily | null = null,
 ): Classification {
+  // Pre-University / school-leaver (research edge case 10): these carry
+  // insight/spring language and would otherwise leak into SPRING_WEEK, so the
+  // guard runs FIRST, before any programme-type assignment. We have no bucket
+  // for them (the-trackr has a separate Pre-University tab).
+  if (isPreUniversity(p)) return { include: false, reason: "pre-university" };
+
+  // Off-cycle return-offer / FT conversion (research edge case 3): off-cycle +
+  // full-time/permanent with NO intern token is a permanent role, not an
+  // internship. (The generic full-time exclusion in isInternship also catches
+  // the "full-time" variant; this additionally catches the "permanent" one.)
+  if (isOffCycleFullTimeConversion(p))
+    return { include: false, reason: "not-internship" };
+
   // UK-only gate (ADR-005): a posting located outside the UK is excluded. The
   // programme SEASON, by contrast, is CLASSIFIED not gatekept (ADR-003 bug fix
   // retained) — a Spring Week / off-cycle / placement UK role is tagged, not
