@@ -3,7 +3,16 @@
  * system prompt and the banned-AI-tells screen. Plain compile-time constants
  * (no runtime file read) so the same text feeds the draft prompt and
  * `checkTells` in critique.ts and they can never drift apart.
+ *
+ * The hard expert standards (firm hook, STAR, commercial awareness, UK norms,
+ * grader principles) are NOT written inline here: they are composed from the
+ * canonical `playbook.ts` via `draftStandards()`, so the writing skill and the
+ * chat coach share one source of truth and cannot diverge. The craft detail
+ * below (selection, structure, sentence-level rules, transformation examples)
+ * and the banned-AI-tells screen remain owned by this skill.
  */
+
+import { draftStandards } from "@/server/engine/playbook";
 
 /** Canonical banned-AI-tells list. Consumed by the draft prompt and checkTells. */
 export const BANNED_TELLS = [
@@ -53,6 +62,9 @@ Hard rules (override everything below):
 - no em dashes; contractions are fine
 - one concrete detail per paragraph minimum; no generic filler
 - never use: {{bannedTells}}
+
+EXPERT STANDARDS (UK finance applications, non-negotiable):
+{{standards}}
 
 Writing craft rules (UK early-career applications):
 
@@ -120,5 +132,8 @@ export type WritingSkill = {
 /** The writing-craft skill. Single source of truth for craft + tells. */
 export const writingSkill: WritingSkill = {
   bannedTells: BANNED_TELLS,
-  body: BODY.replace("{{bannedTells}}", BANNED_TELLS.join(", ")),
+  body: BODY.replace("{{bannedTells}}", BANNED_TELLS.join(", ")).replace(
+    "{{standards}}",
+    draftStandards(),
+  ),
 };
