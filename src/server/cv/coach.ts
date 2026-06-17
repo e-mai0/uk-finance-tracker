@@ -74,7 +74,6 @@ export function deriveFallbackChips(cv: CvData): CoachChip[] {
       prompt: "Draft a concise two-line professional summary for the top of my CV.",
     });
   }
-  const bulletsThin = cv.experience.some((x) => x.bullets.length === 0) || cv.experience.length === 0;
   if (cv.experience.length > 0) {
     candidates.push({
       label: "Sharpen experience bullets",
@@ -113,8 +112,6 @@ export function deriveFallbackChips(cv: CvData): CoachChip[] {
     label: "Tighten and quantify",
     prompt: "Tighten my CV and add numbers wherever my experience supports them.",
   });
-  void bulletsThin;
-
   // De-dupe by label, keep order, take the first 3.
   const seen = new Set<string>();
   const out: CoachChip[] = [];
@@ -167,14 +164,11 @@ export function parseChips(text: string): CoachChip[] | null {
  * text so the persisted assessment is clean prose only.
  */
 export function stripChipsBlock(text: string): string {
-  let t = text.trim();
+  const t = text.trim();
   // Remove a fenced ```json ... ``` block (the chips payload) wherever it sits.
-  t = t.replace(/```(?:json)?\s*[\s\S]*?```/gi, "").trim();
-  // If no fence but the response ends with a bare {...} chips object, drop it.
-  if (!t || /^\{[\s\S]*\}$/.test(t)) {
-    // Whole thing was JSON; fall through to fallback opener at the call site.
-  }
-  return t;
+  // If the whole response turns out to be JSON, the call site falls back to the
+  // generic opener via its `prose.length >= 20` guard.
+  return t.replace(/```(?:json)?\s*[\s\S]*?```/gi, "").trim();
 }
 
 const FALLBACK_OPENER =
