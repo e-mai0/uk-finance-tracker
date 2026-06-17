@@ -47,10 +47,12 @@ export function CvPageClient({
     setHasCv(true);
   }, []);
 
-  const handleUploaded = useCallback(() => {
-    // Upload relies on the server re-render (router.refresh in the empty state)
-    // to supply the parsed CV; flip into the shell so the transition is seamless.
-    setShellPane("preview");
+  const handleUploaded = useCallback((parsed: CvData) => {
+    // Upload carries the parsed CvData up so we flip into the has-CV shell in
+    // place — no full page reload (router.refresh). The user lands in the
+    // refine pane with their CV shown and the coach opening already seeded.
+    setCv(parsed);
+    setShellPane("chat");
     setHasCv(true);
   }, []);
 

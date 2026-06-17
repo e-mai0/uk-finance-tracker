@@ -9,15 +9,15 @@
 //     // to flip into the has-CV view and land the user in the refine pane,
 //     // matching today's behaviour (set liveCv, hasCv=true, pane="chat").
 //     onBuilt: (cv: CvData) => void;
-//     // Called when an upload produces a parsed CV. Today the page reloads via
-//     // router.refresh() so the server re-renders with the parsed CV; the shell
-//     // may also flip state. Behaviour is preserved by calling router.refresh()
-//     // here AND notifying the shell.
-//     onUploaded: () => void;
+//     // Called when an upload produces a parsed CV. The parsed CvData is lifted
+//     // up so <CvPageClient> flips into the has-CV shell IN PLACE — no full page
+//     // reload (router.refresh). Mirrors onBuilt(cv) for the draft path.
+//     onUploaded: (cv: CvData) => void;
 //   }
 //
-// Owned by U0. LATER: U3 edits the upload handler (parallelize + progress) and
-// the in-place update path here. Keep the upload UI + handler in this file.
+// Owned by U0. U3 owns the upload handler (parallelize lives server-side; this
+// file shows ONE honest in-flight working state tied to the awaited action) and
+// the in-place update path (lift the parsed cv up; no router.refresh).
 "use client";
 
 import { useState, useCallback, useTransition, useRef } from "react";
@@ -32,11 +32,16 @@ export function CvEmptyState({
   onUploaded,
 }: {
   onBuilt: (cv: CvData) => void;
-  onUploaded: () => void;
+  onUploaded: (cv: CvData) => void;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Honest, single working state: true ONLY while the upload server action is
+  // actually in flight (set right before the await, cleared when it resolves).
+  // No timers, no fake multi-step animation — it reflects the one real awaited
+  // milestone (parse + persist + coach-seed happen inside that one call).
+  const [uploading, setUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -66,23 +71,29 @@ export function CvEmptyState({
       setNotice(null);
       const formData = new FormData();
       formData.set("cv", file);
+      setUploading(true);
       startTransition(async () => {
-        const res = await uploadCvAction(formData);
-        if (res.error) {
-          setError(res.error);
-          return;
-        }
-        if (res.cvParsed) {
-          onUploaded();
-          router.refresh(); // server page reloads with the parsed, editable CV
-        } else {
-          setNotice(
-            'We saved your CV file, but could not turn it into an editable CV right now. Try "Build with Cyclops", or upload again.',
-          );
+        try {
+          const res = await uploadCvAction(formData);
+          if (res.error) {
+            setError(res.error);
+            return;
+          }
+          if (res.cvParsed && res.cv) {
+            // In-place transition: hand the parsed CV up so the page flips into
+            // the has-CV shell without a full reload. No router.refresh().
+            onUploaded(res.cv);
+          } else {
+            setNotice(
+              'We saved your CV file, but could not turn it into an editable CV right now. Try "Build with Cyclops", or upload again.',
+            );
+          }
+        } finally {
+          setUploading(false);
         }
       });
     },
-    [onUploaded, router],
+    [onUploaded],
   );
 
   return (
@@ -94,6 +105,18 @@ export function CvEmptyState({
       </p>
       {error && <p className="text-sm text-danger">{error}</p>}
       {notice && <p className="text-sm text-muted">{notice}</p>}
+      {/* Honest, single working state: shown ONLY while the upload action is
+          actually awaited. It is replaced by the populated has-CV shell when the
+          real work resolves — no timed/fake step animation. */}
+      {uploading && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="animate-pulse text-sm text-muted"
+        >
+          Reading your CV…
+        </p>
+      )}
       <div className="flex flex-col items-center gap-3">
         <Button variant="primary" onClick={build} disabled={isPending}>
           {isPending ? "Drafting…" : "Build with Cyclops"}
@@ -104,7 +127,7 @@ export function CvEmptyState({
           disabled={isPending}
           className="text-sm text-muted underline decoration-border-strong underline-offset-4 hover:text-ink"
         >
-          Upload a CV instead
+          {uploading ? "Reading your CV…" : "Upload a CV instead"}
         </button>
         <input
           ref={fileRef}
