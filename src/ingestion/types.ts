@@ -3,7 +3,7 @@ import type {
   OpportunityStatus,
   SourceType,
 } from "@prisma/client";
-import type { ProgrammeType, Region } from "@/lib/constants";
+import type { ProgrammeType } from "@/lib/constants";
 
 /**
  * Raw shapes as authored in a dataset or returned by a future ATS adapter,
@@ -25,8 +25,6 @@ export interface RawOpportunity {
   /** Classified programme season (from classifyPosting). Absent on seed/manual
    *  data → normalize defaults to SUMMER_INTERNSHIP. */
   programmeType?: ProgrammeType;
-  /** Classified region (from classifyPosting). Absent → normalize defaults UK. */
-  region?: Region;
   divisionDesk?: string;
   location: string;
   status: OpportunityStatus;
@@ -61,8 +59,6 @@ export interface NormalizedOpportunity {
   programmeType: string;
   /** Classified programme season (persisted to Opportunity.programmeTypeEnum). */
   programmeTypeEnum: ProgrammeType;
-  /** Classified region (persisted to Opportunity.region). */
-  region: Region;
   roleFamily: RoleFamily;
   divisionDesk: string | null;
   location: string;

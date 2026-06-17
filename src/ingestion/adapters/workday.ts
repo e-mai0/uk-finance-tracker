@@ -19,7 +19,7 @@ export function mapWorkdayJobs(payload: unknown, baseUrl: string, _site: string,
     const url = `${baseUrl}${j.externalPath}`;
     out.push({
       employer: employer.name, title: j.title.trim(), roleFamily: verdict.roleFamily,
-      programmeType: verdict.programmeType, region: verdict.region,
+      programmeType: verdict.programmeType,
       location: location || "London", status: "OPEN",
       summary: originalSummary({ title: j.title.trim(), employer: employer.name, atsLabel: "Workday careers", location: location || "UK" }),
       applicationUrl: url, sourceUrl: url, sourceType: "WORKDAY", tags: [],

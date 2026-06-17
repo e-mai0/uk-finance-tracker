@@ -37,21 +37,12 @@ enum OpportunityStatus {
 // Programme season — first-class classified data (replaces the UK-summer-only
 // assumption). Spelling MUST match the ProgrammeType string-literal union in
 // src/lib/constants.ts (the app-level source of truth). WINTER folds into
-// OFF_CYCLE per ADR-003.
+// OFF_CYCLE per ADR-003. The tracker is UK-only (ADR-005) so there is no Region.
 enum ProgrammeType {
   SPRING_WEEK
   SUMMER_INTERNSHIP
   OFF_CYCLE
   INDUSTRIAL_PLACEMENT
-}
-
-// Region — first-class classified data. Spelling MUST match the Region
-// string-literal union in src/lib/constants.ts.
-enum Region {
-  UK
-  US
-  HK
-  OTHER
 }
 
 enum WorkAuth {
@@ -184,14 +175,13 @@ model Opportunity {
   employer           Employer          @relation(fields: [employerId], references: [id], onDelete: Cascade)
   title              String
   programmeType      String // legacy normalized label, e.g. "Summer Internship" (retained; kept in sync from the enum)
-  // Season + region taxonomy (ADR-003). Downstream units read/write these two
-  // NEW columns: `programmeTypeEnum` (classified season) and `region`
-  // (classified region). Defaults backfill existing rows correctly
-  // (every legacy row IS a UK summer internship). The legacy `programmeType`
-  // String, `country`, `isUkBased`, `isSummerInternship` are retained and
-  // derived from these for now (retirement is a later cycle).
+  // Season taxonomy (ADR-003, re-scoped UK-only by ADR-005). Downstream units
+  // read/write this NEW classified column `programmeTypeEnum`. The default
+  // backfills existing rows correctly (every legacy row IS a summer internship).
+  // The legacy `programmeType` String, `country`, `isUkBased`,
+  // `isSummerInternship` are retained and derived from it for now (retirement
+  // is a later cycle). The tracker is UK-only so there is no region column.
   programmeTypeEnum  ProgrammeType     @default(SUMMER_INTERNSHIP)
-  region             Region            @default(UK)
   roleFamily         RoleFamily
   divisionDesk       String?
   location           String

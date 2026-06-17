@@ -99,7 +99,7 @@ describe("mapTalNetBoard", () => {
     expect(out[0].deadlineAt).toBe("2026-07-09");
   });
 
-  it("classifies a non-UK role by region instead of dropping it", () => {
+  it("excludes a non-UK role identified by its Location cell (UK-only, ADR-005)", () => {
     const html = card({
       id: 1388,
       pl: 1,
@@ -110,11 +110,9 @@ describe("mapTalNetBoard", () => {
       deadline: "9 Jul 2026",
     });
     const out = mapTalNetBoard(html, "https://nomuracampus.tal.net", nomura);
-    // Per ADR-003 the Paris role is now included and tagged region OTHER rather
-    // than discarded.
-    expect(out).toHaveLength(1);
-    expect(out[0].location).toBe("Paris");
-    expect(out[0].region).toBe("OTHER");
+    // ADR-005 (UK-only): the Paris role is excluded again (not-uk) — the Location
+    // cell, not the UK-looking title, decides.
+    expect(out).toHaveLength(0);
   });
 
   it("emits a canonical applicationUrl with the volatile session prefix stripped", () => {

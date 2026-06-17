@@ -5,7 +5,6 @@ import {
   inferRoleFamily,
   roleFamilyFromSector,
   detectProgrammeType,
-  detectRegion,
 } from "../ingestion/classify";
 
 describe("isUkLocation", () => {
@@ -166,49 +165,6 @@ describe("detectProgrammeType", () => {
   });
 });
 
-describe("detectRegion", () => {
-  it("maps UK signals to UK", () => {
-    expect(detectRegion("London")).toBe("UK");
-    expect(detectRegion("Edinburgh, UK")).toBe("UK");
-    expect(detectRegion("Canary Wharf")).toBe("UK");
-  });
-
-  it("maps unambiguous US signals to US", () => {
-    expect(detectRegion("New York")).toBe("US");
-    expect(detectRegion("Chicago, IL")).toBe("US");
-    expect(detectRegion("Jersey City")).toBe("US");
-    expect(detectRegion("Stamford")).toBe("US");
-    expect(detectRegion("Houston, United States")).toBe("US");
-  });
-
-  it("maps Hong Kong signals to HK", () => {
-    expect(detectRegion("Hong Kong")).toBe("HK");
-    expect(detectRegion("HongKong")).toBe("HK");
-    expect(detectRegion("Central, HK")).toBe("HK");
-  });
-
-  it("returns OTHER for everything else, including unrecognised cities", () => {
-    expect(detectRegion("Paris")).toBe("OTHER");
-    expect(detectRegion("Singapore")).toBe("OTHER");
-    expect(detectRegion("")).toBe("OTHER");
-  });
-
-  it("SC3: a bare 2-letter ambiguous code is NOT treated as US (Toronto, CA → OTHER)", () => {
-    // "CA" here is Canada's country code, not California — must not guess US.
-    expect(detectRegion("Toronto, CA")).toBe("OTHER");
-  });
-
-  it("resolves multi-office strings UK-first", () => {
-    expect(detectRegion("London, New York, Hong Kong")).toBe("UK");
-    // A co-listed UK office wins even when an ambiguous Canada code is present.
-    expect(detectRegion("Toronto, CA; London")).toBe("UK");
-  });
-
-  it("does not treat Ukraine as the UK", () => {
-    expect(detectRegion("Kyiv, Ukraine")).toBe("OTHER");
-  });
-});
-
 describe("classifyPosting", () => {
   it("includes a classic summer analyst posting", () => {
     const v = classifyPosting({
@@ -220,7 +176,6 @@ describe("classifyPosting", () => {
       roleFamily: "IB",
       via: "keyword",
       programmeType: "SUMMER_INTERNSHIP",
-      region: "UK",
     });
   });
 
@@ -256,10 +211,9 @@ describe("classifyPosting", () => {
     ).toEqual({ include: false, reason: "not-internship" });
   });
 
-  // NOTE (ADR-003 sanctioned replacement): the two cases that previously pinned
-  // discarding Spring Weeks / off-cycle ("wrong-season") and non-UK postings
-  // ("not-uk") are replaced below with classification-asserting cases. The
-  // classifier now TAGS season + region instead of dropping these roles.
+  // NOTE (ADR-003): the classifier TAGS programme season instead of discarding
+  // Spring Weeks / off-cycle / placements (the retained bug fix). Region is gone
+  // (ADR-005, UK-only) so these no longer carry a `region` field.
   it("classifies spring weeks, off-cycle and placements instead of discarding", () => {
     expect(
       classifyPosting({ title: "Spring Insight Week", location: "London" }, "IB"),
@@ -268,7 +222,6 @@ describe("classifyPosting", () => {
       roleFamily: "IB",
       via: "fallback",
       programmeType: "SPRING_WEEK",
-      region: "UK",
     });
     expect(
       classifyPosting({
@@ -280,7 +233,6 @@ describe("classifyPosting", () => {
       roleFamily: "MARKETS",
       via: "keyword",
       programmeType: "OFF_CYCLE",
-      region: "UK",
     });
     expect(
       classifyPosting(
@@ -292,38 +244,22 @@ describe("classifyPosting", () => {
       roleFamily: "IB",
       via: "fallback",
       programmeType: "INDUSTRIAL_PLACEMENT",
-      region: "UK",
     });
   });
 
-  it("classifies region instead of discarding non-UK postings", () => {
+  // UK-only gate (ADR-005): a non-UK-located finance internship is EXCLUDED
+  // (`not-uk`), even though it is a real summer internship at a finance firm —
+  // the board is UK-pure. This restores the gate ADR-003 had removed.
+  it("excludes a non-UK finance internship with reason not-uk", () => {
     expect(
       classifyPosting({ title: "Summer Analyst, M&A", location: "New York" }),
-    ).toEqual({
-      include: true,
-      roleFamily: "IB",
-      via: "keyword",
-      programmeType: "SUMMER_INTERNSHIP",
-      region: "US",
-    });
+    ).toEqual({ include: false, reason: "not-uk" });
     expect(
       classifyPosting({ title: "Summer Analyst, M&A", location: "Hong Kong" }),
-    ).toEqual({
-      include: true,
-      roleFamily: "IB",
-      via: "keyword",
-      programmeType: "SUMMER_INTERNSHIP",
-      region: "HK",
-    });
+    ).toEqual({ include: false, reason: "not-uk" });
     expect(
       classifyPosting({ title: "Summer Analyst, M&A", location: "Paris" }),
-    ).toEqual({
-      include: true,
-      roleFamily: "IB",
-      via: "keyword",
-      programmeType: "SUMMER_INTERNSHIP",
-      region: "OTHER",
-    });
+    ).toEqual({ include: false, reason: "not-uk" });
   });
 
   it("excludes non-finance functions even at a finance firm", () => {
@@ -346,7 +282,6 @@ describe("classifyPosting", () => {
       roleFamily: "HEDGE_FUND",
       via: "fallback",
       programmeType: "SUMMER_INTERNSHIP",
-      region: "UK",
     });
   });
 

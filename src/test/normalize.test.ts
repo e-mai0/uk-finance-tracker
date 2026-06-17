@@ -24,12 +24,15 @@ describe("normalizeOpportunity deadline handling", () => {
   });
 });
 
-describe("normalizeOpportunity season + region", () => {
-  it("defaults to SUMMER_INTERNSHIP / UK when raw omits the fields (seed data)", () => {
+describe("normalizeOpportunity season (UK-only)", () => {
+  // ADR-005: the tracker is UK-only, so every normalized row is UK
+  // (country=UK, isUkBased=true) and there is no region field. Programme season
+  // is still classified data and drives the legacy programmeType label +
+  // isSummerInternship flag.
+  it("defaults to SUMMER_INTERNSHIP when raw omits the field (seed data)", () => {
     const n = normalizeOpportunity(base, now);
     expect(n.programmeTypeEnum).toBe("SUMMER_INTERNSHIP");
-    expect(n.region).toBe("UK");
-    // legacy fields derive from the defaults
+    // legacy fields derive from the defaults; board is UK-only
     expect(n.programmeType).toBe("Summer Internship");
     expect(n.country).toBe("UK");
     expect(n.isUkBased).toBe(true);
@@ -38,37 +41,36 @@ describe("normalizeOpportunity season + region", () => {
 
   it("carries a classified Spring Week through and derives legacy flags", () => {
     const n = normalizeOpportunity(
-      { ...base, programmeType: "SPRING_WEEK", region: "UK" },
+      { ...base, programmeType: "SPRING_WEEK" },
       now,
     );
     expect(n.programmeTypeEnum).toBe("SPRING_WEEK");
-    expect(n.region).toBe("UK");
     expect(n.programmeType).toBe("Spring Week"); // legacy string label
     expect(n.isSummerInternship).toBe(false);
     expect(n.isUkBased).toBe(true);
     expect(n.country).toBe("UK");
   });
 
-  it("carries a US summer internship through and derives non-UK legacy flags", () => {
+  it("derives the off-cycle legacy label and a false summer flag, still UK", () => {
     const n = normalizeOpportunity(
-      { ...base, programmeType: "SUMMER_INTERNSHIP", region: "US" },
-      now,
-    );
-    expect(n.programmeTypeEnum).toBe("SUMMER_INTERNSHIP");
-    expect(n.region).toBe("US");
-    expect(n.isUkBased).toBe(false);
-    expect(n.country).toBe("US");
-    expect(n.isSummerInternship).toBe(true);
-  });
-
-  it("derives both legacy flags false for an off-cycle HK role", () => {
-    const n = normalizeOpportunity(
-      { ...base, programmeType: "OFF_CYCLE", region: "HK" },
+      { ...base, programmeType: "OFF_CYCLE" },
       now,
     );
     expect(n.programmeType).toBe("Off-Cycle");
     expect(n.isSummerInternship).toBe(false);
-    expect(n.isUkBased).toBe(false);
-    expect(n.country).toBe("HK");
+    expect(n.isUkBased).toBe(true);
+    expect(n.country).toBe("UK");
+  });
+
+  it("derives the industrial-placement legacy label, still UK", () => {
+    const n = normalizeOpportunity(
+      { ...base, programmeType: "INDUSTRIAL_PLACEMENT" },
+      now,
+    );
+    expect(n.programmeTypeEnum).toBe("INDUSTRIAL_PLACEMENT");
+    expect(n.programmeType).toBe("Industrial Placement");
+    expect(n.isSummerInternship).toBe(false);
+    expect(n.isUkBased).toBe(true);
+    expect(n.country).toBe("UK");
   });
 });

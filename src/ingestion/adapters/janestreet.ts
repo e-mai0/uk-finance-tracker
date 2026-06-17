@@ -75,7 +75,6 @@ export function mapJaneStreetJobs(
       title: `${job.position.trim()} — Summer Internship`,
       roleFamily: verdict.roleFamily,
       programmeType: verdict.programmeType,
-      region: verdict.region,
       divisionDesk: job.category?.trim() || undefined,
       location: location || "London",
       status: "OPEN",

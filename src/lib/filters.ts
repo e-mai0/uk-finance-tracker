@@ -3,7 +3,6 @@ import {
   ROLE_FAMILY_LABEL,
   type SortKey,
   type ProgrammeType,
-  type Region,
   DEFAULT_SORT,
 } from "./constants";
 
@@ -20,7 +19,6 @@ export interface TrackerItem {
   title: string;
   roleFamily: RoleFamily;
   programmeType: ProgrammeType;
-  region: Region;
   divisionDesk?: string | null;
   location: string;
   status: OpportunityStatus;
@@ -43,7 +41,6 @@ export interface FilterParams {
   location: string[];
   roleFamily: RoleFamily[];
   programmeType: ProgrammeType[];
-  region: Region[];
   hasDeadline: boolean;
   sponsorshipAvailable: boolean;
   starred: boolean;
@@ -56,7 +53,6 @@ export const EMPTY_FILTERS: FilterParams = {
   location: [],
   roleFamily: [],
   programmeType: [],
-  region: [],
   hasDeadline: false,
   sponsorshipAvailable: false,
   starred: false,
@@ -94,7 +90,6 @@ export function parseFilters(params: RawParams): FilterParams {
     location: toArray(params.location),
     roleFamily: toArray(params.family) as RoleFamily[],
     programmeType: toArray(params.season) as ProgrammeType[],
-    region: toArray(params.region) as Region[],
     hasDeadline: params.deadline === "1" || params.deadline === "true",
     sponsorshipAvailable:
       params.sponsorship === "1" || params.sponsorship === "true",
@@ -110,7 +105,6 @@ export function hasActiveFilters(f: FilterParams): boolean {
     f.location.length > 0 ||
     f.roleFamily.length > 0 ||
     f.programmeType.length > 0 ||
-    f.region.length > 0 ||
     f.hasDeadline ||
     f.sponsorshipAvailable ||
     f.starred
@@ -178,7 +172,6 @@ export function applyFilters(
       !f.programmeType.includes(item.programmeType)
     )
       return false;
-    if (f.region.length > 0 && !f.region.includes(item.region)) return false;
     if (f.hasDeadline && !item.deadlineAt) return false;
     if (f.sponsorshipAvailable && !offersSponsorship(item.sponsorshipInfo))
       return false;

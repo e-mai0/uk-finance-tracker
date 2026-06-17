@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   PROGRAMME_TYPES,
-  REGIONS,
   ROLE_FAMILIES,
   SORT_OPTIONS,
   STATUS_OPTIONS,
@@ -64,7 +63,6 @@ export function FiltersBar() {
     getArr("location").length +
     getArr("family").length +
     getArr("season").length +
-    getArr("region").length +
     (get("filter") === "starred" ? 1 : 0) +
     (get("q") ? 1 : 0);
 
@@ -114,13 +112,6 @@ export function FiltersBar() {
           options={PROGRAMME_TYPES.map((p) => ({ value: p.value, label: p.label }))}
           selected={getArr("season")}
           onToggle={(v) => toggleInArray("season", v)}
-        />
-        <FilterDropdown
-          label="Region"
-          count={getArr("region").length}
-          options={REGIONS.map((r) => ({ value: r.value, label: r.label }))}
-          selected={getArr("region")}
-          onToggle={(v) => toggleInArray("region", v)}
         />
 
         <FlagToggle

@@ -12,20 +12,18 @@ const HTML = `<article class="article--result">
   <img alt="Office Location:"><span>Sao Paulo</span></article>`;
 
 describe("mapMacquarie", () => {
-  it("keeps both internships keyed on jobId and classifies them by region", () => {
+  it("keeps only the UK internship and excludes the non-UK one (UK-only, ADR-005)", () => {
     const out = mapMacquarie(HTML, "https://recruitment.macquarie.com", mq);
-    // London intern (22679) + São Paulo intern (22680, now classified with
-    // region OTHER rather than discarded per ADR-003).
-    expect(out).toHaveLength(2);
+    // ADR-005 (UK-only): just the London intern (22679) survives; the São Paulo
+    // intern (22680) is excluded again as not-uk.
+    expect(out).toHaveLength(1);
 
     const london = out.find((o) => o.applicationUrl?.includes("jobId=22679"));
     expect(london).toBeDefined();
     expect(london!.sourceType).toBe("AVATURE");
-    expect(london!.region).toBe("UK");
+    expect(london!.programmeType).toBe("SUMMER_INTERNSHIP");
 
-    // The previously-dropped São Paulo role is now present AND tagged region OTHER.
-    const saoPaulo = out.find((o) => o.applicationUrl?.includes("jobId=22680"));
-    expect(saoPaulo).toBeDefined();
-    expect(saoPaulo!.region).toBe("OTHER");
+    // The São Paulo role is excluded again (UK-only gate restored).
+    expect(out.find((o) => o.applicationUrl?.includes("jobId=22680"))).toBeUndefined();
   });
 });

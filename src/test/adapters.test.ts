@@ -29,7 +29,7 @@ describe("mapGreenhouseJobs", () => {
         id: 3,
         title: "Summer Analyst, Investment Team",
         absolute_url: "https://job-boards.greenhouse.io/acme/jobs/3",
-        location: { name: "New York" }, // non-UK → INCLUDED + tagged region US (ADR-003)
+        location: { name: "New York" }, // non-UK → EXCLUDED (not-uk), ADR-005 UK-only
         departments: [],
       },
     ],
@@ -37,26 +37,23 @@ describe("mapGreenhouseJobs", () => {
 
   it("maps included jobs and applies the classifier", () => {
     const out = mapGreenhouseJobs(payload, fund);
-    // job #1 (UK summer intern) + job #3 (NY summer analyst, now classified
-    // rather than discarded per ADR-003). Job #2 (full-time) stays excluded.
-    expect(out).toHaveLength(2);
+    // Only job #1 (the UK summer intern) survives. Job #2 (full-time) is
+    // not-internship; job #3 (New York) is not-uk — the board is UK-only
+    // (ADR-005), so the non-UK role is excluded again.
+    expect(out).toHaveLength(1);
 
     const uk = out.find((o) => o.applicationUrl?.endsWith("/jobs/1"));
     expect(uk).toBeDefined();
     expect(uk!.employer).toBe("Acme Capital");
     expect(uk!.roleFamily).toBe("QUANT");
+    expect(uk!.programmeType).toBe("SUMMER_INTERNSHIP");
     expect(uk!.location).toBe("London, United Kingdom");
-    expect(uk!.region).toBe("UK");
     expect(uk!.status).toBe("OPEN");
     expect(uk!.sourceType).toBe("GREENHOUSE");
     expect(uk!.tags).toContain("research");
 
-    // The previously-dropped New York role is now present AND tagged region US.
-    const ny = out.find((o) => o.applicationUrl?.endsWith("/jobs/3"));
-    expect(ny).toBeDefined();
-    expect(ny!.title).toBe("Summer Analyst, Investment Team");
-    expect(ny!.region).toBe("US");
-
+    // The New York role (#3) is excluded again (UK-only gate restored).
+    expect(out.find((o) => o.applicationUrl?.endsWith("/jobs/3"))).toBeUndefined();
     // The full-time role (#2) is still excluded (not-internship is untouched).
     expect(out.find((o) => o.applicationUrl?.endsWith("/jobs/2"))).toBeUndefined();
   });

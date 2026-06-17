@@ -1,16 +1,18 @@
 import type { RoleFamily } from "@prisma/client";
-import type { ProgrammeType, Region } from "@/lib/constants";
+import type { ProgrammeType } from "@/lib/constants";
 
 /**
- * Pure classification of a raw ATS posting into "a finance internship we should
- * publish" (tagged with its programme season + region) or an exclusion reason.
+ * Pure classification of a raw ATS posting into "a UK finance internship we
+ * should publish" (tagged with its programme season) or an exclusion reason.
  * Shared by every live adapter (Greenhouse / Lever / Ashby / …) so the rules
  * live in one tested place. Deterministic, keyword-based — same philosophy as
  * lib/scoring.
  *
- * Season and region are CLASSIFIED, not gatekept: a Spring Week, off-cycle,
- * placement, or non-UK role is included and tagged rather than discarded (see
- * ADR-003). The only retained exclusions are `not-internship` and `not-finance`.
+ * The tracker is UK-only (ADR-005): a posting whose location is NOT UK is
+ * EXCLUDED (`not-uk`). Programme SEASON, however, is CLASSIFIED not gatekept —
+ * a Spring Week, off-cycle or placement UK role is included and tagged rather
+ * than discarded (the ADR-003 bug fix, retained). Retained exclusions are
+ * `not-internship`, `not-finance` and `not-uk`.
  */
 
 export interface RawPosting {
@@ -25,7 +27,7 @@ export interface RawPosting {
   descriptionText?: string | null;
 }
 
-export type ExcludeReason = "not-internship" | "not-finance";
+export type ExcludeReason = "not-internship" | "not-finance" | "not-uk";
 
 export type Classification =
   | {
@@ -33,7 +35,6 @@ export type Classification =
       roleFamily: RoleFamily;
       via: "keyword" | "fallback";
       programmeType: ProgrammeType;
-      region: Region;
     }
   | { include: false; reason: ExcludeReason };
 
@@ -169,46 +170,6 @@ export function isUkLocation(location: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Region detection (UK | US | HK | OTHER)
-//
-// Layered on top of isUkLocation. UK-FIRST for multi-office strings (SPEC §2.3,
-// §8.1): any UK office ⇒ UK. Then unambiguous US signals, then HK, else OTHER.
-//
-// SC3 (binding): bare two-letter codes are ambiguous — ", CA" is California (US)
-// but "CA" is also Canada's country code, so "Toronto, CA" must NOT read as US.
-// We therefore use only UNAMBIGUOUS US signals (full city names + "United
-// States"/"USA"); a lone ambiguous token yields OTHER, never a US guess.
-// ---------------------------------------------------------------------------
-
-const US_LOCATION_SIGNALS = [
-  "new york",
-  "chicago",
-  "san francisco",
-  "boston",
-  "houston",
-  "jersey city",
-  "stamford",
-  "united states",
-];
-
-/** "USA" as a word; deliberately NOT bare "US" (too collision-prone). */
-const US_WORD = /\busa\b/i;
-
-const HK_LOCATION_SIGNALS = ["hong kong", "hongkong"];
-const HK_WORD = /\bhk\b/i;
-
-export function detectRegion(location: string): Region {
-  // UK-first: a co-listed UK office makes the whole listing UK.
-  if (isUkLocation(location)) return "UK";
-  const loc = norm(location);
-  if (US_LOCATION_SIGNALS.some((s) => loc.includes(s)) || US_WORD.test(location))
-    return "US";
-  if (HK_LOCATION_SIGNALS.some((s) => loc.includes(s)) || HK_WORD.test(location))
-    return "HK";
-  return "OTHER";
-}
-
-// ---------------------------------------------------------------------------
 // Role-family inference
 // ---------------------------------------------------------------------------
 
@@ -323,9 +284,12 @@ export function classifyPosting(
   p: RawPosting,
   fallbackRoleFamily: RoleFamily | null = null,
 ): Classification {
-  // Season + region are CLASSIFIED, not gatekept (ADR-003). The only retained
-  // exclusions are not-internship and not-finance.
+  // UK-only gate (ADR-005): a posting located outside the UK is excluded. The
+  // programme SEASON, by contrast, is CLASSIFIED not gatekept (ADR-003 bug fix
+  // retained) — a Spring Week / off-cycle / placement UK role is tagged, not
+  // discarded.
   if (!isInternship(p)) return { include: false, reason: "not-internship" };
+  if (!isUkLocation(p.location)) return { include: false, reason: "not-uk" };
 
   const titleAndDepts = ` ${norm(p.title)} ${(p.departments ?? [])
     .map(norm)
@@ -334,7 +298,6 @@ export function classifyPosting(
     return { include: false, reason: "not-finance" };
 
   const programmeType = detectProgrammeType(p);
-  const region = detectRegion(p.location);
 
   const inferred = inferRoleFamily(p);
   if (inferred)
@@ -343,7 +306,6 @@ export function classifyPosting(
       roleFamily: inferred,
       via: "keyword",
       programmeType,
-      region,
     };
   if (fallbackRoleFamily)
     return {
@@ -351,7 +313,6 @@ export function classifyPosting(
       roleFamily: fallbackRoleFamily,
       via: "fallback",
       programmeType,
-      region,
     };
   return { include: false, reason: "not-finance" };
 }

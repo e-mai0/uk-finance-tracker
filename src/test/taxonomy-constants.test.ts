@@ -1,24 +1,20 @@
 import { describe, it, expect } from "vitest";
 import {
   PROGRAMME_TYPES,
-  REGIONS,
   PROGRAMME_TYPE_LABELS,
-  REGION_LABELS,
   type ProgrammeType,
-  type Region,
 } from "../lib/constants";
 
 // The full set of taxonomy members, written out independently of the source so
 // the test pins the contract rather than echoing whatever the source happens to
 // export (guards future drift / accidental additions or removals).
+// Region was removed (ADR-005, UK-only); only programme season remains.
 const ALL_PROGRAMME_TYPES: ProgrammeType[] = [
   "SPRING_WEEK",
   "SUMMER_INTERNSHIP",
   "OFF_CYCLE",
   "INDUSTRIAL_PLACEMENT",
 ];
-
-const ALL_REGIONS: Region[] = ["UK", "US", "HK", "OTHER"];
 
 describe("PROGRAMME_TYPES option list", () => {
   it("lists every ProgrammeType member exactly once", () => {
@@ -48,29 +44,6 @@ describe("PROGRAMME_TYPES option list", () => {
   });
 });
 
-describe("REGIONS option list", () => {
-  it("lists every Region member exactly once", () => {
-    const values = REGIONS.map((r) => r.value);
-    expect(values.length).toBe(ALL_REGIONS.length);
-    for (const member of ALL_REGIONS) {
-      expect(values.filter((v) => v === member).length).toBe(1);
-    }
-  });
-
-  it("is ordered: UK, US, HK, Other", () => {
-    expect(REGIONS.map((r) => r.value)).toEqual(["UK", "US", "HK", "OTHER"]);
-  });
-
-  it("carries the exact labels", () => {
-    expect(REGIONS).toEqual([
-      { value: "UK", label: "UK" },
-      { value: "US", label: "US" },
-      { value: "HK", label: "Hong Kong" },
-      { value: "OTHER", label: "Other" },
-    ]);
-  });
-});
-
 describe("PROGRAMME_TYPE_LABELS map", () => {
   it("is total — one label per ProgrammeType member, nothing extra", () => {
     expect(Object.keys(PROGRAMME_TYPE_LABELS).sort()).toEqual(
@@ -90,27 +63,6 @@ describe("PROGRAMME_TYPE_LABELS map", () => {
   it("agrees with the PROGRAMME_TYPES option-list labels", () => {
     for (const { value, label } of PROGRAMME_TYPES) {
       expect(PROGRAMME_TYPE_LABELS[value]).toBe(label);
-    }
-  });
-});
-
-describe("REGION_LABELS map", () => {
-  it("is total — one label per Region member, nothing extra", () => {
-    expect(Object.keys(REGION_LABELS).sort()).toEqual([...ALL_REGIONS].sort());
-  });
-
-  it("matches the exact label strings", () => {
-    expect(REGION_LABELS).toEqual({
-      UK: "UK",
-      US: "US",
-      HK: "Hong Kong",
-      OTHER: "Other",
-    });
-  });
-
-  it("agrees with the REGIONS option-list labels", () => {
-    for (const { value, label } of REGIONS) {
-      expect(REGION_LABELS[value]).toBe(label);
     }
   });
 });

@@ -18,7 +18,7 @@ export function mapRadancy(payload: unknown, base: string, employer: AdapterEmpl
     if (!verdict.include) continue;
     const url = href.startsWith("http") ? href : `${base}${href}`;
     out.push({ employer: employer.name, title: title.trim(), roleFamily: verdict.roleFamily,
-      programmeType: verdict.programmeType, region: verdict.region,
+      programmeType: verdict.programmeType,
       location: location.trim() || "London", status: "OPEN",
       summary: originalSummary({ title: title.trim(), employer: employer.name, atsLabel: "careers site (TalentBrew)", location: location.trim() || "UK" }),
       applicationUrl: url, sourceUrl: url, sourceType: "RADANCY", tags: [] });
