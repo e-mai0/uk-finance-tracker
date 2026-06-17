@@ -17,6 +17,66 @@ import { cn } from "@/lib/utils";
 import type { CvData } from "@/lib/cv";
 
 // ---------------------------------------------------------------------------
+// Coach chips (U1) — suggested-move chips seeded with the coach's opening
+// assistant message. Persisted as a `data-coach-chips` UIMessage part so they
+// survive reload; clicking one sends its prefilled prompt to the coach.
+// ---------------------------------------------------------------------------
+interface CoachChip {
+  label: string;
+  prompt: string;
+}
+
+/** Extract chips from a `data-coach-chips` UIMessage part (defensive parse). */
+function chipsFromPart(part: UIMessagePart<never, never>): CoachChip[] | null {
+  if (!part || typeof part !== "object" || part.type !== "data-coach-chips") return null;
+  const data = (part as { data?: unknown }).data;
+  if (!data || typeof data !== "object") return null;
+  const raw = (data as { chips?: unknown }).chips;
+  if (!Array.isArray(raw)) return null;
+  const chips: CoachChip[] = [];
+  for (const c of raw) {
+    if (!c || typeof c !== "object") continue;
+    const label = (c as { label?: unknown }).label;
+    const prompt = (c as { prompt?: unknown }).prompt;
+    if (typeof label === "string" && typeof prompt === "string" && label && prompt) {
+      chips.push({ label, prompt });
+    }
+  }
+  return chips.length ? chips : null;
+}
+
+function CoachChips({
+  chips,
+  onSend,
+  disabled,
+}: {
+  chips: CoachChip[];
+  onSend: (prompt: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Suggested moves">
+      {chips.map((chip, i) => (
+        <button
+          key={`${chip.label}-${i}`}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSend(chip.prompt)}
+          title={chip.prompt}
+          className={cn(
+            "label border border-border bg-surface px-2.5 py-1 text-accent transition-colors",
+            "hover:border-accent hover:bg-accent-tint",
+            "disabled:cursor-not-allowed disabled:opacity-40",
+          )}
+        >
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Tool label map — add update_cv
 // ---------------------------------------------------------------------------
 const TOOL_LABELS: Record<string, string> = {
@@ -212,13 +272,29 @@ export function CvChat({
                     : "text-ink",
                 )}
               >
-                {msg.parts.map((part, i) => (
-                  <MessagePart
-                    key={`${msg.id}-${i}`}
-                    part={part as UIMessagePart<never, never>}
-                    onCvUpdate={onCvUpdate}
-                  />
-                ))}
+                {msg.parts.map((part, i) => {
+                  const typedPart = part as UIMessagePart<never, never>;
+                  const chips = chipsFromPart(typedPart);
+                  if (chips) {
+                    return (
+                      <CoachChips
+                        key={`${msg.id}-${i}`}
+                        chips={chips}
+                        disabled={isStreaming}
+                        onSend={(prompt) => {
+                          if (!isStreaming) sendMessage({ text: prompt });
+                        }}
+                      />
+                    );
+                  }
+                  return (
+                    <MessagePart
+                      key={`${msg.id}-${i}`}
+                      part={typedPart}
+                      onCvUpdate={onCvUpdate}
+                    />
+                  );
+                })}
               </div>
             </div>
           ))}

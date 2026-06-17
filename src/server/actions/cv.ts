@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { auth } from "@/server/auth";
 import { type CvData } from "@/lib/cv";
-import { persistCv } from "@/server/cv/store";
+import { persistCv, ensureCvChatSession } from "@/server/cv/store";
 import { syncCvGrounding } from "@/server/cv/grounding";
 import { gatherKnownProfile } from "@/server/cv/known-profile";
 import { draftCvDataFromKnown } from "@/server/cv/generate";
+import { seedCoachOpening } from "@/server/cv/coach";
 
 export interface BuildCvResult {
   ok?: boolean;
@@ -26,6 +27,13 @@ export async function draftCvFromKnown(): Promise<BuildCvResult> {
   const known = await gatherKnownProfile(userId);
   const cv = await draftCvDataFromKnown(userId, known);
   const saved = await persistCv(userId, cv);
+
+  // Seed the CV coach's grounded opening (assessment + 3 chips) as the chat
+  // session's first assistant message, so the refine pane is never silent.
+  // Best-effort: seedCoachOpening never throws and never blocks the draft.
+  const sessionId = await ensureCvChatSession(userId);
+  await seedCoachOpening({ userId, sessionId, cv: saved });
+
   after(() => syncCvGrounding(userId));
   revalidatePath("/cv");
   return { ok: true, cv: saved };
