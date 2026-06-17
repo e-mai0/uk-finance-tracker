@@ -88,10 +88,18 @@ describe("CvPageClient — has-CV state", () => {
     expect(renderHasCv()).toContain("Eric Mai");
   });
 
-  it("renders the My-CV / Refine-with-Cyclops tab toggle", () => {
+  // U2 sanctioned behaviour change: the has-CV state no longer uses a
+  // preview/chat TAB TOGGLE — the two panes are shown SIDE BY SIDE so the user
+  // can see the CV and talk to the coach at once. We therefore assert the new
+  // side-by-side contract (both panes rendered simultaneously) instead of the
+  // old toggle. The download-link / empty-state assertions below are unchanged.
+  it("renders the preview and chat panes side by side (both visible at once)", () => {
     const html = renderHasCv();
-    expect(html).toContain("My CV");
-    expect(html).toContain("Refine with Cyclops");
+    // Preview pane is present (the CV document with the person's name).
+    expect(html).toContain("Eric Mai");
+    // Chat pane is present at the same time (its composer placeholder), not
+    // hidden behind a tab — this is the side-by-side contract.
+    expect(html).toContain("Tell me what to add or change…");
   });
 
   it("renders the Download PDF link to /cv-print", () => {
