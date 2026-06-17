@@ -17,6 +17,34 @@ const MAX_FILE_COUNT = 100;
 
 export function buildTools(userId: string) {
   return {
+    go_to_cv: tool({
+      description:
+        "Take the user to their CV workspace to CREATE, EDIT, IMPROVE, or TAILOR their CV. " +
+        "Use this ONLY when the user wants to change their actual CV document — e.g. " +
+        "'improve my CV', 'tighten my CV summary', 'make my experience bullets stronger', " +
+        "'tailor my CV to Goldman', 'rewrite my CV for a quant role', 'add a projects section to my CV'. " +
+        "Forward their instruction verbatim in `request` (in their words); the CV coach will act on it there. " +
+        "Do NOT call this for general questions ABOUT CVs that you can simply answer in chat — " +
+        "e.g. 'what should a finance CV include?', 'explain the STAR method', 'should I mention my GPA?', " +
+        "'how long should a CV be?'. Do NOT call this for anything unrelated to editing their CV " +
+        "(e.g. 'what's the Goldman deadline?', 'research Jane Street', 'draft my cover letter'). " +
+        "When in doubt between answering a CV question and navigating, prefer to answer; only navigate when the " +
+        "user clearly wants to work ON their own CV document.",
+      inputSchema: z.object({
+        request: z
+          .string()
+          .describe(
+            "The user's CV instruction to forward to the CV coach, in the user's own words (e.g. 'tighten my summary').",
+          ),
+      }),
+      // Pure: no DB work, no side effects. Returns a navigation SIGNAL the
+      // client interprets (discriminant: kind === "navigate"). Auth/budget are
+      // handled by the route; this tool just echoes a validated signal.
+      execute: async ({ request }) => {
+        return { kind: "navigate" as const, to: "/cv" as const, pane: "refine" as const, request };
+      },
+    }),
+
     list_memory: tool({
       description: "List all memory files for this user. Returns an array of paths.",
       inputSchema: z.object({}),
