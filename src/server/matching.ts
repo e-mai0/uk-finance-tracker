@@ -28,6 +28,7 @@ export async function recomputeMatchScores(userId: string): Promise<number> {
     graduationYear: profile.graduationYear,
     currentYear: profile.currentYear,
     skills: profile.skills,
+    degreeSubject: profile.degreeSubject,
   };
   const scorePrefs: ScorePreferences = {
     targetRoleFamilies: prefs.targetRoleFamilies,
