@@ -25,3 +25,12 @@ jobs:
 
       - name: Tests
         run: npm test
+
+      - name: Install extension deps
+        run: npm ci --prefix extension
+
+      - name: Type check (extension)
+        run: npm run typecheck --prefix extension
+
+      - name: Tests (extension)
+        run: npm test --prefix extension
