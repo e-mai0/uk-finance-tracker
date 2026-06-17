@@ -30,6 +30,47 @@ export const ROLE_FAMILY_SHORT: Record<RoleFamily, string> = Object.fromEntries(
 ) as Record<RoleFamily, string>;
 
 // ---------------------------------------------------------------------------
+// Programme type (season) + region taxonomy
+//
+// Hand-written string-literal unions kept deliberately INDEPENDENT of the
+// Prisma-generated enums so all consuming logic stays DB-independent (the
+// Prisma enums in schema.prisma are the persisted mirror and MUST use the same
+// spelling). Mirrors the ROLE_FAMILIES option-list / label-map shape so the
+// tracker filters + UI consume them the same way.
+// ---------------------------------------------------------------------------
+
+export type ProgrammeType =
+  | "SPRING_WEEK"
+  | "SUMMER_INTERNSHIP"
+  | "OFF_CYCLE"
+  | "INDUSTRIAL_PLACEMENT";
+
+export type Region = "UK" | "US" | "HK" | "OTHER";
+
+export const PROGRAMME_TYPES: { value: ProgrammeType; label: string }[] = [
+  { value: "SPRING_WEEK", label: "Spring Week" },
+  { value: "SUMMER_INTERNSHIP", label: "Summer Internship" },
+  { value: "OFF_CYCLE", label: "Off-Cycle" },
+  { value: "INDUSTRIAL_PLACEMENT", label: "Industrial Placement" },
+];
+
+export const REGIONS: { value: Region; label: string }[] = [
+  { value: "UK", label: "UK" },
+  { value: "US", label: "US" },
+  { value: "HK", label: "Hong Kong" },
+  { value: "OTHER", label: "Other" },
+];
+
+export const PROGRAMME_TYPE_LABELS: Record<ProgrammeType, string> =
+  Object.fromEntries(
+    PROGRAMME_TYPES.map((p) => [p.value, p.label]),
+  ) as Record<ProgrammeType, string>;
+
+export const REGION_LABELS: Record<Region, string> = Object.fromEntries(
+  REGIONS.map((r) => [r.value, r.label]),
+) as Record<Region, string>;
+
+// ---------------------------------------------------------------------------
 // Status
 // ---------------------------------------------------------------------------
 
