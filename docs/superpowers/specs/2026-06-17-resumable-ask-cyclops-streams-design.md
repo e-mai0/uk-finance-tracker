@@ -1,7 +1,7 @@
 # Resumable Ask Cyclops streams — design
 
 **Date:** 2026-06-17
-**Status:** Approved (design)
+**Status:** Implemented (branch `feat/resumable-chat-streams`) — pending user-owned Upstash provisioning + manual acceptance.
 **Branch:** `feat/resumable-chat-streams`
 
 ## Problem
