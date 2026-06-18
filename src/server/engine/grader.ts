@@ -107,10 +107,20 @@ ${rubric}
 DRAFT TO GRADE:
 ${draft}`;
 
+  // No prompt-cache breakpoint here (deliberate): the rubric is NOT a byte-identical static
+  // prefix. STAR/COMMERCIAL blocks are inserted into the MIDDLE of the rubric per question
+  // kind, and the dynamic firm-hook/word-cap clauses + question + draft are interleaved, so
+  // there is no large stable prefix to cache. Caching only the ~70-token grader role
+  // preamble would fall below Sonnet's 1024-token cache minimum and never hit.
+  //
+  // Output cap (cost): the verdict is a small structured object — at most 12 short criteria,
+  // each a key, a boolean and a brief fix. 1024 tokens is generous headroom while bounding a
+  // runaway generation that would otherwise bill against the (uncapped) default.
   const { object, usage } = await generateObject({
     model: sonnet,
     schema: VerdictSchema,
     prompt,
+    maxOutputTokens: 1024,
   });
   recordUsage(userId, usage?.totalTokens ?? 0).catch(() => {});
 

@@ -71,6 +71,20 @@ describe("critiqueAndRevise", () => {
     expect(out.text).toBe("I want to dig into markets. Honestly.");
   });
 
+  it("caps output tokens (cost) but stays large enough to never truncate a same-length rewrite", async () => {
+    generateMock.generateText.mockResolvedValueOnce({ text: "Rewritten cleanly.", usage: { totalTokens: 20 } });
+    await critiqueAndRevise("u1", "I'm excited to delve into markets — truly.", {
+      bannedTells: [],
+      traits: [],
+      exemplars: "",
+    });
+    const cap = generateMock.generateText.mock.calls.at(-1)![0].maxOutputTokens as number;
+    // The rewrite is at most draft-length. Cap must bound a runaway but exceed the largest
+    // draft budget (the 1200-token cover-letter draft) so it can NEVER truncate the rewrite.
+    expect(cap).toBeGreaterThanOrEqual(1200);
+    expect(cap).toBeLessThanOrEqual(2048);
+  });
+
   it("keeps the original if the revision is worse", async () => {
     generateMock.generateText.mockResolvedValueOnce({ text: "I'm excited to delve — and delve again — into this.", usage: {} });
     const out = await critiqueAndRevise("u1", "One em dash — only.", { bannedTells: [], traits: [], exemplars: "" });

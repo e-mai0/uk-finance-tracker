@@ -14,6 +14,18 @@ describe("distillTraits", () => {
     const traits = await distillTraits("u1", [{ original: "long opening...", edited: "Short." }]);
     expect(traits).toHaveLength(2);
   });
+
+  it("caps output tokens (cost): the result is at most 5 short traits", async () => {
+    mocks.generateObject.mockResolvedValueOnce({
+      object: { traits: ["A trait"] },
+      usage: { totalTokens: 10 },
+    });
+    await distillTraits("u1", [{ original: "x", edited: "y" }]);
+    const cap = mocks.generateObject.mock.calls.at(-1)![0].maxOutputTokens as number;
+    // Schema is <=5 traits of <=120 chars each — a few hundred tokens at most. Cap it tight.
+    expect(cap).toBeGreaterThanOrEqual(256);
+    expect(cap).toBeLessThanOrEqual(512);
+  });
 });
 
 describe("mergeTraits", () => {

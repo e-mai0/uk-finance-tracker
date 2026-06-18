@@ -74,26 +74,28 @@ describe("draftText grader loop", () => {
     expect(out.provenance.gradeResult.attempts).toBe(0);
   });
 
-  it("fail-twice-capped: stops at 2 attempts and still ships a draft", async () => {
-    // Always fails — the cap, not a pass, must end the loop.
+  it("fail-once-capped: stops at 1 attempt (cost collapse) and still ships a draft", async () => {
+    // Always fails — the cap, not a pass, must end the loop. Cap is now ONE revise
+    // (down from two) to halve worst-case Sonnet revise calls with no quality regression:
+    // the best-draft and fail-safe guarantees below are unchanged.
     mocks.gradeDraft.mockResolvedValue(grade(false, [{ name: "firm-hook", pass: false, fix: "name a desk" }]));
 
     const out = await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?", employerName: "Barclays" });
 
-    // initial grade + 2 re-grades = 3 grader calls; capped at 2 revise attempts.
-    expect(mocks.gradeDraft).toHaveBeenCalledTimes(3);
-    expect(mocks.generateText).toHaveBeenCalledTimes(3); // initial + 2 revises
-    expect(out.provenance.gradeResult.attempts).toBe(2);
+    // initial grade + 1 re-grade = 2 grader calls; capped at 1 revise attempt.
+    expect(mocks.gradeDraft).toHaveBeenCalledTimes(2);
+    expect(mocks.generateText).toHaveBeenCalledTimes(2); // initial + 1 revise
+    expect(out.provenance.gradeResult.attempts).toBe(1);
     expect(out.provenance.gradeResult.passed).toBe(false);
     expect(out.provenance.gradeResult.skipped).toBe(false);
     expect(out.text).toBeTruthy(); // a draft is still delivered
   });
 
-  it("ships-best-draft: a later revision that regresses (fewer criteria pass) never displaces an earlier, better draft", async () => {
+  it("ships-best-draft: a regressing revision never displaces the earlier, better draft (guarantee survives the 1-attempt cap)", async () => {
     // Distinct texts per generateText call so we can prove WHICH draft ships, not just its
     // verdict. The INITIAL draft is the strongest (2 of 3 criteria pass, but still fails
-    // overall); both capped revisions regress to fewer passing criteria and keep failing, so
-    // the loop runs to the 2-attempt cap without ever beating the initial draft.
+    // overall); the single capped revision regresses to fewer passing criteria and keeps
+    // failing, so the loop runs to the 1-attempt cap without ever beating the initial draft.
     mocks.generateText.mockReset();
     mocks.generateText
       .mockResolvedValueOnce({ text: "INITIAL best draft.", usage: { totalTokens: 50 } }) // initial draft
@@ -116,17 +118,44 @@ describe("draftText grader loop", () => {
 
     const out = await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?", employerName: "Barclays" });
 
-    // initial grade + 2 re-grades = 3 grader calls (capped at 2 revise attempts, never passes).
-    expect(mocks.gradeDraft).toHaveBeenCalledTimes(3);
-    expect(mocks.generateText).toHaveBeenCalledTimes(3); // initial + 2 revises
+    // initial grade + 1 re-grade = 2 grader calls (capped at 1 revise attempt, never passes).
+    expect(mocks.gradeDraft).toHaveBeenCalledTimes(2);
+    expect(mocks.generateText).toHaveBeenCalledTimes(2); // initial + 1 revise
     // The BEST draft (the INITIAL one, 2 criteria passing) must ship — NOT the later, worse
     // revision text that the loop ended on.
     expect(out.text).toBe("INITIAL best draft.");
     // The shipped verdict is the best one seen (2 passing criteria), not the last (1 passing).
     expect(out.provenance.gradeResult.criteria.filter((c) => c.pass)).toHaveLength(2);
     expect(out.provenance.gradeResult.passed).toBe(false);
-    expect(out.provenance.gradeResult.attempts).toBe(2);
+    expect(out.provenance.gradeResult.attempts).toBe(1);
     expect(out.provenance.gradeResult.skipped).toBe(false);
+  });
+
+  it("cost-cap: the worst case fires at most ONE revise beyond the initial draft (<= 2 Sonnet generateText calls)", async () => {
+    // Even on perpetual failure, the loop must not exceed one revise (the collapsed cap).
+    mocks.gradeDraft.mockResolvedValue(grade(false, [{ name: "firm-hook", pass: false, fix: "x" }]));
+
+    await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?", employerName: "Barclays" });
+
+    // Hard upper bound on Sonnet generateText calls in draft.ts: initial draft + 1 revise.
+    expect(mocks.generateText.mock.calls.length).toBeLessThanOrEqual(2);
+  });
+
+  it("best-draft survives even when the SINGLE revise improves: the passing revision ships", async () => {
+    // The cap collapse must not cost a real improvement that's reachable in one revise.
+    mocks.generateText.mockReset();
+    mocks.generateText
+      .mockResolvedValueOnce({ text: "INITIAL failing draft.", usage: { totalTokens: 50 } })
+      .mockResolvedValueOnce({ text: "REVISED passing draft.", usage: { totalTokens: 50 } });
+    mocks.gradeDraft
+      .mockResolvedValueOnce(grade(false, [{ name: "firm-hook", pass: false, fix: "name a desk" }]))
+      .mockResolvedValueOnce(grade(true, [{ name: "firm-hook", pass: true }]));
+
+    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?", employerName: "Barclays" });
+
+    expect(out.text).toBe("REVISED passing draft.");
+    expect(out.provenance.gradeResult.passed).toBe(true);
+    expect(out.provenance.gradeResult.attempts).toBe(1);
   });
 
   it("grader-throws-fallback: ships the pre-grader draft, flags skipped, never blocks", async () => {
