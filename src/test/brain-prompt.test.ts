@@ -8,6 +8,7 @@ vi.mock("@/server/ai/budget", () => ({ recordUsage: vi.fn() }));
 vi.mock("ai", () => ({ streamText: vi.fn(), convertToModelMessages: vi.fn() }));
 
 import { buildSystemPrompt } from "@/server/ai/brain";
+import { coachBlock } from "@/server/engine/playbook";
 
 describe("system prompt", () => {
   const core = [
@@ -32,6 +33,23 @@ describe("system prompt", () => {
   it("injects pending gardener questions", () => {
     const p = buildSystemPrompt(core, ["In March you said macro - still true?"], []);
     expect(p).toContain("still true?");
+  });
+
+  it("injects the playbook coach block (expert applications standards)", () => {
+    const p = buildSystemPrompt(core, [], []);
+    // The exact coach block must be present (no-op wiring must fail this).
+    expect(p).toContain(coachBlock());
+    // and its distinctive coaching phrases survive composition
+    expect(p.toLowerCase()).toContain("spring");
+    expect(p.toLowerCase()).toContain("summer");
+  });
+
+  it("preserves all existing brain content alongside the coach block", () => {
+    const p = buildSystemPrompt(core, [], []);
+    expect(p).toContain("Core memory");
+    expect(p).toContain("Memory rules");
+    expect(p).toContain("never assert");
+    expect(p).toContain("Formatting");
   });
 
   it("mentions the CV handoff capability (go_to_cv)", () => {
