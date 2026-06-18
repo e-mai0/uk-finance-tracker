@@ -355,6 +355,29 @@ describe("draftText", () => {
     expect(combined).toContain("competitor-swap");
   });
 
+  // FIRM HOOK + NO INVENTED CONTACT: even when grounding exists (firmHookExpected, not disclosed),
+  // the prompt must forbid inventing a person/meeting/contact and require grounded contacts only.
+  it("injects the never-invent-a-contact firm-hook instruction even when grounding exists (firmHookExpected, not disclosed)", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    // CTX has research + companyNotes → firmHookExpected true, firmHookDisclosed false
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Why Barclays?",
+      employerName: "Barclays",
+    });
+    expect(out.provenance.firmHookExpected).toBe(true);
+    expect(out.provenance.firmHookDisclosed).toBe(false);
+    const system = mocks.generateText.mock.calls.at(-1)![0].system as string;
+    const lc = system.toLowerCase();
+    // Never invent a person/meeting/contact.
+    expect(lc).toMatch(/(?:never|do not|don't) invent a (?:person|contact)/);
+    expect(lc).toMatch(/person|meeting|conversation|contact/);
+    // Only cite a contact that appears in the applicant's provided materials.
+    expect(lc).toMatch(/applicant's provided materials|appears in the applicant/);
+    // The existing anti-fabrication rule survives.
+    expect(system).toContain("never invent");
+  });
+
   // FIRM HOOK + NO FABRICATION: thin grounding for why-firm with no concrete hook → DISCLOSE
   it("sets thinGrounding + firmHookDisclosed for a why-firm question with no research or notes (no fabrication)", async () => {
     mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });

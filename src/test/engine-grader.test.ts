@@ -97,6 +97,45 @@ describe("gradeDraft (production grader)", () => {
     expect(prompt.toLowerCase()).toMatch(/honest|disclos|do not penalise|do not penalize/);
   });
 
+  it("firmHookExpected branch warns that a vague personal-meeting claim is not by itself checkable", async () => {
+    mockVerdict({ criteria: [{ name: "firm-hook", pass: true }], passed: true });
+    // baseCtx has firmHookExpected true, firmHookDisclosed false
+    await gradeDraft("u1", "I met someone from Barclays at a campus event.", baseCtx);
+    const prompt = mocks.generateObject.mock.calls.at(-1)![0].prompt as string;
+    const lc = prompt.toLowerCase();
+    // A vague personal-meeting claim does NOT by itself satisfy the firm-hook criterion.
+    expect(lc).toMatch(/personal-meeting|i met someone|vague/);
+    expect(lc).toMatch(/does not by itself|not (?:by itself|automatically) (?:satisfy|checkable)/);
+    // But a concrete grounded contact is still acceptable (do NOT reject all person hooks).
+    expect(lc).toMatch(/grounded contact|concrete.*contact/);
+  });
+
+  it("not-required branch is unchanged: no firm-hook criterion invented for non-hook questions", async () => {
+    mockVerdict({ criteria: [{ name: "star", pass: true }], passed: true });
+    await gradeDraft("u1", "draft", {
+      ...baseCtx,
+      questionKind: "leadership",
+      firmHookExpected: false,
+      firmHookDisclosed: false,
+    });
+    const prompt = mocks.generateObject.mock.calls.at(-1)![0].prompt as string;
+    expect(prompt).toContain("not required for this question kind");
+    // The required-branch vague-meeting warning clause only belongs to the required branch.
+    expect(prompt.toLowerCase()).not.toContain("does not by itself satisfy");
+  });
+
+  it("firmHookDisclosed branch is unchanged: honest disclosure, no vague-meeting warning", async () => {
+    mockVerdict({ criteria: [{ name: "honest-disclosure", pass: true }], passed: true });
+    await gradeDraft("u1", "I should research a specific Barclays detail.", {
+      ...baseCtx,
+      firmHookDisclosed: true,
+    });
+    const prompt = mocks.generateObject.mock.calls.at(-1)![0].prompt as string;
+    expect(prompt.toLowerCase()).toMatch(/honest|disclos/);
+    // The required-branch vague-meeting warning clause must NOT appear in the disclosed branch.
+    expect(prompt.toLowerCase()).not.toContain("does not by itself satisfy");
+  });
+
   it("threads the word cap into the rubric when known", async () => {
     mockVerdict({ criteria: [{ name: "word-cap", pass: true }], passed: true });
     await gradeDraft("u1", "draft", { ...baseCtx, wordCap: 200 });

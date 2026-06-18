@@ -15,7 +15,9 @@
  * checkable hook. The competitor-swap test is the gate.
  */
 export const FIRM_HOOK = `FIRM HOOK (why this firm / why this division):
-- Every "why them" claim must carry at least one SPECIFIC, CHECKABLE hook: a named recent deal or transaction, a specific desk, group or programme, a named person you met (with their title and office), or a specific fund, strategy or research piece.
+- Every "why them" claim must carry at least one SPECIFIC, CHECKABLE hook: a named recent deal or transaction, a specific desk, group or programme, a named person you genuinely met (with their title and office), or a specific fund, strategy or research piece.
+- NEVER invent a person, meeting, conversation or networking contact. A named-contact hook is valid ONLY when the applicant genuinely met them and it is grounded in the applicant's own materials (their stories, memory or CV). Inventing a contact you did not meet is fabrication and an instant reject.
+- Prefer a checkable, non-personal specific (a named deal, a specific desk, group or programme, a fund or strategy, a research piece) over a personal-meeting claim: a non-personal hook does not rest on an unverifiable personal claim and is the safer, stronger choice.
 - The competitor-swap test: if a sentence still reads true after you swap in a rival firm's name, it is filler. Cut it.
 - Banned filler (fails the swap test): "market leader", "prestigious", "great culture", "smart people", "strong reputation", "exposure to big deals". One precise, sourced reason beats five generic ones.
 - Tie the hook back to the applicant: a fact about the firm only counts if it connects to what this applicant wants to do or has done.`;

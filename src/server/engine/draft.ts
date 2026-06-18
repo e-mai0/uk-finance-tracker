@@ -116,6 +116,11 @@ function tailoringBlock(opts: {
     "INDIVIDUAL WEAVE: tie every firm fact back to the applicant's own evidence (their CV, stories or profile). A fact about the firm only earns its place when it connects to what this applicant has done or wants to do. Listing firm facts without connecting any of them to yourself is a failure mode graders reject.",
   );
 
+  if (opts.firmHookExpected) {
+    parts.push(
+      "FIRM HOOK — NEVER INVENT A CONTACT: do not invent a person, meeting, conversation or networking contact. Only cite a named contact that genuinely appears in the applicant's provided materials (their CV, stories or notes); inventing one is fabrication and an instant reject. Where no grounded contact exists, use a non-personal checkable hook (a named deal, a specific desk/group/programme, a fund or research piece) instead, or disclose honestly. This applies even when grounding exists.",
+    );
+  }
   if (opts.firmHookExpected && !opts.firmHookDisclosed) {
     parts.push(
       "FIRM HOOK REQUIRED: weave in at least one specific, checkable firm hook (a named recent deal, a specific desk/group/programme, a named fund or research piece) that survives the competitor-swap test. Generic, swappable praise is a fail.",
