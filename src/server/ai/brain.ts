@@ -9,6 +9,7 @@ import { sonnet } from "@/server/ai/models";
 import { buildTools } from "@/server/ai/tools";
 import { memoryService } from "@/server/memory/service";
 import { annotateDecay } from "@/server/memory/facts";
+import { buildRecallMemory } from "@/server/memory/recall";
 import { recordUsage } from "@/server/ai/budget";
 import { prisma } from "@/server/db";
 import { coachBlock } from "@/server/engine/playbook";
@@ -20,8 +21,13 @@ export function buildSystemPrompt(
   coreFiles: { path: string; content: string }[],
   pendingQuestions: string[],
   staleApps: { employerName: string | null; roleTitle: string | null; submittedAt: Date | null }[] = [],
+  latestUserMessage = "",
 ): string {
-  const memory = coreFiles.map((f) => `<file path="${f.path}">\n${f.content}\n</file>`).join("\n");
+  // Recall tuning: relevance-order the core files so the facts most relevant to
+  // the current turn sit at the EDGES of the memory block (beats "lost in the
+  // middle"). Never drops a fact; falls back to straight concatenation in the
+  // original order on empty message / single file / any error.
+  const memory = buildRecallMemory(coreFiles, latestUserMessage);
   const questions = pendingQuestions.length
     ? `\nWhen natural, weave in these pending confirmations (do not interrogate; one at a time):\n${pendingQuestions.map((q) => `- ${q}`).join("\n")}`
     : "";
@@ -69,6 +75,21 @@ export async function loadPendingQuestions(userId: string): Promise<{ id: string
   });
 }
 
+/** Pull the text of the most recent user message (for recall relevance). "" if none. */
+export function latestUserText(messages: UIMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== "user") continue;
+    const text = (m.parts ?? [])
+      .filter((p): p is { type: "text"; text: string } => p.type === "text" && "text" in p)
+      .map((p) => p.text)
+      .join(" ")
+      .trim();
+    if (text) return text;
+  }
+  return "";
+}
+
 export async function streamCyclops(args: { userId: string; messages: UIMessage[] }) {
   const files = await memoryService.list(args.userId);
   const now = new Date();
@@ -113,7 +134,7 @@ export async function streamCyclops(args: { userId: string; messages: UIMessage[
   const cacheBreakpoint = { anthropic: { cacheControl: { type: "ephemeral" as const } } };
   const systemMessage: ModelMessage = {
     role: "system",
-    content: buildSystemPrompt(core, pendingQuestions, staleApps),
+    content: buildSystemPrompt(core, pendingQuestions, staleApps, latestUserText(args.messages)),
     providerOptions: cacheBreakpoint,
   };
   const lastMessage = history[history.length - 1];
