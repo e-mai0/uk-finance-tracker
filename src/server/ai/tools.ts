@@ -80,7 +80,13 @@ export function buildTools(userId: string) {
         "SUPERSEDE, don't append: contradicted facts move to the History section with their dates. " +
         "Never rewrite 'Raw notes' sections. " +
         "Never include [decayed to: ...] annotations in content. " +
-        "Provide a short reason describing what changed and why.",
+        "Provide a short reason describing what changed and why. " +
+        "Capture the DURABLE, APPLICATION-RELEVANT facts that make answers and fit checks sharper, not chit-chat. Prioritise: " +
+        "target firms and divisions/desks they care about (e.g. 'targeting Goldman M&A', 'interested in rates trading') and the programme/programmes they want (spring week, summer, off-cycle); " +
+        "their key STORIES with QUANTIFIED results (numbers, scale, outcome) that can anchor a STAR answer; " +
+        "hard CONSTRAINTS — work authorisation / visa / sponsorship, location, and timing/availability; " +
+        "and any application DEADLINES or dates they mention. " +
+        "Stick to confidence discipline: facts the user states directly are high confidence dated today; never assert a medium/low fact as flat truth.",
       inputSchema: z.object({
         path: z.string().describe("The path of the memory file to write (e.g. 'profile.md')."),
         content: z.string().describe("The full new content of the memory file."),
