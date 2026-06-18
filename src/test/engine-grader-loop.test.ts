@@ -89,6 +89,46 @@ describe("draftText grader loop", () => {
     expect(out.text).toBeTruthy(); // a draft is still delivered
   });
 
+  it("ships-best-draft: a later revision that regresses (fewer criteria pass) never displaces an earlier, better draft", async () => {
+    // Distinct texts per generateText call so we can prove WHICH draft ships, not just its
+    // verdict. The INITIAL draft is the strongest (2 of 3 criteria pass, but still fails
+    // overall); both capped revisions regress to fewer passing criteria and keep failing, so
+    // the loop runs to the 2-attempt cap without ever beating the initial draft.
+    mocks.generateText.mockReset();
+    mocks.generateText
+      .mockResolvedValueOnce({ text: "INITIAL best draft.", usage: { totalTokens: 50 } }) // initial draft
+      .mockResolvedValue({ text: "REVISED worse draft.", usage: { totalTokens: 50 } }); // every revise
+
+    const strong = grade(false, [
+      { name: "firm-hook", pass: true },
+      { name: "quantified-result", pass: true },
+      { name: "i-voice", pass: false, fix: "use first person" },
+    ]); // 2 passing, fails overall — the best draft seen
+    const regressed = grade(false, [
+      { name: "firm-hook", pass: true },
+      { name: "quantified-result", pass: false, fix: "add a number" },
+      { name: "i-voice", pass: false, fix: "use first person" },
+    ]); // only 1 passing, still fails — strictly worse than `strong`
+
+    mocks.gradeDraft
+      .mockResolvedValueOnce(strong) // initial grade
+      .mockResolvedValue(regressed); // every re-grade after a revision regresses
+
+    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?", employerName: "Barclays" });
+
+    // initial grade + 2 re-grades = 3 grader calls (capped at 2 revise attempts, never passes).
+    expect(mocks.gradeDraft).toHaveBeenCalledTimes(3);
+    expect(mocks.generateText).toHaveBeenCalledTimes(3); // initial + 2 revises
+    // The BEST draft (the INITIAL one, 2 criteria passing) must ship — NOT the later, worse
+    // revision text that the loop ended on.
+    expect(out.text).toBe("INITIAL best draft.");
+    // The shipped verdict is the best one seen (2 passing criteria), not the last (1 passing).
+    expect(out.provenance.gradeResult.criteria.filter((c) => c.pass)).toHaveLength(2);
+    expect(out.provenance.gradeResult.passed).toBe(false);
+    expect(out.provenance.gradeResult.attempts).toBe(2);
+    expect(out.provenance.gradeResult.skipped).toBe(false);
+  });
+
   it("grader-throws-fallback: ships the pre-grader draft, flags skipped, never blocks", async () => {
     mocks.gradeDraft.mockRejectedValueOnce(new Error("model unavailable"));
 

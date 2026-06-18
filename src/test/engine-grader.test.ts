@@ -7,7 +7,7 @@ vi.mock("ai", () => ({ generateObject: mocks.generateObject }));
 vi.mock("@/server/ai/budget", () => ({ recordUsage: vi.fn(async () => {}) }));
 
 import { gradeDraft } from "@/server/engine/grader";
-import { SONNET_ID } from "@/server/ai/models";
+import { sonnet } from "@/server/ai/models";
 import {
   FIRM_HOOK,
   STAR_RULES,
@@ -42,8 +42,9 @@ describe("gradeDraft (production grader)", () => {
 
     expect(mocks.generateObject).toHaveBeenCalledTimes(1);
     const call = mocks.generateObject.mock.calls[0][0];
-    // Model is Sonnet (judgment), not Haiku.
-    expect(call.model).toBeDefined();
+    // Model is Sonnet (judgment), not Haiku — assert the exact model object so this
+    // fails RED if grader.ts is ever rewired to Haiku (or any other model).
+    expect(call.model).toBe(sonnet);
     // The prompt carries the actual playbook rubric content (so it cannot be a hardcoded pass).
     expect(call.prompt).toContain("competitor-swap");
     expect(call.prompt).toContain(FIRM_HOOK.split("\n")[0]);
@@ -69,11 +70,6 @@ describe("gradeDraft (production grader)", () => {
     expect(res.criteria[0].fix).toContain("Barclays");
     expect(res.skipped).toBe(false);
     expect(res.attempts).toBe(0);
-  });
-
-  it("includes the SONNET_ID model id reference (judgment model) — sanity that Sonnet is wired", () => {
-    // Guard against an accidental swap to Haiku: the model id constant exists and is Sonnet.
-    expect(SONNET_ID).toBe("claude-sonnet-4-6");
   });
 
   it("includes STAR rubric for competency questions", async () => {
