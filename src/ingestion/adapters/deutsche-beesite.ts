@@ -25,6 +25,7 @@ export function mapBeesite(payload: unknown, employer: AdapterEmployer): RawOppo
     const url = d.ApplyURI?.[0];
     out.push({
       employer: employer.name, title: d.PositionTitle.trim(), roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType,
       location, status: "OPEN",
       summary: originalSummary({ title: d.PositionTitle.trim(), employer: employer.name, atsLabel: "Deutsche Bank careers (Beesite)", location }),
       applicationUrl: url, sourceUrl: url, sourceType: "CAREERS_PAGE",

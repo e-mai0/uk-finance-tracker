@@ -20,6 +20,7 @@ export function mapOracleList(payload: unknown, employer: AdapterEmployer): RawO
       employer: employer.name,
       title: r.Title.trim(),
       roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType,
       location,
       status: "OPEN",
       summary: originalSummary({ title: r.Title.trim(), employer: employer.name, atsLabel: "Oracle Cloud careers", location }),

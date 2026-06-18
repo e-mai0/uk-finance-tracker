@@ -1,5 +1,10 @@
 import type { OpportunityStatus, RoleFamily } from "@prisma/client";
-import { ROLE_FAMILY_LABEL, type SortKey, DEFAULT_SORT } from "./constants";
+import {
+  ROLE_FAMILY_LABEL,
+  type SortKey,
+  type ProgrammeType,
+  DEFAULT_SORT,
+} from "./constants";
 
 /**
  * A flattened, UI-ready view of an opportunity used by the tracker table,
@@ -13,6 +18,7 @@ export interface TrackerItem {
   logoHint?: string | null;
   title: string;
   roleFamily: RoleFamily;
+  programmeType: ProgrammeType;
   divisionDesk?: string | null;
   location: string;
   status: OpportunityStatus;
@@ -34,6 +40,7 @@ export interface FilterParams {
   status: OpportunityStatus[];
   location: string[];
   roleFamily: RoleFamily[];
+  programmeType: ProgrammeType[];
   hasDeadline: boolean;
   sponsorshipAvailable: boolean;
   starred: boolean;
@@ -45,6 +52,7 @@ export const EMPTY_FILTERS: FilterParams = {
   status: [],
   location: [],
   roleFamily: [],
+  programmeType: [],
   hasDeadline: false,
   sponsorshipAvailable: false,
   starred: false,
@@ -81,6 +89,7 @@ export function parseFilters(params: RawParams): FilterParams {
     status: toArray(params.status) as OpportunityStatus[],
     location: toArray(params.location),
     roleFamily: toArray(params.family) as RoleFamily[],
+    programmeType: toArray(params.season) as ProgrammeType[],
     hasDeadline: params.deadline === "1" || params.deadline === "true",
     sponsorshipAvailable:
       params.sponsorship === "1" || params.sponsorship === "true",
@@ -95,6 +104,7 @@ export function hasActiveFilters(f: FilterParams): boolean {
     f.status.length > 0 ||
     f.location.length > 0 ||
     f.roleFamily.length > 0 ||
+    f.programmeType.length > 0 ||
     f.hasDeadline ||
     f.sponsorshipAvailable ||
     f.starred
@@ -156,6 +166,11 @@ export function applyFilters(
     if (f.status.length > 0 && !f.status.includes(item.status)) return false;
     if (f.location.length > 0 && !f.location.includes(item.location)) return false;
     if (f.roleFamily.length > 0 && !f.roleFamily.includes(item.roleFamily))
+      return false;
+    if (
+      f.programmeType.length > 0 &&
+      !f.programmeType.includes(item.programmeType)
+    )
       return false;
     if (f.hasDeadline && !item.deadlineAt) return false;
     if (f.sponsorshipAvailable && !offersSponsorship(item.sponsorshipInfo))

@@ -67,6 +67,7 @@ export function mapAshbyJobs(
       employer: employer.name,
       title: job.title.trim(),
       roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType,
       divisionDesk: department ?? undefined,
       location: location || "London",
       status: "OPEN",

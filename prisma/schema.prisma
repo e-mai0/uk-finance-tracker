@@ -34,6 +34,19 @@ enum OpportunityStatus {
   UNKNOWN
 }
 
+// Programme season — first-class classified data (replaces the UK-summer-only
+// assumption). Spelling MUST match the ProgrammeType string-literal union in
+// src/lib/constants.ts (the app-level source of truth). WINTER folds into
+// OFF_CYCLE per ADR-003. The tracker is UK-only (ADR-005) so there is no Region.
+// ADR-006 narrows scope to the 3 core internship seasons — industrial
+// placements are EXCLUDED upstream (classify.ts), so INDUSTRIAL_PLACEMENT was
+// dropped from this enum.
+enum ProgrammeType {
+  SPRING_WEEK
+  SUMMER_INTERNSHIP
+  OFF_CYCLE
+}
+
 enum WorkAuth {
   UK_CITIZEN
   UK_SETTLED // ILR / settled / pre-settled
@@ -163,7 +176,14 @@ model Opportunity {
   employerId         String
   employer           Employer          @relation(fields: [employerId], references: [id], onDelete: Cascade)
   title              String
-  programmeType      String // normalized, e.g. "Summer Internship"
+  programmeType      String // legacy normalized label, e.g. "Summer Internship" (retained; kept in sync from the enum)
+  // Season taxonomy (ADR-003, re-scoped UK-only by ADR-005). Downstream units
+  // read/write this NEW classified column `programmeTypeEnum`. The default
+  // backfills existing rows correctly (every legacy row IS a summer internship).
+  // The legacy `programmeType` String, `country`, `isUkBased`,
+  // `isSummerInternship` are retained and derived from it for now (retirement
+  // is a later cycle). The tracker is UK-only so there is no region column.
+  programmeTypeEnum  ProgrammeType     @default(SUMMER_INTERNSHIP)
   roleFamily         RoleFamily
   divisionDesk       String?
   location           String

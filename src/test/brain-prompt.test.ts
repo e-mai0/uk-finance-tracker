@@ -52,6 +52,11 @@ describe("system prompt", () => {
     expect(p).toContain("Formatting");
   });
 
+  it("mentions the CV handoff capability (go_to_cv)", () => {
+    const p = buildSystemPrompt(core, [], []);
+    expect(p).toContain("go_to_cv");
+  });
+
   it("renders stale submitted applications as a nudge block", () => {
     const stale = [
       { employerName: "Goldman Sachs", roleTitle: "Summer Analyst", submittedAt: new Date("2026-04-01") },
