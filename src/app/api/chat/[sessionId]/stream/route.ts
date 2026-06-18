@@ -34,7 +34,7 @@ export async function GET(
   // the client falls back to its loaded messages.
   const ctx = getStreamContext();
   // resumeExistingStream returns null (done/expired) or undefined (no stream found) — both map to 204
-  let resumed: ReadableStream<Uint8Array> | null | undefined = null;
+  let resumed = null;
   try {
     resumed = ctx ? await ctx.resumeExistingStream(decision.streamId) : null;
   } catch (err) {
