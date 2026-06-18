@@ -272,10 +272,20 @@ export function buildTools(userId: string) {
         employerName: z.string().optional().describe("The employer name."),
         roleTitle: z.string().optional().describe("The role title."),
         charLimit: z.number().int().positive().optional().describe("Hard character limit for the answer."),
+        wordLimit: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("Stated word limit for the answer if the question specifies one, e.g. 250."),
       }),
       execute: async (input) => {
+        // Resolve the word cap: prefer the explicit stated limit; otherwise derive an
+        // approximate one from charLimit (~6 chars/word) so word-cap discipline still
+        // applies when only a character limit is known. charLimit keeps its own meaning.
+        const wordLimit = input.wordLimit ?? (input.charLimit ? Math.round(input.charLimit / 6) : undefined);
         const ctx = await gatherSubstance(userId, input);
-        const result = await draftText(userId, ctx, input);
+        const result = await draftText(userId, ctx, { ...input, wordLimit });
         await prisma.generatedDraft.create({
           data: {
             userId,
