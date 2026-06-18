@@ -12,13 +12,19 @@ import {
 } from "../../lib/validation";
 import { extractCvFactsToMemory } from "../cv/facts";
 import { parseCvTextToCvData } from "../cv/generate";
-import { persistCv } from "../cv/store";
+import { persistCv, ensureCvChatSession } from "../cv/store";
+import { seedCoachOpening } from "../cv/coach";
+import type { CvData } from "../../lib/cv";
 
 export interface ActionResult {
   ok?: boolean;
   error?: string;
   fieldErrors?: Record<string, string[]>;
   cvParsed?: boolean;
+  /** The parsed structured CV, present when cvParsed is true. Lets the /cv
+   *  client switch from empty-state to the has-CV view in place (no full
+   *  reload). Additive: the Settings caller ignores it. */
+  cv?: CvData;
 }
 
 const MAX_CV_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -107,27 +113,47 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
     },
   });
 
-  // Best-effort: distill the CV into profile.md facts so Cyclops knows it.
-  if (cvText) await extractCvFactsToMemory(userId, cvText);
-
-  // Best-effort: parse the uploaded CV into an editable structured CV so it
-  // becomes the single source of truth on /cv. Failure leaves the upload intact.
+  // Run the two INDEPENDENT LLM calls concurrently rather than sequentially:
+  //   - facts extraction (distil the CV into profile.md so Cyclops knows it)
+  //   - structured parse (turn the CV into editable CvData; the SoT on /cv)
+  // Facts extraction is best-effort and must NEVER abort the parse, so we use
+  // Promise.allSettled — a rejected facts call leaves the parse result intact.
   let cvParsed = false;
+  let parsedCv: CvData | undefined;
   if (cvText) {
-    try {
-      const cv = await parseCvTextToCvData(userId, cvText);
+    const [, parseResult] = await Promise.allSettled([
+      extractCvFactsToMemory(userId, cvText),
+      parseCvTextToCvData(userId, cvText),
+    ]);
+
+    if (parseResult.status === "fulfilled") {
+      const cv = parseResult.value;
       if (cv) {
-        await persistCv(userId, cv);
-        cvParsed = true;
+        try {
+          // persistCv returns the validated CvData it saved; use that as the
+          // source of truth for both the coach seed and the client return.
+          parsedCv = await persistCv(userId, cv);
+          cvParsed = true;
+        } catch (err) {
+          console.error("[cv store] parse-on-upload persist failed:", err);
+        }
       }
-    } catch (err) {
-      console.error("[cv store] parse-on-upload persist failed:", err);
+    } else {
+      console.error("[cv store] parse-on-upload failed:", parseResult.reason);
     }
+  }
+
+  // Seed the CV coach's grounded opening (assessment + 3 chips) so an UPLOADED
+  // CV lands the user in a populated refine pane, identically to the draft path
+  // (see actions/cv.ts). Best-effort: seedCoachOpening never throws/blocks.
+  if (parsedCv) {
+    const sessionId = await ensureCvChatSession(userId);
+    await seedCoachOpening({ userId, sessionId, cv: parsedCv });
   }
 
   revalidatePath("/settings");
   revalidatePath("/cv");
-  return { ok: true, cvParsed };
+  return { ok: true, cvParsed, ...(parsedCv ? { cv: parsedCv } : {}) };
 }
 
 /** Remove the stored CV file + text. */

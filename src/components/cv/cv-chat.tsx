@@ -13,8 +13,70 @@ import {
 } from "ai";
 import type { UIMessage, UIMessagePart, ToolUIPart, DynamicToolUIPart } from "ai";
 import { useRef, useState, useEffect, FormEvent, KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { CvData } from "@/lib/cv";
+import { decideAutoSend, CV_PATH } from "@/lib/cv-handoff";
+
+// ---------------------------------------------------------------------------
+// Coach chips (U1) — suggested-move chips seeded with the coach's opening
+// assistant message. Persisted as a `data-coach-chips` UIMessage part so they
+// survive reload; clicking one sends its prefilled prompt to the coach.
+// ---------------------------------------------------------------------------
+interface CoachChip {
+  label: string;
+  prompt: string;
+}
+
+/** Extract chips from a `data-coach-chips` UIMessage part (defensive parse). */
+function chipsFromPart(part: UIMessagePart<never, never>): CoachChip[] | null {
+  if (!part || typeof part !== "object" || part.type !== "data-coach-chips") return null;
+  const data = (part as { data?: unknown }).data;
+  if (!data || typeof data !== "object") return null;
+  const raw = (data as { chips?: unknown }).chips;
+  if (!Array.isArray(raw)) return null;
+  const chips: CoachChip[] = [];
+  for (const c of raw) {
+    if (!c || typeof c !== "object") continue;
+    const label = (c as { label?: unknown }).label;
+    const prompt = (c as { prompt?: unknown }).prompt;
+    if (typeof label === "string" && typeof prompt === "string" && label && prompt) {
+      chips.push({ label, prompt });
+    }
+  }
+  return chips.length ? chips : null;
+}
+
+function CoachChips({
+  chips,
+  onSend,
+  disabled,
+}: {
+  chips: CoachChip[];
+  onSend: (prompt: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Suggested moves">
+      {chips.map((chip, i) => (
+        <button
+          key={`${chip.label}-${i}`}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSend(chip.prompt)}
+          title={chip.prompt}
+          className={cn(
+            "label border border-border bg-surface px-2.5 py-1 text-accent transition-colors",
+            "hover:border-accent hover:bg-accent-tint",
+            "disabled:cursor-not-allowed disabled:opacity-40",
+          )}
+        >
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Tool label map — add update_cv
@@ -128,15 +190,29 @@ export function CvChat({
   sessionId,
   initialMessages,
   onCvUpdate,
+  handoff,
 }: {
   sessionId: string;
   initialMessages: UIMessage[];
   /** Called whenever update_cv produces a new CvData so the parent can refresh the preview. */
   onCvUpdate?: (cv: CvData) => void;
+  /**
+   * U4b dock→CV handoff: a request forwarded from the main brain via the ?handoff=
+   * query param. Auto-sent to the coach as an ordinary user message exactly once
+   * on mount; the carrying param is then stripped so a refresh can't replay it.
+   */
+  handoff?: string;
 }) {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  // Once-guard for the handoff auto-send (U4b). Strict Mode double-invokes
+  // effects and the component re-renders as the coach streams its reply; this
+  // ref makes the auto-send fire EXACTLY ONCE for a given handoff. The strip
+  // (router.replace to a bare /cv) then removes the param so a refresh — which
+  // remounts with a fresh ref — has no handoff to replay.
+  const autoSentRef = useRef(false);
 
   const { messages, sendMessage, regenerate, stop, status, error } = useChat({
     id: sessionId,
@@ -162,6 +238,28 @@ export function CvChat({
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  // Dock→CV handoff auto-send (U4b). When the page arrived with a ?handoff=
+  // request, send it to the coach as an ordinary user message exactly ONCE
+  // (the autoSentRef guard survives the streaming re-renders + Strict Mode's
+  // double effect), then strip the param via router.replace("/cv") so a refresh
+  // does not replay the send. The message goes through the normal sendMessage
+  // path, so it honours the /api/cv/chat "last message must be user" rule — no
+  // route change needed. A normal visit (no handoff) is a no-op.
+  useEffect(() => {
+    const decision = decideAutoSend(handoff, autoSentRef.current);
+    if (decision.send) {
+      autoSentRef.current = true;
+      sendMessage({ text: decision.text });
+    }
+    if (decision.strip) {
+      router.replace(CV_PATH);
+    }
+    // Intentionally keyed on the handoff value only: this runs on mount for a
+    // given handoff. The autoSentRef guard prevents a double-send if React
+    // re-invokes the effect; sendMessage/router identities are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handoff]);
 
   function handleSubmit(e?: FormEvent) {
     e?.preventDefault();
@@ -212,13 +310,29 @@ export function CvChat({
                     : "text-ink",
                 )}
               >
-                {msg.parts.map((part, i) => (
-                  <MessagePart
-                    key={`${msg.id}-${i}`}
-                    part={part as UIMessagePart<never, never>}
-                    onCvUpdate={onCvUpdate}
-                  />
-                ))}
+                {msg.parts.map((part, i) => {
+                  const typedPart = part as UIMessagePart<never, never>;
+                  const chips = chipsFromPart(typedPart);
+                  if (chips) {
+                    return (
+                      <CoachChips
+                        key={`${msg.id}-${i}`}
+                        chips={chips}
+                        disabled={isStreaming}
+                        onSend={(prompt) => {
+                          if (!isStreaming) sendMessage({ text: prompt });
+                        }}
+                      />
+                    );
+                  }
+                  return (
+                    <MessagePart
+                      key={`${msg.id}-${i}`}
+                      part={typedPart}
+                      onCvUpdate={onCvUpdate}
+                    />
+                  );
+                })}
               </div>
             </div>
           ))}
