@@ -23,6 +23,27 @@ describe("playbook FIRM_HOOK", () => {
     expect(FIRM_HOOK.toLowerCase()).toContain("prestigious");
     noEmDash(FIRM_HOOK);
   });
+
+  it("forbids inventing a person/meeting/contact and grounds a named-contact hook in the applicant's own materials", () => {
+    const lc = FIRM_HOOK.toLowerCase();
+    // Never invent a person/meeting/conversation/networking contact.
+    expect(lc).toMatch(/never invent a (?:person|contact)/);
+    expect(lc).toMatch(/person|meeting|conversation|contact/);
+    // A named-contact hook is valid only when genuinely met / grounded in the applicant's own materials.
+    expect(lc).toMatch(/genuinely met|grounded in the applicant/);
+    // Inventing one is fabrication and an instant reject.
+    expect(lc).toContain("fabrication");
+    expect(lc).toContain("instant reject");
+    // Still prefers non-personal checkable specifics.
+    expect(lc).toMatch(/non-personal/);
+    // The existing competitor-swap test + banned filler are NOT dropped.
+    expect(lc).toContain("competitor-swap");
+    expect(FIRM_HOOK).toContain("market leader");
+    expect(FIRM_HOOK.toLowerCase()).toContain("prestigious");
+    expect(FIRM_HOOK).toContain("great culture");
+    expect(FIRM_HOOK).toContain("strong reputation");
+    noEmDash(FIRM_HOOK);
+  });
 });
 
 describe("playbook STAR_RULES", () => {
