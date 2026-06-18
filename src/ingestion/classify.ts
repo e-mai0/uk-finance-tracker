@@ -66,13 +66,23 @@ const INTERN_TITLE_SIGNALS = [
   /\bsummer associate\b/i,
 ];
 
-// Roles that are not internships at all.
+// Roles that are not internships at all. NOTE: /\bgraduate\b/ does NOT match the
+// PLURAL "graduates", so /\bupcoming graduates?\b/ is added explicitly to
+// exclude "… Programme for Upcoming Graduates" (a graduate scheme that carries
+// no "academy"/singular-"graduate" token).
 const NON_INTERN_SIGNALS = [
   /\bgraduate\b/i,
+  /\bupcoming graduates?\b/i,
   /\bnew grad\b/i,
   /\bacademy\b/i,
   /\bfull[- ]time\b/i,
 ];
+
+// "campus" is a WEAK early-careers signal — UK firms title some early-careers
+// internships "Campus …". It qualifies a posting as an internship ONLY when an
+// intern/internship co-token also appears; a bare "Campus Hire" (no intern
+// token) must NOT pass the not-internship gate.
+const CAMPUS_SIGNAL = /\bcampus\b/i;
 
 /**
  * Is this an in-scope early-careers programme (internship, OR a Spring Week /
@@ -92,7 +102,13 @@ function isInternship(p: RawPosting): boolean {
   // A recognised non-summer programme word (spring/insight/placement/off-cycle/
   // winter) marks an in-scope early-careers programme even without "intern".
   const byProgramme = detectProgrammeType(p) !== "SUMMER_INTERNSHIP";
-  return byTitle || byType || byProgramme;
+  // "Campus …" early-careers title — only counts WITH an intern/internship
+  // co-token (title or ATS type); bare "campus" does NOT qualify.
+  const internToken =
+    /\bintern(ship)?s?\b/i.test(title) ||
+    /\bintern(ship)?s?\b/i.test(p.employmentType ?? "");
+  const byCampus = CAMPUS_SIGNAL.test(title) && internToken;
+  return byTitle || byType || byProgramme || byCampus;
 }
 
 // ---------------------------------------------------------------------------
@@ -151,11 +167,6 @@ const SPRING_WEEK_SIGNALS: RegExp[] = [
   /\bfirst[- ]year\b/i,
   /\b1st year\b/i,
   /\bsophomore\b/i,
-  /\bdiscovery\b/i,
-  /\bexplore\b/i,
-  /\bspotlight\b/i,
-  /\bimmersion\b/i,
-  /\bhorizons?\b/i,
   // Diversity-insight variants (medium-confidence; insight/early-careers context).
   /\bwomen'?s insight\b/i,
   /\bdiversity insight\b/i,
@@ -165,6 +176,19 @@ const SPRING_WEEK_SIGNALS: RegExp[] = [
   /\bspring\b[\s\S]*\b(insight|week|first[- ]year|1st year)\b/i,
   /\b(insight|week|first[- ]year|1st year)\b[\s\S]*\bspring\b/i,
 ];
+
+// Generic / branded early-insight words (`discovery`/`explore`/`spotlight`/
+// `immersion`/`horizons`). The taxonomy (uk-programme-taxonomy.md, Bucket 1:
+// "explore / discover / spotlight / immersion / horizons — WHEN PAIRED WITH a
+// year-1 / insight signal") makes these SPRING_WEEK ONLY when an early-insight
+// co-token also appears — otherwise a real Summer role ("Summer Internship —
+// Immersion Lab") would be mislabelled SPRING_WEEK (SPRING_WEEK outranks
+// SUMMER). So they are GUARDED the same way bare "spring" is: the branded word
+// must co-occur with one of the early-insight tokens below. A branded word
+// ALONE falls through to the SUMMER default sink.
+const GENERIC_SPRING_WORD = /\b(discovery|explore|spotlight|immersion|horizons?)\b/i;
+const SPRING_INSIGHT_COTOKEN =
+  /\b(insight|week|first[- ]year|1st year|early|sophomore|women|diversity|spring)\b/i;
 
 // Bucket 3 — OFF_CYCLE (off-cycle; winter folds here). 3-/6-month internships,
 // rolling / quarterly intakes.
@@ -181,6 +205,10 @@ const OFF_CYCLE_SIGNALS: RegExp[] = [
 export function detectProgrammeType(p: RawPosting): ProgrammeType {
   const title = p.title;
   if (SPRING_WEEK_SIGNALS.some((s) => s.test(title))) return "SPRING_WEEK";
+  // Generic/branded early-insight word ONLY counts when paired with an
+  // early-insight co-token (taxonomy guard — see GENERIC_SPRING_WORD above).
+  if (GENERIC_SPRING_WORD.test(title) && SPRING_INSIGHT_COTOKEN.test(title))
+    return "SPRING_WEEK";
   if (OFF_CYCLE_SIGNALS.some((s) => s.test(title))) return "OFF_CYCLE";
   return "SUMMER_INTERNSHIP";
 }
