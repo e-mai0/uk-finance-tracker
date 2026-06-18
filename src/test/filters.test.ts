@@ -3,6 +3,7 @@ import {
   parseFilters,
   applyFilters,
   applySort,
+  hasActiveFilters,
   EMPTY_FILTERS,
   offersSponsorship,
   type TrackerItem,
@@ -15,6 +16,7 @@ function item(overrides: Partial<TrackerItem>): TrackerItem {
     employerSlug: "goldman-sachs",
     title: "Investment Banking Summer Analyst",
     roleFamily: "IB",
+    programmeType: "SUMMER_INTERNSHIP",
     divisionDesk: "IBD",
     location: "London",
     status: "OPEN",
@@ -58,6 +60,34 @@ describe("parseFilters", () => {
     expect(parseFilters({ filter: "starred" }).starred).toBe(true);
     expect(parseFilters({}).starred).toBe(false);
   });
+
+  it("parses the season query key into programmeType", () => {
+    const f = parseFilters({ season: "SPRING_WEEK,OFF_CYCLE" });
+    expect(f.programmeType).toEqual(["SPRING_WEEK", "OFF_CYCLE"]);
+  });
+
+  it("ignores a region query key (region removed, ADR-005)", () => {
+    const f = parseFilters({ region: "UK,US" });
+    // No `region` field exists on FilterParams anymore; the key is simply dropped.
+    expect(f).not.toHaveProperty("region");
+  });
+
+  it("defaults programmeType to an empty array", () => {
+    const f = parseFilters({});
+    expect(f.programmeType).toEqual([]);
+  });
+});
+
+describe("hasActiveFilters", () => {
+  it("is false for empty filters", () => {
+    expect(hasActiveFilters(EMPTY_FILTERS)).toBe(false);
+  });
+
+  it("is true when a season facet is selected", () => {
+    expect(
+      hasActiveFilters({ ...EMPTY_FILTERS, programmeType: ["SPRING_WEEK"] }),
+    ).toBe(true);
+  });
 });
 
 describe("applyFilters", () => {
@@ -87,6 +117,50 @@ describe("applyFilters", () => {
   it("filter=starred keeps only saved items", () => {
     expect(applyFilters(items, { ...EMPTY_FILTERS, starred: true })).toHaveLength(1);
     expect(applyFilters(items, { ...EMPTY_FILTERS, starred: true })[0].employerName).toBe("Jane Street");
+  });
+
+  // ADR-005: the board is UK-only, so region is gone; the season facet remains.
+  const seasonItems = [
+    item({ employerName: "Spring Co", programmeType: "SPRING_WEEK" }),
+    item({ employerName: "Summer Co", programmeType: "SUMMER_INTERNSHIP" }),
+    item({ employerName: "Offcycle Co", programmeType: "OFF_CYCLE" }),
+  ];
+
+  it("filters by programmeType (season)", () => {
+    const sw = applyFilters(seasonItems, {
+      ...EMPTY_FILTERS,
+      programmeType: ["SPRING_WEEK"],
+    });
+    expect(sw).toHaveLength(1);
+    expect(sw[0].employerName).toBe("Spring Co");
+  });
+
+  it("filters out spring weeks when filtering by summer internship", () => {
+    const summer = applyFilters(seasonItems, {
+      ...EMPTY_FILTERS,
+      programmeType: ["SUMMER_INTERNSHIP"],
+    });
+    expect(summer.map((i) => i.programmeType)).toEqual(["SUMMER_INTERNSHIP"]);
+  });
+
+  it("supports selecting multiple seasons (OR within the facet)", () => {
+    const res = applyFilters(seasonItems, {
+      ...EMPTY_FILTERS,
+      programmeType: ["SPRING_WEEK", "OFF_CYCLE"],
+    });
+    expect(res.map((i) => i.employerName).sort()).toEqual([
+      "Offcycle Co",
+      "Spring Co",
+    ]);
+  });
+
+  it("treats an empty season facet as a no-op", () => {
+    expect(
+      applyFilters(seasonItems, {
+        ...EMPTY_FILTERS,
+        programmeType: [],
+      }),
+    ).toHaveLength(seasonItems.length);
   });
 });
 

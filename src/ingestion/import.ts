@@ -82,6 +82,7 @@ export async function importDataset(
       employerId,
       title: n.title,
       programmeType: n.programmeType,
+      programmeTypeEnum: n.programmeTypeEnum,
       roleFamily: n.roleFamily,
       divisionDesk: n.divisionDesk,
       location: n.location,
