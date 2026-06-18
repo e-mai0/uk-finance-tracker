@@ -54,9 +54,9 @@ describe("system prompt", () => {
 
   it("recall ordering is wired: a message matching strategy.md moves it to an edge", () => {
     // strategy.md content mentions 'quant'; a 'quant' message should make it the
-    // most relevant file → placed at the TOP edge (default summer-arrange puts
-    // the single most-relevant file first). Without recall wiring it would stay
-    // in its fixed third position, so this assertion guards the wiring.
+    // most relevant file → placed at the TOP edge (edge-arrange puts the single
+    // most-relevant file first). Without recall wiring it would stay in its
+    // fixed third position, so this assertion guards the wiring.
     const p = buildSystemPrompt(core, [], [], "tell me about quant roles");
     const profileIdx = p.indexOf('path="profile.md"');
     const strategyIdx = p.indexOf('path="strategy.md"');
