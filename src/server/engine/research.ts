@@ -44,9 +44,12 @@ export async function ensureEmployerResearch(
         tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: 4 }) },
         prompt: `Research ${employer.name}${employer.sector ? ` (UK employer, ${employer.sector})` : " (employer with UK presence; determine the sector yourself)"} for a student preparing internship/graduate applications. Produce concise markdown with these sections:
 ## Divisions & what they do
+## Day-to-day work (what an intern/analyst in each main division actually does day to day)
 ## Culture signals
+## Stated values & principles (the firm's OWN stated values/principles, in its own words)
+## Concrete recent hooks (at least one specific, checkable thing an applicant could cite: a NAMED recent deal, transaction, fund, mandate, product launch or initiative from roughly the last 6 months, with a date; the kind of detail that survives a competitor-swap test)
 ## Recent news (last 6 months, with dates)
-## Common application questions & what they look for
+## Common application questions & what they look for (include any discoverable application question structure and any stated word counts / word caps / character limits)
 Facts only, no advice fluff, no applicant-specific content. Cite nothing; just state findings.`,
         maxOutputTokens: 2000,
       });

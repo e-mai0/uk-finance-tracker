@@ -5,6 +5,7 @@ vi.mock("ai", () => ({ generateText: mocks.generateText }));
 vi.mock("@/server/ai/budget", () => ({ recordUsage: vi.fn(async () => {}) }));
 
 import { draftText, trimToLimit, escapeReference } from "@/server/engine/draft";
+import { inferRegister } from "@/server/engine/register";
 import type { DraftContext } from "@/server/engine/types";
 
 const CTX: DraftContext = {
@@ -289,6 +290,153 @@ describe("draftText", () => {
       question: "Tell us about a time you led under pressure",
     });
     expect(out.provenance.thinGrounding).toBe(false);
+  });
+
+  // === U2: register inference, division emphasis, firm hook, word cap, individual weave ===
+
+  it("injects the inferred REGISTER block (summer default) into the system prompt and provenance", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Why Barclays?",
+      roleTitle: "Summer Analyst, Investment Banking Division",
+      employerName: "Barclays",
+    });
+    const system = mocks.generateText.mock.calls.at(-1)![0].system as string;
+    // Summer register guidance is injected (demands competency / commercial depth)
+    expect(system.toLowerCase()).toContain("summer internship");
+    expect(out.provenance.register).toBe("summer");
+    // IBD division emphasis selected + injected
+    expect(out.provenance.division).toBe("ibd");
+    expect(system).toContain("IBD:");
+  });
+
+  it("a spring-week role injects the spring-week register (curiosity/fit, no depth demand)", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Why do you want to join?",
+      roleTitle: "Spring Week Insight Programme",
+      employerName: "Barclays",
+    });
+    const system = mocks.generateText.mock.calls.at(-1)![0].system as string;
+    expect(out.provenance.register).toBe("spring_week");
+    expect(system.toUpperCase()).toContain("SPRING WEEK");
+  });
+
+  it("the inferred register matches inferRegister() for the same role/question", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const role = "Off-Cycle Analyst, Global Markets";
+    const question = "What appeals about our markets business?";
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question,
+      roleTitle: role,
+      employerName: "Barclays",
+    });
+    expect(out.provenance.register).toBe(inferRegister(role, question).programme);
+    expect(out.provenance.division).toBe(inferRegister(role, question).division);
+    expect(out.provenance.register).toBe("off_cycle");
+    expect(out.provenance.division).toBe("markets");
+  });
+
+  it("injects the firm-hook expectation into the prompt for a why-firm question", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Why Barclays?",
+      employerName: "Barclays",
+    });
+    const combined = (
+      (mocks.generateText.mock.calls.at(-1)![0].system as string) +
+      (mocks.generateText.mock.calls.at(-1)![0].prompt as string)
+    ).toLowerCase();
+    expect(out.provenance.firmHookExpected).toBe(true);
+    expect(combined).toContain("competitor-swap");
+  });
+
+  // FIRM HOOK + NO FABRICATION: thin grounding for why-firm with no concrete hook → DISCLOSE
+  it("sets thinGrounding + firmHookDisclosed for a why-firm question with no research or notes (no fabrication)", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const ctxThin: DraftContext = { ...CTX, research: null, companyNotes: null };
+    const out = await draftText("u1", ctxThin, {
+      kind: "ANSWER",
+      question: "Why Barclays?",
+      employerName: "Barclays",
+    });
+    expect(out.provenance.firmHookExpected).toBe(true);
+    expect(out.provenance.firmHookDisclosed).toBe(true);
+    expect(out.provenance.thinGrounding).toBe(true);
+    // The prompt must instruct disclosure rather than invention; the anti-fabrication rule survives.
+    const system = mocks.generateText.mock.calls.at(-1)![0].system as string;
+    const prompt = mocks.generateText.mock.calls.at(-1)![0].prompt as string;
+    expect(system).toContain("never invent");
+    expect((system + prompt).toLowerCase()).toMatch(/do not (?:make up|invent|fabricate)|say so|be honest|general terms/);
+  });
+
+  it("does NOT disclose a missing hook when research provides one (firmHookDisclosed=false)", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    // CTX has research present → a concrete hook is available
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Why Barclays?",
+      employerName: "Barclays",
+    });
+    expect(out.provenance.firmHookExpected).toBe(true);
+    expect(out.provenance.firmHookDisclosed).toBe(false);
+  });
+
+  it("a firm hook from the applicant's own company notes counts (no disclosure even without research)", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const ctxNotesOnly: DraftContext = { ...CTX, research: null }; // companyNotes still present in CTX
+    const out = await draftText("u1", ctxNotesOnly, {
+      kind: "ANSWER",
+      question: "Why Barclays?",
+      employerName: "Barclays",
+    });
+    expect(out.provenance.firmHookExpected).toBe(true);
+    expect(out.provenance.firmHookDisclosed).toBe(false);
+  });
+
+  it("firmHookExpected is false for a pure competency question", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Tell us about a time you led under pressure",
+      employerName: "Barclays",
+    });
+    expect(out.provenance.firmHookExpected).toBe(false);
+    expect(out.provenance.firmHookDisclosed).toBe(false);
+  });
+
+  it("threads the stated word cap into the generation prompt and provenance", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const out = await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Why Barclays?",
+      employerName: "Barclays",
+      wordLimit: 250,
+    });
+    const prompt = mocks.generateText.mock.calls.at(-1)![0].prompt as string;
+    expect(prompt).toContain("250 words");
+    expect(out.provenance.wordCap).toBe(250);
+  });
+
+  it("wordCap provenance is null when no word limit is supplied", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?" });
+    expect(out.provenance.wordCap).toBeNull();
+  });
+
+  it("instructs tying every firm fact back to the applicant's own evidence (individual weave)", async () => {
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", usage: {} });
+    await draftText("u1", CTX, {
+      kind: "ANSWER",
+      question: "Why Barclays?",
+      employerName: "Barclays",
+    });
+    const system = mocks.generateText.mock.calls.at(-1)![0].system as string;
+    expect(system.toLowerCase()).toMatch(/tie (?:each|every) firm fact|connect.*to (?:the applicant|yourself|your own)/);
   });
 
   it("excludeStories prevents the named story slug from appearing in the prompt", async () => {
