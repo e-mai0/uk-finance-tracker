@@ -14,6 +14,13 @@ describe("normalizeOpportunity deadline handling", () => {
     expect(n.deadlineEstimated).toBe(false);
     expect(n.isRolling).toBe(false);
     expect(n.deadlineAt?.getUTCMonth()).toBe(9); // October
+    expect(n.deadlineAt?.toISOString()).toBe("2026-10-31T23:59:59.999Z");
+  });
+
+  it("treats date-only published deadlines as the end of that day", () => {
+    const n = normalizeOpportunity({ ...base, deadlineAt: "2026-07-15" }, now);
+    expect(n.deadlineEstimated).toBe(false);
+    expect(n.deadlineAt?.toISOString()).toBe("2026-07-15T23:59:59.999Z");
   });
 
   it("infers a deadline when none is published and flags it", () => {

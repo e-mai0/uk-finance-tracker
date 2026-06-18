@@ -34,7 +34,13 @@ export async function GET(
   // the client falls back to its loaded messages.
   const ctx = getStreamContext();
   // resumeExistingStream returns null (done/expired) or undefined (no stream found) — both map to 204
-  const resumed = ctx ? await ctx.resumeExistingStream(decision.streamId) : null;
+  let resumed: ReadableStream<Uint8Array> | null | undefined = null;
+  try {
+    resumed = ctx ? await ctx.resumeExistingStream(decision.streamId) : null;
+  } catch (err) {
+    console.error("[chat] failed to resume stream", { sessionId, err });
+    return new Response(null, { status: 204 });
+  }
   if (!resumed) return new Response(null, { status: 204 });
 
   return new Response(resumed, {

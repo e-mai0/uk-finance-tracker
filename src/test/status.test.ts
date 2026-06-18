@@ -51,6 +51,14 @@ describe("decideTransitions", () => {
     expect(out[0]).toMatchObject({ key: "a", status: "CLOSED", closeReason: "deadline_passed" });
   });
 
+  it("does NOT close a present role during the published deadline day", () => {
+    const endOfDeadlineDay = new Date("2026-07-01T23:59:59.999Z");
+    const midday = new Date("2026-07-01T12:00:00Z");
+    const existing = [role({ key: "a", deadlineAt: endOfDeadlineDay, deadlineEstimated: false })];
+    const out = decideTransitions(existing, new Set(["a"]), true, midday);
+    expect(out).toEqual([]);
+  });
+
   it("does NOT close on a passed ESTIMATED deadline", () => {
     const past = new Date("2026-06-01T00:00:00Z");
     const existing = [role({ key: "a", deadlineAt: past, deadlineEstimated: true })];

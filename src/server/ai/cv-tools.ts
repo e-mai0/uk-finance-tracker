@@ -2,20 +2,62 @@
 // The single AI tool available to the CV-builder chatbot.
 // update_cv: replace the user's full CV with a new structured CvData.
 import { tool } from "ai";
-import { cvDataSchema } from "@/lib/cv";
-import { persistCv } from "@/server/cv/store";
+import { cvDataSchema, type CvData } from "@/lib/cv";
+import { getBuiltCv, persistCv } from "@/server/cv/store";
+
+const CV_FIELDS = [
+  "fullName",
+  "headline",
+  "contact",
+  "summary",
+  "education",
+  "experience",
+  "accomplishments",
+  "projects",
+  "skills",
+  "interests",
+  "sections",
+] as const satisfies readonly (keyof CvData)[];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOwn(record: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
+
+function mergeOmittedFields(rawInput: unknown, parsed: CvData, current: CvData | null): CvData {
+  if (!current || !isRecord(rawInput)) return parsed;
+
+  const preserved = Object.fromEntries(
+    CV_FIELDS
+      .filter((field) => !hasOwn(rawInput, field))
+      .map((field) => [field, current[field]]),
+  ) as Partial<CvData>;
+  const merged = cvDataSchema.parse({ ...parsed, ...preserved });
+
+  const rawContact = rawInput.contact;
+  if (isRecord(rawContact)) {
+    merged.contact = { ...current.contact, ...parsed.contact };
+  }
+
+  return cvDataSchema.parse(merged);
+}
 
 export function buildCvTools(userId: string) {
   return {
     update_cv: tool({
       description:
         "Replace the user's full CV with the provided structured data. " +
-        "Always send the COMPLETE CV object (not a patch). Returns the saved CV.",
+        "Always send the COMPLETE CV object (not a patch). Omitted existing fields are preserved. Returns the saved CV.",
       inputSchema: cvDataSchema,
       execute: async (data) => {
         const parsed = cvDataSchema.safeParse(data);
         if (!parsed.success) return { error: "invalid CV shape" };
-        const cv = await persistCv(userId, parsed.data);
+        const existing = await getBuiltCv(userId);
+        const next = mergeOmittedFields(data, parsed.data, existing?.cv ?? null);
+        const cv = await persistCv(userId, next);
         return { ok: true, cv };
       },
     }),

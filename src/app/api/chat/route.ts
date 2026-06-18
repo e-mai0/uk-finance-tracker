@@ -233,11 +233,23 @@ export async function POST(req: Request) {
   // With Redis: register a resumable stream and record the session pointer so a
   // remount (e.g. opening another session and coming back) can reattach.
   const streamId = generateId();
-  await setActiveStream(chatSession.id, streamId);
-  const sseStream = uiStream.pipeThrough(new JsonToSseTransformStream());
-  const resumable = await streamContext.resumableStream(streamId, () => sseStream);
+  const pointerStored = await setActiveStream(chatSession.id, streamId);
+  if (!pointerStored) {
+    return createUIMessageStreamResponse({ stream: uiStream, consumeSseStream: consumeStream });
+  }
 
-  return new Response(resumable ?? sseStream, {
-    headers: UI_MESSAGE_STREAM_HEADERS,
-  });
+  try {
+    const sseStream = uiStream.pipeThrough(new JsonToSseTransformStream());
+    const resumable = await streamContext.resumableStream(streamId, () => sseStream);
+    return new Response(resumable ?? sseStream, {
+      headers: UI_MESSAGE_STREAM_HEADERS,
+    });
+  } catch (err) {
+    console.error("[chat] failed to create resumable stream; falling back", {
+      sessionId: chatSession.id,
+      err,
+    });
+    await clearActiveStream(chatSession.id);
+    return createUIMessageStreamResponse({ stream: uiStream, consumeSseStream: consumeStream });
+  }
 }

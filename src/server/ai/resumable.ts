@@ -19,10 +19,19 @@ export function activeStreamKey(sessionId: string): string {
 let redis: Redis | null | undefined;
 let context: ResumableStreamContext | null | undefined;
 
+function logRedisFailure(operation: string, err: unknown): void {
+  console.error("[resumable] Redis operation failed", { operation, err });
+}
+
 function getRedis(): Redis | null {
   if (redis !== undefined) return redis;
   const url = process.env.REDIS_URL;
-  redis = url ? new Redis(url) : null;
+  try {
+    redis = url ? new Redis(url) : null;
+  } catch (err) {
+    logRedisFailure("connect", err);
+    redis = null;
+  }
   return redis;
 }
 
@@ -37,21 +46,32 @@ export function getStreamContext(): ResumableStreamContext | null {
     context = null;
     return null;
   }
-  context = createResumableStreamContext({
-    waitUntil: after,
-    publisher: client,
-    subscriber: client.duplicate(),
-  });
+  try {
+    context = createResumableStreamContext({
+      waitUntil: after,
+      publisher: client,
+      subscriber: client.duplicate(),
+    });
+  } catch (err) {
+    logRedisFailure("create-stream-context", err);
+    context = null;
+  }
   return context;
 }
 
 export async function setActiveStream(
   sessionId: string,
   streamId: string,
-): Promise<void> {
+): Promise<boolean> {
   const client = getRedis();
-  if (!client) return;
-  await client.set(activeStreamKey(sessionId), streamId, "EX", POINTER_TTL_SECONDS);
+  if (!client) return false;
+  try {
+    await client.set(activeStreamKey(sessionId), streamId, "EX", POINTER_TTL_SECONDS);
+    return true;
+  } catch (err) {
+    logRedisFailure("set-active-stream", err);
+    return false;
+  }
 }
 
 export async function getActiveStream(
@@ -59,11 +79,22 @@ export async function getActiveStream(
 ): Promise<string | null> {
   const client = getRedis();
   if (!client) return null;
-  return client.get(activeStreamKey(sessionId));
+  try {
+    return await client.get(activeStreamKey(sessionId));
+  } catch (err) {
+    logRedisFailure("get-active-stream", err);
+    return null;
+  }
 }
 
-export async function clearActiveStream(sessionId: string): Promise<void> {
+export async function clearActiveStream(sessionId: string): Promise<boolean> {
   const client = getRedis();
-  if (!client) return;
-  await client.del(activeStreamKey(sessionId));
+  if (!client) return false;
+  try {
+    await client.del(activeStreamKey(sessionId));
+    return true;
+  } catch (err) {
+    logRedisFailure("clear-active-stream", err);
+    return false;
+  }
 }
