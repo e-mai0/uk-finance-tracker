@@ -117,9 +117,66 @@ describe("detectProgrammeType", () => {
     expect(
       detectProgrammeType({ title: "First-Year Insight Programme", location: "London" }),
     ).toBe("SPRING_WEEK");
+    // A branded word ("Discovery") PLUS an insight co-token is still SPRING_WEEK.
     expect(
-      detectProgrammeType({ title: "Discovery Day — Markets", location: "London" }),
+      detectProgrammeType({ title: "Discovery Insight Day — Markets", location: "London" }),
     ).toBe("SPRING_WEEK");
+  });
+
+  // Cycle 3e PRECISION FIX (uk-programme-taxonomy.md, Bucket 1 row:
+  // "explore / discover / spotlight / immersion / horizons (when paired with a
+  // year-1 / insight signal)"). The five generic/branded words must NOT, on
+  // their own, force SPRING_WEEK over a real Summer role. A branded word ALONE
+  // → falls through to SUMMER (the default sink); a branded word + an
+  // insight/year-1 co-token → SPRING_WEEK.
+  describe("generic Spring-Week signals require an insight/year-1 co-token", () => {
+    // The 5 reported false-positives: each literally a Summer/penultimate role
+    // carrying a bare branded word — must classify SUMMER_INTERNSHIP, not
+    // SPRING_WEEK.
+    it("does NOT label a real Summer role SPRING_WEEK on a bare branded word", () => {
+      for (const title of [
+        "Data Engineering Summer Internship - Immersion Lab",
+        "Quantitative Trading Internship (Spotlight Program)",
+        "Software Engineering Internship - Horizon",
+        "Discovery Software Engineer Internship",
+        "Explore Quantitative Research - Summer Internship",
+      ]) {
+        expect(detectProgrammeType({ title, location: "London" })).toBe(
+          "SUMMER_INTERNSHIP",
+        );
+      }
+    });
+
+    // A bare branded word with NO co-token and NO summer word also falls through
+    // to the SUMMER default sink (it is no longer a SPRING_WEEK on its own).
+    it("treats a bare branded word (no co-token) as the SUMMER default sink", () => {
+      for (const title of [
+        "Markets Immersion Programme",
+        "Discovery Day — Markets",
+        "Spotlight Programme — Banking",
+        "Horizon Programme — Technology",
+        "Explore Programme — Investment Banking",
+      ]) {
+        expect(detectProgrammeType({ title, location: "London" })).toBe(
+          "SUMMER_INTERNSHIP",
+        );
+      }
+    });
+
+    // Held-out: each branded word WITH a co-token still fires SPRING_WEEK.
+    it("STILL labels a branded word + insight/year-1/diversity co-token SPRING_WEEK", () => {
+      for (const title of [
+        "Discovery Insight Programme",
+        "Explore Banking — Early Insight",
+        "Spotlight Insight Day",
+        "Markets Immersion — First-Year Insight",
+        "Women's Horizons Programme",
+        "Sophomore Spotlight Series",
+        "Spring Discovery Week",
+      ]) {
+        expect(detectProgrammeType({ title, location: "London" })).toBe("SPRING_WEEK");
+      }
+    });
   });
 
   it("folds winter internships into OFF_CYCLE (no separate WINTER value)", () => {
@@ -166,10 +223,15 @@ describe("detectProgrammeType", () => {
       "Women's Insight Programme",
       "Black Heritage Insight Week",
       "Social Mobility Insight Evening",
-      "Markets Immersion Programme",
-      "Women's Horizons Programme",
-      "Explore Banking — Early Insight",
-      "Spotlight Insight Day",
+      // Cycle 3e: the BARE branded words ("Markets Immersion Programme") were
+      // REMOVED from this list — a branded word alone is no longer a SPRING_WEEK
+      // (taxonomy requires a year-1/insight co-token); it now classifies SUMMER
+      // and is asserted in the "generic Spring-Week signals require an
+      // insight/year-1 co-token" block. The branded-word + co-token cases that
+      // DO fire SPRING_WEEK ("Women's Horizons Programme", "Explore Banking —
+      // Early Insight", "Spotlight Insight Day", etc.) live in that same block's
+      // held-out "STILL labels …" set — kept there (not duplicated here) as the
+      // single load-bearing regression proof for this fix.
     ]) {
       expect(detectProgrammeType({ title, location: "London" })).toBe("SPRING_WEEK");
     }
@@ -299,6 +361,26 @@ describe("classifyPosting — Phase 2 exclusions", () => {
     ).toEqual({ include: false, reason: "not-internship" });
     expect(
       classifyPosting({ title: "VP, M&A", location: "London" }),
+    ).toEqual({ include: false, reason: "not-internship" });
+  });
+
+  // Cycle 3e (hardened not-internship): "upcoming graduates" is a graduate
+  // signal, but the existing /\bgraduate\b/ misses the PLURAL "graduates", so a
+  // "Programme for Upcoming Graduates" used to slip past the not-internship gate
+  // (no "academy" token either). Add /\bupcoming graduates?\b/ so it is excluded.
+  it("excludes a 'Programme for Upcoming Graduates' (plural, no academy token)", () => {
+    expect(
+      classifyPosting(
+        { title: "Quant Programme for Upcoming Graduates", location: "London" },
+        "QUANT",
+      ),
+    ).toEqual({ include: false, reason: "not-internship" });
+    // Held-out singular variant.
+    expect(
+      classifyPosting(
+        { title: "Markets Programme for an Upcoming Graduate", location: "London" },
+        "MARKETS",
+      ),
     ).toEqual({ include: false, reason: "not-internship" });
   });
 
@@ -505,5 +587,33 @@ describe("classifyPosting", () => {
     expect(
       classifyPosting({ title: "Summer Internship 2027", location: "London" }),
     ).toEqual({ include: false, reason: "not-finance" });
+  });
+
+  // Cycle 3e (weak early-careers recall): a "campus" title that ALSO carries an
+  // intern/internship co-token reads as an early-careers internship, so a
+  // "Campus … (Intern)" style title passes the not-internship gate.
+  it("admits a 'Campus … Intern' early-careers title (campus + intern co-token)", () => {
+    const v = classifyPosting(
+      { title: "Campus Analyst Internship", location: "London" },
+      "MARKETS",
+    );
+    expect(v.include).toBe(true);
+    if (v.include) expect(v.programmeType).toBe("SUMMER_INTERNSHIP");
+    // Parenthetical "(Intern)" variant also qualifies (campus + intern token).
+    expect(
+      classifyPosting(
+        { title: "Campus Programme — Markets (Intern)", location: "London" },
+        "MARKETS",
+      ).include,
+    ).toBe(true);
+  });
+
+  // Guard: BARE "campus" with NO intern token must NOT pass the gate — campus is
+  // only a WEAK signal that needs an intern co-token, so a "Campus Hire, M&A"
+  // (full-time-style) stays excluded as not-internship.
+  it("does NOT admit a bare 'campus' title with no intern token", () => {
+    expect(
+      classifyPosting({ title: "Campus Hire — M&A", location: "London" }, "IB"),
+    ).toEqual({ include: false, reason: "not-internship" });
   });
 });
