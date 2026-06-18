@@ -119,6 +119,7 @@ export function mapJobPostings(
       employer: employer.name,
       title: p.title.trim(),
       roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType,
       location: location || "London",
       status: "OPEN",
       opensAt: null,

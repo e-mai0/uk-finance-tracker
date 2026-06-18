@@ -18,6 +18,7 @@ function rows(list: EfPos[], base: string, employer: AdapterEmployer): RawOpport
     const rel = p.canonicalPositionUrl ?? p.positionUrl ?? "";
     const url = rel.startsWith("http") ? rel : `${base}${rel}`;
     out.push({ employer: employer.name, title: title.trim(), roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType,
       location: location || "London", status: "OPEN",
       summary: originalSummary({ title: title.trim(), employer: employer.name, atsLabel: "careers site (Eightfold)", location: location || "UK" }),
       applicationUrl: url, sourceUrl: url, sourceType: "EIGHTFOLD", tags: [] });

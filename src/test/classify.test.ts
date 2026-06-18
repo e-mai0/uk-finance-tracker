@@ -4,6 +4,7 @@ import {
   isUkLocation,
   inferRoleFamily,
   roleFamilyFromSector,
+  detectProgrammeType,
 } from "../ingestion/classify";
 
 describe("isUkLocation", () => {
@@ -99,13 +100,308 @@ describe("roleFamilyFromSector", () => {
   });
 });
 
+describe("detectProgrammeType", () => {
+  it("defaults a plain summer internship to SUMMER_INTERNSHIP", () => {
+    expect(detectProgrammeType({ title: "Summer Analyst", location: "London" })).toBe(
+      "SUMMER_INTERNSHIP",
+    );
+    expect(
+      detectProgrammeType({ title: "Investment Banking Intern", location: "London" }),
+    ).toBe("SUMMER_INTERNSHIP");
+  });
+
+  it("detects spring weeks / insight programmes as SPRING_WEEK", () => {
+    expect(detectProgrammeType({ title: "Spring Week 2027", location: "London" })).toBe(
+      "SPRING_WEEK",
+    );
+    expect(
+      detectProgrammeType({ title: "First-Year Insight Programme", location: "London" }),
+    ).toBe("SPRING_WEEK");
+    expect(
+      detectProgrammeType({ title: "Discovery Day — Markets", location: "London" }),
+    ).toBe("SPRING_WEEK");
+  });
+
+  it("folds winter internships into OFF_CYCLE (no separate WINTER value)", () => {
+    expect(
+      detectProgrammeType({ title: "Winter Internship — Sales & Trading", location: "London" }),
+    ).toBe("OFF_CYCLE");
+    expect(detectProgrammeType({ title: "Off-cycle Intern", location: "London" })).toBe(
+      "OFF_CYCLE",
+    );
+  });
+
+  // ----- Phase 3 (ADR-006): industrial placement is now an EXCLUSION, not a
+  // tracked bucket. detectProgrammeType only ever returns the 3 retained
+  // buckets; placement-year titles are excluded by classifyPosting (asserted in
+  // the "industrial-placement exclusion" block below). The detectProgrammeType
+  // precedence is now SPRING_WEEK > OFF_CYCLE > SUMMER_INTERNSHIP (default sink).
+
+  // ----- Phase 2: sharpened taxonomy (ADR-005, uk-programme-taxonomy.md) -----
+
+  // Precedence (ADR-006): SPRING_WEEK > OFF_CYCLE > SUMMER. (The industrial-
+  // placement arm was removed; placement titles never reach detectProgrammeType
+  // because classifyPosting excludes them first.)
+  it("honours the precedence SPRING_WEEK > OFF_CYCLE > SUMMER", () => {
+    // Spring beats off-cycle and summer.
+    expect(
+      detectProgrammeType({
+        title: "Spring Off-Cycle Insight Week",
+        location: "London",
+      }),
+    ).toBe("SPRING_WEEK");
+    // Off-cycle beats the summer default.
+    expect(
+      detectProgrammeType({ title: "Off-cycle Summer Cover Intern", location: "London" }),
+    ).toBe("OFF_CYCLE");
+  });
+
+  it("recognises new SPRING_WEEK insight/first-year/diversity signals", () => {
+    for (const title of [
+      "Spring into JPMorganChase 2027",
+      "UK Insight Programme",
+      "Insight Day — Global Markets",
+      "Sophomore Insight Series",
+      "1st Year Spring Insight",
+      "Women's Insight Programme",
+      "Black Heritage Insight Week",
+      "Social Mobility Insight Evening",
+      "Markets Immersion Programme",
+      "Women's Horizons Programme",
+      "Explore Banking — Early Insight",
+      "Spotlight Insight Day",
+    ]) {
+      expect(detectProgrammeType({ title, location: "London" })).toBe("SPRING_WEEK");
+    }
+  });
+
+  // Guard (research edge case 1): a bare "Spring <year>" START DATE must NOT be
+  // read as a spring week — only spring + insight/week/first-year/"spring into".
+  it("does NOT read a bare 'Spring 2027' start date as SPRING_WEEK", () => {
+    expect(
+      detectProgrammeType({ title: "Summer Analyst — Spring 2027 start", location: "London" }),
+    ).toBe("SUMMER_INTERNSHIP");
+    expect(
+      detectProgrammeType({ title: "Investment Banking Internship (Spring 2027)", location: "London" }),
+    ).toBe("SUMMER_INTERNSHIP");
+  });
+
+  it("recognises new OFF_CYCLE signals (off-cycle / winter / 3-6 month / rolling)", () => {
+    for (const title of [
+      "Off-Cycle Internship — IBD",
+      "Off Cycle Intern, Markets",
+      "Winter Internship — Equity Research",
+      "6-month Internship, Private Credit",
+      "3-month Internship — Coverage",
+      "Rolling Internship Programme",
+      "Quarterly Intake Internship",
+    ]) {
+      expect(detectProgrammeType({ title, location: "London" })).toBe("OFF_CYCLE");
+    }
+  });
+
+  // Research edge case 5 / bucket-4 note: bare "placement" is OVERLOADED in the
+  // UK — require a year/sandwich/industrial qualifier. A 6-week summer placement
+  // is a summer internship (NOT excluded as industrial placement), and a "Trading
+  // Floor Placement Intern" stays a SUMMER_INTERNSHIP. These keep the bare-
+  // "placement"-needs-a-qualifier rule that protects against over-excluding.
+  it("does NOT exclude a bare 'placement' as industrial-placement (keeps SUMMER)", () => {
+    expect(
+      detectProgrammeType({ title: "Summer Placement (6 weeks) — Markets", location: "London" }),
+    ).toBe("SUMMER_INTERNSHIP");
+    expect(
+      detectProgrammeType({ title: "Trading Floor Placement Intern", location: "London" }),
+    ).toBe("SUMMER_INTERNSHIP");
+    // And classifyPosting does NOT industrial-placement-exclude a bare-placement
+    // role: a "Trading Floor Placement Intern" (carries an `intern` token, so it
+    // passes the not-internship gate) is included as a SUMMER_INTERNSHIP.
+    const a = classifyPosting(
+      { title: "Trading Floor Placement Intern", location: "London" },
+      "MARKETS",
+    );
+    expect(a.include).toBe(true);
+    if (a.include) expect(a.programmeType).toBe("SUMMER_INTERNSHIP");
+  });
+
+  it("recognises new SUMMER_INTERNSHIP signals and keeps it as the default sink", () => {
+    expect(
+      detectProgrammeType({ title: "Penultimate Year Summer Internship", location: "London" }),
+    ).toBe("SUMMER_INTERNSHIP");
+    expect(
+      detectProgrammeType({ title: "Summer Associate, M&A", location: "London" }),
+    ).toBe("SUMMER_INTERNSHIP");
+    // Default sink: a bare intern with no other bucket signal.
+    expect(
+      detectProgrammeType({ title: "Markets Intern 2027", location: "London" }),
+    ).toBe("SUMMER_INTERNSHIP");
+  });
+});
+
+// Exclusions added in Phase 2 (research §"Recommended EXCLUDE signals", edge
+// cases 3 & 10). These run BEFORE programme-type assignment in classifyPosting.
+describe("classifyPosting — Phase 2 exclusions", () => {
+  // Pre-University / school-leaver (the-trackr has a separate Pre-University
+  // tab; we have no bucket). The guard MUST run before programme-type so a
+  // "Spring Insight for Year 12 students" is excluded, not tagged SPRING_WEEK.
+  it("excludes pre-university / school-leaver insight programmes", () => {
+    for (const title of [
+      "Spring Insight Week for Year 12 Students",
+      "School Leaver Insight Programme",
+      "Sixth Form Discovery Day — Banking",
+      "Pre-University Insight, Markets",
+      "A-Level Insight Day",
+      "Insight Programme for Students Aged 16",
+    ]) {
+      const v = classifyPosting({ title, location: "London" }, "IB");
+      expect(v.include).toBe(false);
+      if (!v.include) expect(v.reason).toBe("pre-university");
+    }
+  });
+
+  it("does NOT pull a school-leaver insight into SPRING_WEEK (exclusion runs first)", () => {
+    const v = classifyPosting(
+      { title: "Spring Insight for Year 13 — Investment Banking", location: "London" },
+      "IB",
+    );
+    expect(v).toEqual({ include: false, reason: "pre-university" });
+  });
+
+  // Off-cycle return-offer / FT conversion (research edge case 3): off-cycle +
+  // full-time/permanent with NO intern token is a full-time role, not an intern.
+  it("excludes an off-cycle full-time/return-offer role (no intern token)", () => {
+    expect(
+      classifyPosting(
+        { title: "Off-Cycle Analyst — Full-Time, M&A", location: "London" },
+        "IB",
+      ),
+    ).toEqual({ include: false, reason: "not-internship" });
+    expect(
+      classifyPosting(
+        { title: "Off-Cycle Permanent Associate, Markets", location: "London" },
+        "IB",
+      ),
+    ).toEqual({ include: false, reason: "not-internship" });
+  });
+
+  it("STILL includes a genuine off-cycle INTERNSHIP (has an intern token)", () => {
+    const v = classifyPosting(
+      { title: "Off-Cycle Internship — M&A", location: "London" },
+      "IB",
+    );
+    expect(v.include).toBe(true);
+    if (v.include) expect(v.programmeType).toBe("OFF_CYCLE");
+  });
+
+  // AC carry-over: graduate / FT / experienced-hire roles stay excluded.
+  it("keeps graduate / full-time / VP roles excluded", () => {
+    expect(
+      classifyPosting({ title: "Graduate Analyst Programme", location: "London" }),
+    ).toEqual({ include: false, reason: "not-internship" });
+    expect(
+      classifyPosting({ title: "VP, M&A", location: "London" }),
+    ).toEqual({ include: false, reason: "not-internship" });
+  });
+
+  // Apprenticeships (research edge case 6, taxonomy §"Recommended EXCLUDE
+  // signals"): UK degree / school-leaver apprenticeships are full-time,
+  // multi-year ROUTES, not internships — the-trackr keeps them out of its
+  // internship tabs. A BARE apprenticeship (no industrial-placement signal) is
+  // EXCLUDED with reason "apprenticeship".
+  it("excludes a bare degree apprenticeship (no placement signal)", () => {
+    const v = classifyPosting(
+      { title: "Degree Apprenticeship — Finance", location: "London" },
+      "IB",
+    );
+    expect(v.include).toBe(false);
+    if (!v.include) expect(v.reason).toBe("apprenticeship");
+  });
+
+  it("excludes a school-leaver technology degree apprenticeship", () => {
+    const v = classifyPosting(
+      { title: "Technology Degree Apprenticeship (school leaver)", location: "London" },
+      "QUANT",
+    );
+    expect(v.include).toBe(false);
+    // School-leaver hits pre-university OR apprenticeship — either exclusion is
+    // fine per spec (both keep it off the board).
+    if (!v.include)
+      expect(["apprenticeship", "pre-university"]).toContain(v.reason);
+  });
+});
+
+// Industrial-placement EXCLUSION (ADR-006). Industrial placements ("industry")
+// are no longer a tracked bucket — they are EXCLUDED. The exclusion is evaluated
+// BEFORE programme-type assignment (and before the apprenticeship exclusion, so
+// "Year in Industry Apprentice" is excluded as industrial-placement). The bare-
+// "placement"-needs-a-qualifier rule is preserved (covered above) so a 6-week
+// summer placement is NOT swept up.
+describe("classifyPosting — industrial-placement exclusion (ADR-006)", () => {
+  it("excludes placement-year / year-in-industry / sandwich / industrial-placement titles", () => {
+    for (const title of [
+      "Industrial Placement, Finance",
+      "Placement Year Analyst",
+      "Year in Industry — Risk",
+      "Sandwich Placement, Finance",
+      "Sandwich Year Analyst",
+      "Sandwich Course — Markets",
+      "Industrial Year Trainee",
+      "12-month Industrial Placement Year Programme",
+      "12-month Placement — Risk",
+    ]) {
+      const v = classifyPosting({ title, location: "London" }, "IB");
+      expect(v.include).toBe(false);
+      if (!v.include) expect(v.reason).toBe("industrial-placement");
+    }
+  });
+
+  // Held-out: a genuine UK "Industrial Placement" finance role → excluded
+  // (novel title not used elsewhere; carries a real role family + UK location).
+  it("excludes a genuine UK industrial-placement finance role (held-out)", () => {
+    const v = classifyPosting(
+      {
+        title: "Investment Banking Industrial Placement — 12 Months",
+        location: "London, United Kingdom",
+      },
+      "IB",
+    );
+    expect(v).toEqual({ include: false, reason: "industrial-placement" });
+  });
+
+  // "Year in Industry Apprentice" fires the industrial-placement signal, so it is
+  // EXCLUDED as industrial-placement (industry is dropped "for now", ADR-006).
+  // The exclusion runs ahead of the apprenticeship guard.
+  it("excludes 'Year in Industry Apprentice' as industrial-placement", () => {
+    const v = classifyPosting(
+      { title: "Year in Industry Apprentice", location: "London" },
+      "IB",
+    );
+    expect(v).toEqual({ include: false, reason: "industrial-placement" });
+  });
+
+  // The industrial-placement exclusion fires BEFORE programme-type assignment:
+  // a title that ALSO carries a spring-insight signal is still excluded, not
+  // tagged SPRING_WEEK.
+  it("excludes even when a spring/insight signal co-occurs (exclusion runs first)", () => {
+    const v = classifyPosting(
+      { title: "Spring Insight Week & Industrial Placement Year", location: "London" },
+      "IB",
+    );
+    expect(v).toEqual({ include: false, reason: "industrial-placement" });
+  });
+});
+
 describe("classifyPosting", () => {
   it("includes a classic summer analyst posting", () => {
     const v = classifyPosting({
       title: "Investment Banking Summer Analyst 2027",
       location: "London",
     });
-    expect(v).toEqual({ include: true, roleFamily: "IB", via: "keyword" });
+    expect(v).toEqual({
+      include: true,
+      roleFamily: "IB",
+      via: "keyword",
+      programmeType: "SUMMER_INTERNSHIP",
+    });
   });
 
   it("includes when the ATS employment type says Intern but title doesn't", () => {
@@ -140,18 +436,45 @@ describe("classifyPosting", () => {
     ).toEqual({ include: false, reason: "not-internship" });
   });
 
-  it("excludes spring weeks, insight days and off-cycle internships", () => {
+  // NOTE (ADR-003 retained, ADR-006 narrowed): the classifier TAGS programme
+  // season instead of discarding Spring Weeks / off-cycle (the retained bug fix).
+  // Industrial placements are no longer a tracked bucket — they are EXCLUDED
+  // (asserted in the industrial-placement-exclusion block). Region is gone
+  // (ADR-005, UK-only) so these no longer carry a `region` field.
+  it("classifies spring weeks and off-cycle instead of discarding", () => {
     expect(
-      classifyPosting({ title: "Spring Insight Week", location: "London" }),
-    ).toEqual({ include: false, reason: "wrong-season" });
+      classifyPosting({ title: "Spring Insight Week", location: "London" }, "IB"),
+    ).toEqual({
+      include: true,
+      roleFamily: "IB",
+      via: "fallback",
+      programmeType: "SPRING_WEEK",
+    });
     expect(
-      classifyPosting({ title: "Off-cycle Intern, Markets", location: "London" }),
-    ).toEqual({ include: false, reason: "wrong-season" });
+      classifyPosting({
+        title: "Off-cycle Intern, Sales & Trading",
+        location: "London",
+      }),
+    ).toEqual({
+      include: true,
+      roleFamily: "MARKETS",
+      via: "keyword",
+      programmeType: "OFF_CYCLE",
+    });
   });
 
-  it("excludes non-UK postings", () => {
+  // UK-only gate (ADR-005): a non-UK-located finance internship is EXCLUDED
+  // (`not-uk`), even though it is a real summer internship at a finance firm —
+  // the board is UK-pure. This restores the gate ADR-003 had removed.
+  it("excludes a non-UK finance internship with reason not-uk", () => {
     expect(
       classifyPosting({ title: "Summer Analyst, M&A", location: "New York" }),
+    ).toEqual({ include: false, reason: "not-uk" });
+    expect(
+      classifyPosting({ title: "Summer Analyst, M&A", location: "Hong Kong" }),
+    ).toEqual({ include: false, reason: "not-uk" });
+    expect(
+      classifyPosting({ title: "Summer Analyst, M&A", location: "Paris" }),
     ).toEqual({ include: false, reason: "not-uk" });
   });
 
@@ -170,7 +493,12 @@ describe("classifyPosting", () => {
         { title: "Summer Internship 2027", location: "London" },
         "HEDGE_FUND",
       ),
-    ).toEqual({ include: true, roleFamily: "HEDGE_FUND", via: "fallback" });
+    ).toEqual({
+      include: true,
+      roleFamily: "HEDGE_FUND",
+      via: "fallback",
+      programmeType: "SUMMER_INTERNSHIP",
+    });
   });
 
   it("excludes generic intern titles when nothing identifies the function", () => {

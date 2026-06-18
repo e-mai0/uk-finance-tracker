@@ -78,9 +78,11 @@ describe("mapJobPostings", () => {
     expect(out[0].location).toBe("London, GB");
   });
 
-  it("filters non-UK and non-intern postings", () => {
+  it("excludes non-UK and non-intern postings, keeping the UK one (UK-only, ADR-005)", () => {
     const ny = {
       ...POSTING,
+      title: "M&A Summer Analyst 2027 (NY)",
+      url: "https://careers.acme.com/job/ny",
       jobLocation: {
         address: { addressLocality: "New York", addressCountry: "US" },
       },
@@ -90,9 +92,13 @@ describe("mapJobPostings", () => {
       title: "M&A Associate",
       employmentType: "FULL_TIME",
     };
-    expect(mapJobPostings([ny, fullTime], employer, "https://x.com")).toHaveLength(
-      0,
-    );
+    const out = mapJobPostings([POSTING, ny, fullTime], employer, "https://x.com");
+    // The New York posting is excluded again (not-uk); the full-time/non-intern
+    // posting is excluded (not-internship). Only the UK summer analyst survives.
+    expect(out).toHaveLength(1);
+    expect(out[0].title).toBe("M&A Summer Analyst 2027");
+    expect(out[0].programmeType).toBe("SUMMER_INTERNSHIP");
+    expect(out[0].location).toBe("London, GB");
   });
 
   it("never republishes the employer-written description", () => {
