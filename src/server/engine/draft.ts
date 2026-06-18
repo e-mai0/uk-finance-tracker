@@ -6,7 +6,30 @@ import { critiqueAndRevise, checkTells } from "@/server/engine/critique";
 import { writingSkill } from "@/server/engine/skills";
 import { inferRegister } from "@/server/engine/register";
 import { REGISTER, DIVISION_EMPHASIS } from "@/server/engine/playbook";
-import type { DraftArgs, DraftContext, DraftResult } from "@/server/engine/types";
+import { gradeDraft } from "@/server/engine/grader";
+import type {
+  DraftArgs,
+  DraftContext,
+  DraftResult,
+  GradeContext,
+  GradeResult,
+} from "@/server/engine/types";
+
+/** Max grade→revise attempts. After this many failed grades we ship the best draft we have. */
+const MAX_GRADER_ATTEMPTS = 2;
+
+/** Build a single targeted revise instruction from a verdict's failed criteria. */
+function reviseInstructionFromVerdict(grade: GradeResult): string {
+  const fixes = grade.criteria
+    .filter((c) => !c.pass)
+    .map((c) => `- ${c.name}: ${c.fix ?? "address this criterion"}`);
+  return `A grader judged this draft against the UK-finance applications rubric and it did not pass. Revise it to fix ONLY the problems below, keeping everything that already works, the writer's plain style, the facts, and the length. Do NOT add new claims, invent firm details, or fabricate specifics to satisfy a criterion — an honest general sentence beats a fabricated specific.
+
+Problems to fix:
+${fixes.join("\n")}
+
+Return only the revised answer text.`;
+}
 
 /**
  * Escape user-supplied content so it cannot prematurely close a <reference> XML tag.
@@ -204,7 +227,66 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
 
   const trimmed = trimToLimit(text.trim(), args.charLimit);
   const critiqued = await critiqueAndRevise(userId, trimmed, ctx.voice);
-  const final = trimToLimit(critiqued.text, args.charLimit);
+  const preGrader = trimToLimit(critiqued.text, args.charLimit);
+
+  // U3: quality-grader loop. Grade the draft against the playbook rubric; if it fails,
+  // build a targeted revise instruction from the failed criteria and revise via the
+  // existing draft-model path (NO new fabrication path), then re-grade. Capped at
+  // MAX_GRADER_ATTEMPTS. Always returns the best draft. If the grader throws at any point
+  // it is a FAIL-SAFE: we ship the pre-grader draft unchanged and flag the grade skipped.
+  const gradeCtx: GradeContext = {
+    question: args.question,
+    questionKind,
+    register,
+    division,
+    firmName: args.employerName,
+    wordCap: args.wordLimit ?? null,
+    firmHookDisclosed,
+    firmHookExpected,
+  };
+
+  // Score a verdict so we can always keep the BEST draft seen: a passed verdict beats any
+  // failing one; among failing verdicts, more passing criteria is better.
+  const verdictScore = (g: GradeResult): number =>
+    (g.passed ? 1000 : 0) + g.criteria.filter((c) => c.pass).length;
+
+  let final = preGrader;
+  let gradeResult: GradeResult;
+  try {
+    let grade = await gradeDraft(userId, final, gradeCtx);
+    let attempts = 0;
+    // Track the best draft + its verdict so a later (capped) revision never ships something
+    // worse than an earlier one.
+    let bestText = final;
+    let bestGrade = grade;
+    while (!grade.passed && attempts < MAX_GRADER_ATTEMPTS) {
+      attempts += 1;
+      const revisePrompt = reviseInstructionFromVerdict(grade);
+      const { text: revisedText, usage: revUsage } = await generateText({
+        model: sonnet,
+        system,
+        prompt: revisePrompt + "\n\nDraft:\n" + final,
+        maxOutputTokens,
+      });
+      recordUsage(userId, revUsage?.totalTokens ?? 0).catch(() => {});
+      const revised = trimToLimit(revisedText.trim(), args.charLimit);
+
+      const reGrade = await gradeDraft(userId, revised, gradeCtx);
+      final = revised;
+      grade = reGrade;
+      if (verdictScore(reGrade) >= verdictScore(bestGrade)) {
+        bestText = revised;
+        bestGrade = reGrade;
+      }
+    }
+    // Always ship the best draft seen across attempts.
+    final = bestText;
+    gradeResult = { ...bestGrade, attempts, skipped: false };
+  } catch {
+    // Fail-safe: the grader is never allowed to block delivery. Ship the pre-grader draft.
+    final = preGrader;
+    gradeResult = { criteria: [], passed: false, attempts: 0, skipped: true };
+  }
 
   // Item 3: Honest provenance — re-check tells on the final text
   const residualTells = checkTells(final, ctx.voice.bannedTells);
@@ -236,6 +318,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
       wordCap: args.wordLimit ?? null,
       firmHookExpected,
       firmHookDisclosed,
+      gradeResult,
     },
   };
 }
