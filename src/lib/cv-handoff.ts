@@ -108,6 +108,51 @@ export function nextNavigationPush(
   return null;
 }
 
+/** A loaded chat message (UIMessage-like) carrying parts from history. */
+interface MessageLike {
+  parts?: unknown;
+}
+
+/**
+ * Cycle 6 F3 — collect the tool-call ids of every `kind:"navigate"` tool output
+ * present in the INITIAL (historical) messages a chat mounts with.
+ *
+ * The dock's once-guard (`handledNavRef`) is a fresh empty Set on every mount,
+ * so a persisted navigate signal sitting in the loaded history would re-fire
+ * router.push on mount (replaying a PAST handoff and yanking the user to /cv).
+ * Seeding the guard from this set on mount marks every history-resident signal
+ * as ALREADY HANDLED, so `nextNavigationPush` skips them and only routes
+ * genuinely new (streamed-this-session) signals.
+ *
+ * PURE: scans the same `parts` discriminant `nextNavigationPush` uses
+ * (state === "output-available" + isNavigationSignal) and returns the same id
+ * scheme (tool call id, with the deterministic fallback). Tolerant of malformed
+ * / missing input so a bad row can never throw on mount.
+ */
+export function collectHandledNavIds(
+  initialMessages: readonly MessageLike[] | null | undefined,
+): Set<string> {
+  const ids = new Set<string>();
+  if (!Array.isArray(initialMessages)) return ids;
+  for (const msg of initialMessages) {
+    if (!msg || typeof msg !== "object") continue;
+    const parts = (msg as MessageLike).parts;
+    if (!Array.isArray(parts)) continue;
+    for (const raw of parts) {
+      const part = raw as ToolPartLike;
+      if (!part || typeof part !== "object") continue;
+      if (part.state !== "output-available") continue;
+      if (!isNavigationSignal(part.output)) continue;
+      const id =
+        typeof part.toolCallId === "string" && part.toolCallId
+          ? part.toolCallId
+          : `nav:${part.output.to}:${part.output.request ?? ""}`;
+      ids.add(id);
+    }
+  }
+  return ids;
+}
+
 /** The decision the CV chat client makes about the handoff param. */
 export interface AutoSendDecision {
   /** Send the request to the coach as an ordinary user message. */

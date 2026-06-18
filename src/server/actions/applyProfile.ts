@@ -13,7 +13,7 @@ import {
 import { extractCvFactsToMemory } from "../cv/facts";
 import { parseCvTextToCvData } from "../cv/generate";
 import { persistCv, ensureCvChatSession } from "../cv/store";
-import { seedCoachOpening } from "../cv/coach";
+import { seedCoachOpening, type CoachOpeningMessage } from "../cv/coach";
 import type { CvData } from "../../lib/cv";
 
 export interface ActionResult {
@@ -25,6 +25,12 @@ export interface ActionResult {
    *  client switch from empty-state to the has-CV view in place (no full
    *  reload). Additive: the Settings caller ignores it. */
   cv?: CvData;
+  /** F2: the seeded coach opening (assessment text + 3 chips) as a UIMessage,
+   *  present when an uploaded CV parsed AND the opening was built. The /cv
+   *  empty→has-CV transition feeds this into the chat's initialMessages so the
+   *  coach opening + chips render IN PLACE immediately (no full reload / no
+   *  refetch). Additive: the Settings caller ignores it. */
+  coachOpening?: CoachOpeningMessage;
 }
 
 const MAX_CV_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -146,14 +152,23 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
   // Seed the CV coach's grounded opening (assessment + 3 chips) so an UPLOADED
   // CV lands the user in a populated refine pane, identically to the draft path
   // (see actions/cv.ts). Best-effort: seedCoachOpening never throws/blocks.
+  // F2: capture the returned opening message so the client can render it in
+  // place immediately on the empty→has-CV transition (no full reload / refetch).
+  let coachOpening: CoachOpeningMessage | undefined;
   if (parsedCv) {
     const sessionId = await ensureCvChatSession(userId);
-    await seedCoachOpening({ userId, sessionId, cv: parsedCv });
+    const seed = await seedCoachOpening({ userId, sessionId, cv: parsedCv });
+    coachOpening = seed.message;
   }
 
   revalidatePath("/settings");
   revalidatePath("/cv");
-  return { ok: true, cvParsed, ...(parsedCv ? { cv: parsedCv } : {}) };
+  return {
+    ok: true,
+    cvParsed,
+    ...(parsedCv ? { cv: parsedCv } : {}),
+    ...(coachOpening ? { coachOpening } : {}),
+  };
 }
 
 /** Remove the stored CV file + text. */

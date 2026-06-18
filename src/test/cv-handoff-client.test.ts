@@ -24,6 +24,7 @@ import {
   isNavigationSignal,
   nextNavigationPush,
   decideAutoSend,
+  collectHandledNavIds,
   type NavigationSignal,
 } from "@/lib/cv-handoff";
 
@@ -142,6 +143,93 @@ describe("nextNavigationPush — route ONCE per signal", () => {
     expect(b!.id).toBe("call-9");
     const pb = new URLSearchParams(b!.url.slice(b!.url.indexOf("?") + 1));
     expect(pb.get("handoff")).toBe("add a summary");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cycle 6 F3 — the dock must NOT replay a HISTORICAL go_to_cv signal on mount.
+//
+// `handledNavRef` starts EMPTY each mount, so a persisted `kind:"navigate"`
+// tool output sitting in the LOADED dock history re-fires router.push on mount,
+// yanking the user (e.g. /today → /cv) after a past CV handoff. The fix seeds
+// the handled set from the initial (historical) messages so ONLY genuinely new
+// (streamed-this-session) signals route. `collectHandledNavIds` is the PURE
+// helper that does the seeding; these tests pin the persisted-history semantics
+// that escaped before (the previous suite only ever ran with an EMPTY handled
+// set, so a history-resident signal would have routed).
+// ---------------------------------------------------------------------------
+
+/** A loaded dock message (UIMessage-like) carrying parts from history. */
+function historyMsg(parts: unknown[]) {
+  return { id: `m-${Math.random()}`, role: "assistant", parts };
+}
+
+describe("collectHandledNavIds — seed the handled set from loaded history", () => {
+  it("returns the tool-call ids of every kind:'navigate' output in history", () => {
+    const initial = [
+      historyMsg([
+        { type: "text", text: "Heading to your CV." },
+        navPart("call-hist-1", SIGNAL),
+      ]),
+      historyMsg([{ type: "text", text: "no nav here" }]),
+      historyMsg([navPart("call-hist-2", { ...SIGNAL, request: "add a summary" })]),
+    ];
+    const ids = collectHandledNavIds(initial);
+    expect(ids.has("call-hist-1")).toBe(true);
+    expect(ids.has("call-hist-2")).toBe(true);
+    expect(ids.size).toBe(2);
+  });
+
+  it("ignores text parts and non-navigate tool outputs", () => {
+    const initial = [
+      historyMsg([{ type: "text", text: "just advice" }]),
+      historyMsg([navPart("call-search", { ok: true, cv: { fullName: "x" } })]),
+      historyMsg([
+        { type: "tool-go_to_cv", toolCallId: "call-streaming", state: "input-streaming" },
+      ]),
+    ];
+    const ids = collectHandledNavIds(initial);
+    expect(ids.size).toBe(0);
+  });
+
+  it("returns an empty set for empty / malformed initial messages", () => {
+    expect(collectHandledNavIds([]).size).toBe(0);
+    expect(collectHandledNavIds(undefined as never).size).toBe(0);
+    expect(collectHandledNavIds([null, { foo: 1 }, { parts: "nope" }] as never).size).toBe(0);
+  });
+});
+
+describe("nextNavigationPush seeded from history (F3) — no replay of historical signals", () => {
+  it("does NOT route a signal that already exists in the loaded history", () => {
+    // History contains a go_to_cv signal from a PAST session/turn.
+    const history = [historyMsg([navPart("call-hist-1", SIGNAL)])];
+    const handled = collectHandledNavIds(history);
+    // On mount the dock scans that same message's parts. Because the id was
+    // pre-seeded from history, the historical signal must NOT re-fire.
+    const push = nextNavigationPush(history[0].parts, handled);
+    expect(push).toBeNull();
+  });
+
+  it("STILL routes a genuinely NEW signal whose id is not in the loaded history", () => {
+    const history = [historyMsg([navPart("call-hist-1", SIGNAL)])];
+    const handled = collectHandledNavIds(history);
+    // A new turn streams in a fresh signal (new tool-call id).
+    const liveParts = [navPart("call-new", { ...SIGNAL, request: "tighten my CV" })];
+    const push = nextNavigationPush(liveParts, handled);
+    expect(push).not.toBeNull();
+    expect(push!.id).toBe("call-new");
+    const p = new URLSearchParams(push!.url.slice(push!.url.indexOf("?") + 1));
+    expect(p.get("handoff")).toBe("tighten my CV");
+  });
+
+  it("MUTATION SANITY: without the history seed, the historical signal WOULD route", () => {
+    // Proves the test fails if the fix is reverted: an EMPTY handled set (the
+    // pre-fix behaviour) routes the history-resident signal — the exact replay
+    // bug. This must NOT be how the component initializes its ref.
+    const history = [historyMsg([navPart("call-hist-1", SIGNAL)])];
+    const pushWithEmptySet = nextNavigationPush(history[0].parts, new Set<string>());
+    expect(pushWithEmptySet).not.toBeNull();
+    expect(pushWithEmptySet!.id).toBe("call-hist-1");
   });
 });
 
