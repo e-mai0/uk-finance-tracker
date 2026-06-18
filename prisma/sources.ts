@@ -14,7 +14,8 @@ import type { SourceConfig } from "../src/ingestion/types";
 export interface LiveSource {
   kind:
     | "GREENHOUSE" | "CAREERS_PAGE" | "WORKDAY"
-    | "ORACLE_CLOUD" | "EIGHTFOLD" | "AVATURE" | "RADANCY" | "TALNET";
+    | "ORACLE_CLOUD" | "EIGHTFOLD" | "AVATURE" | "RADANCY" | "TALNET"
+    | "SUCCESSFACTORS" | "SMARTRECRUITERS";
   identifier: string;
   employerName: string;
   sector?: string;
@@ -178,6 +179,40 @@ export const liveSources: LiveSource[] = [
   { kind: "WORKDAY", identifier: "pjt-partners-students", employerName: "PJT Partners", sector: "Investment Bank",
     url: "https://pjtpartners.wd1.myworkdayjobs.com/Students",
     config: { ats: "workday", host: "pjtpartners.wd1.myworkdayjobs.com", tenant: "pjtpartners", site: "Students" } },
+
+  // --- SAP SuccessFactors Career Site Builder (server-rendered job tiles at
+  //     /tile-search-results/?q=&startrow=N; the legacy career?company= RCM
+  //     portal is JS-only and unusable — pin the CSB host). Endpoints + tile
+  //     layout verified live (Jun 18); off-season now, so most rows are
+  //     full-time and correctly excluded until early-careers roles post. ---
+  { kind: "SUCCESSFACTORS", identifier: "janus-henderson", employerName: "Janus Henderson", sector: "Asset Manager",
+    url: "https://jobs.janushenderson.com/",
+    config: { ats: "successfactors", host: "jobs.janushenderson.com" } },
+  { kind: "SUCCESSFACTORS", identifier: "mizuho-emea", employerName: "Mizuho", sector: "Investment Bank",
+    url: "https://careers.mizuhoemea.com/",
+    config: { ats: "successfactors", host: "careers.mizuhoemea.com" } },
+  { kind: "SUCCESSFACTORS", identifier: "partners-group", employerName: "Partners Group", sector: "Private Markets",
+    url: "https://jobs.partnersgroup.com/",
+    config: { ats: "successfactors", host: "jobs.partnersgroup.com" } },
+  { kind: "SUCCESSFACTORS", identifier: "swiss-re", employerName: "Swiss Re", sector: "Insurance",
+    url: "https://careers.swissre.com/",
+    config: { ats: "successfactors", host: "careers.swissre.com" } },
+
+  // --- SmartRecruiters public Posting API
+  //     (api.smartrecruiters.com/v1/companies/{company}/postings). SG identifier
+  //     confirmed `SocieteGenerale4` (200 + valid empty content off-season). ---
+  { kind: "SMARTRECRUITERS", identifier: "societe-generale", employerName: "Societe Generale", sector: "Investment Bank",
+    url: "https://careers.smartrecruiters.com/SocieteGenerale4",
+    config: { ats: "smartrecruiters", company: "SocieteGenerale4" } },
+  { kind: "SMARTRECRUITERS", identifier: "legal-and-general", employerName: "Legal & General", sector: "Insurance Asset Manager",
+    url: "https://jobs.smartrecruiters.com/LegalAndGeneral",
+    config: { ats: "smartrecruiters", company: "LegalAndGeneral" } },
+  { kind: "SMARTRECRUITERS", identifier: "mufg-investor-services", employerName: "MUFG Investor Services", sector: "Asset Servicing",
+    url: "https://jobs.smartrecruiters.com/MUFGInvestorServices",
+    config: { ats: "smartrecruiters", company: "MUFGInvestorServices" } },
+  { kind: "SMARTRECRUITERS", identifier: "evelyn-partners", employerName: "Evelyn Partners", sector: "Wealth Manager",
+    url: "https://jobs.smartrecruiters.com/EvelynPartners",
+    config: { ats: "smartrecruiters", company: "EvelynPartners" } },
 ];
 
 /** Idempotent upsert of every live source. Safe to run repeatedly and against

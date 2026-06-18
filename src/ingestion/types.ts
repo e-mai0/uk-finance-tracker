@@ -98,4 +98,6 @@ export type SourceConfig =
   | { ats: "eightfold"; host: string; domain: string; endpoint: "apply" | "pcsx" }
   | { ats: "avature"; variant: "ubs" | "macquarie"; base: string; siteid?: string }
   | { ats: "radancy"; base: string }
-  | { ats: "talnet"; host: string; board: number };
+  | { ats: "talnet"; host: string; board: number }
+  | { ats: "smartrecruiters"; company: string }
+  | { ats: "successfactors"; host: string };
