@@ -223,16 +223,15 @@ describe("detectProgrammeType", () => {
       "Women's Insight Programme",
       "Black Heritage Insight Week",
       "Social Mobility Insight Evening",
-      // Cycle 3e: "Markets Immersion Programme" was REMOVED from this list — a
-      // BARE branded word ("immersion") is no longer a SPRING_WEEK on its own
-      // (it encoded the precision bug; taxonomy requires a year-1/insight
-      // co-token). It now classifies SUMMER and is asserted in the
-      // "generic Spring-Week signals require an insight/year-1 co-token" block.
-      // "Women's Horizons Programme" stays here: "women" IS a diversity-insight
-      // co-token, so the branded word "horizons" legitimately fires SPRING_WEEK.
-      "Women's Horizons Programme",
-      "Explore Banking — Early Insight",
-      "Spotlight Insight Day",
+      // Cycle 3e: the BARE branded words ("Markets Immersion Programme") were
+      // REMOVED from this list — a branded word alone is no longer a SPRING_WEEK
+      // (taxonomy requires a year-1/insight co-token); it now classifies SUMMER
+      // and is asserted in the "generic Spring-Week signals require an
+      // insight/year-1 co-token" block. The branded-word + co-token cases that
+      // DO fire SPRING_WEEK ("Women's Horizons Programme", "Explore Banking —
+      // Early Insight", "Spotlight Insight Day", etc.) live in that same block's
+      // held-out "STILL labels …" set — kept there (not duplicated here) as the
+      // single load-bearing regression proof for this fix.
     ]) {
       expect(detectProgrammeType({ title, location: "London" })).toBe("SPRING_WEEK");
     }
