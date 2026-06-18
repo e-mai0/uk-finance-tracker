@@ -99,7 +99,7 @@ describe("mapTalNetBoard", () => {
     expect(out[0].deadlineAt).toBe("2026-07-09");
   });
 
-  it("drops a non-UK role identified by the Location cell", () => {
+  it("excludes a non-UK role identified by its Location cell (UK-only, ADR-005)", () => {
     const html = card({
       id: 1388,
       pl: 1,
@@ -110,6 +110,8 @@ describe("mapTalNetBoard", () => {
       deadline: "9 Jul 2026",
     });
     const out = mapTalNetBoard(html, "https://nomuracampus.tal.net", nomura);
+    // ADR-005 (UK-only): the Paris role is excluded again (not-uk) — the Location
+    // cell, not the UK-looking title, decides.
     expect(out).toHaveLength(0);
   });
 

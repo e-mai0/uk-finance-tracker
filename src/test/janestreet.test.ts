@@ -44,12 +44,22 @@ const FEED = [
 ];
 
 describe("mapJaneStreetJobs", () => {
-  it("keeps only London summer internships", () => {
+  it("keeps only the London summer internship (UK-only) and tags its season", () => {
     const out = mapJaneStreetJobs(FEED, js);
+    // ADR-005 (UK-only): just the London summer intern (1001) survives. The
+    // winter/December cycles (1002, 1003) are dropped by the adapter's season
+    // filter; the full-time AML analyst (1004) is not-internship; and the NYC
+    // summer intern (1005) is now excluded as not-uk (the gate is restored).
     expect(out).toHaveLength(1);
-    expect(out[0].title).toBe("Quantitative Trader — Summer Internship");
-    expect(out[0].location).toBe("London");
-    expect(out[0].roleFamily).toBe("QUANT");
+
+    const ldn = out.find((o) => o.location === "London");
+    expect(ldn).toBeDefined();
+    expect(ldn!.title).toBe("Quantitative Trader — Summer Internship");
+    expect(ldn!.roleFamily).toBe("QUANT");
+    expect(ldn!.programmeType).toBe("SUMMER_INTERNSHIP");
+
+    // The New York summer internship is excluded again (UK-only gate).
+    expect(out.find((o) => o.location === "New York")).toBeUndefined();
   });
 
   it("builds the verified position URL pattern", () => {

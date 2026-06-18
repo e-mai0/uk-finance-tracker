@@ -105,6 +105,79 @@ export const liveSources: LiveSource[] = [
     url: "https://www.citadel.com/career-sitemap.xml", watchOnly: true },
   { kind: "CAREERS_PAGE", identifier: "citadel-securities-career-sitemap", employerName: "Citadel Securities", sector: "Market Maker",
     url: "https://www.citadelsecurities.com/career-sitemap.xml", watchOnly: true },
+
+  // ===================================================================
+  // Cycle-3d onboarding — high-confidence UK finance firms that REUSE an
+  // existing adapter (no new platform). Each board was manually probed with
+  // the SAME URL shape the adapter uses and returned 200 + real postings
+  // (greenhouse boards-api / workday CXS POST / tal.net job board HTML).
+  // Live-network reachability is NOT asserted in CI (flaky) — see the
+  // onboarding report for the per-firm HTTP evidence.
+  // ===================================================================
+
+  // --- Greenhouse quant / market-maker / HF batch (boards-api token = identifier) ---
+  // All verified 200 on boards-api.greenhouse.io/v1/boards/<token>/jobs?content=true
+  // with London/UK postings present. classify.ts gates to UK early careers.
+  { kind: "GREENHOUSE", identifier: "marshallwace", employerName: "Marshall Wace", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/marshallwace" },
+  { kind: "GREENHOUSE", identifier: "imc", employerName: "IMC Trading", sector: "Market Maker",
+    url: "https://job-boards.eu.greenhouse.io/imc" },
+  { kind: "GREENHOUSE", identifier: "drwuniversityjobs", employerName: "DRW", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/drwuniversityjobs" },
+  { kind: "GREENHOUSE", identifier: "jumptrading", employerName: "Jump Trading", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/jumptrading" },
+  { kind: "GREENHOUSE", identifier: "squarepointcapital", employerName: "Squarepoint Capital", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/squarepointcapital" },
+  { kind: "GREENHOUSE", identifier: "quberesearchandtechnologies", employerName: "Qube Research & Technologies", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/quberesearchandtechnologies" },
+  { kind: "GREENHOUSE", identifier: "aqr", employerName: "AQR Capital Management", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/aqr" },
+  { kind: "GREENHOUSE", identifier: "exoduspoint", employerName: "ExodusPoint Capital", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/exoduspoint" },
+  { kind: "GREENHOUSE", identifier: "schonfeld", employerName: "Schonfeld Strategic Advisors", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/schonfeld" },
+  { kind: "GREENHOUSE", identifier: "towerresearchcapital", employerName: "Tower Research Capital", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/towerresearchcapital" },
+  { kind: "GREENHOUSE", identifier: "xtxmarketstechnologies", employerName: "XTX Markets", sector: "Market Maker",
+    url: "https://job-boards.greenhouse.io/xtxmarketstechnologies" },
+  { kind: "GREENHOUSE", identifier: "mavensecuritiesholdingltd", employerName: "Maven Securities", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/mavensecuritiesholdingltd" },
+  { kind: "GREENHOUSE", identifier: "quadraturecapital", employerName: "Quadrature Capital", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/quadraturecapital" },
+  { kind: "GREENHOUSE", identifier: "aquaticcapitalmanagement", employerName: "Aquatic Capital Management", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/aquaticcapitalmanagement" },
+  // --- Greenhouse elite boutiques / PE (EU instance for EQT/Permira) ---
+  { kind: "GREENHOUSE", identifier: "lincolninternational", employerName: "Lincoln International", sector: "Investment Bank",
+    url: "https://job-boards.greenhouse.io/lincolninternational" },
+  { kind: "GREENHOUSE", identifier: "liontree", employerName: "LionTree", sector: "Investment Bank",
+    url: "https://job-boards.greenhouse.io/liontree" },
+  { kind: "GREENHOUSE", identifier: "williamblair", employerName: "William Blair", sector: "Investment Bank",
+    url: "https://job-boards.greenhouse.io/williamblair" },
+  { kind: "GREENHOUSE", identifier: "eqtpartners", employerName: "EQT", sector: "Private Equity",
+    url: "https://job-boards.eu.greenhouse.io/eqtpartners" },
+  { kind: "GREENHOUSE", identifier: "permiraexternalprivate", employerName: "Permira", sector: "Private Equity",
+    url: "https://job-boards.eu.greenhouse.io/permiraexternalprivate" },
+  { kind: "GREENHOUSE", identifier: "generalatlantic", employerName: "General Atlantic", sector: "Private Equity",
+    url: "https://job-boards.greenhouse.io/generalatlantic" },
+
+  // --- tal.net campus boards (board number AUDITED against the live board) ---
+  // Bank of America campus apply is bankcampuscareers.tal.net; board 1 is the
+  // live campus/early-careers board (verified 16 opp tiles, candidate-opp-tile
+  // layout the talnet adapter parses). Board 2 is empty; board 3 redirects.
+  { kind: "TALNET", identifier: "bofa-campus", employerName: "Bank of America", sector: "Investment Bank",
+    url: "https://bankcampuscareers.tal.net/candidate/jobboard/vacancy/1/adv/",
+    config: { ats: "talnet", host: "bankcampuscareers.tal.net", board: 1 } },
+
+  // --- Workday CXS — dedicated EARLY-CAREERS sites only ---
+  // Houlihan Lokey `Campus` carries live UK off-cycle/graduate analyst roles.
+  // PJT Partners `Students` is the campus board (currently off-season/empty,
+  // like Lazard/Optiver) — pinned here rather than the experienced `Careers`.
+  { kind: "WORKDAY", identifier: "houlihan-lokey-campus", employerName: "Houlihan Lokey", sector: "Investment Bank",
+    url: "https://hl.wd1.myworkdayjobs.com/Campus",
+    config: { ats: "workday", host: "hl.wd1.myworkdayjobs.com", tenant: "hl", site: "Campus" } },
+  { kind: "WORKDAY", identifier: "pjt-partners-students", employerName: "PJT Partners", sector: "Investment Bank",
+    url: "https://pjtpartners.wd1.myworkdayjobs.com/Students",
+    config: { ats: "workday", host: "pjtpartners.wd1.myworkdayjobs.com", tenant: "pjtpartners", site: "Students" } },
 ];
 
 /** Idempotent upsert of every live source. Safe to run repeatedly and against

@@ -52,7 +52,10 @@ export function CyclopsDock({ badge }: { badge: number }) {
   const hidden =
     pathname.startsWith("/settings") ||
     pathname.startsWith("/chat") ||
-    pathname.startsWith("/memory");
+    pathname.startsWith("/memory") ||
+    // /cv has its own dedicated CV coach in the side-by-side layout (U2); the
+    // global dock would be a redundant second assistant fighting for width.
+    pathname.startsWith("/cv");
 
   useEffect(() => {
     setHint(formatShortcut("mod+J"));

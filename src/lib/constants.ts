@@ -30,6 +30,34 @@ export const ROLE_FAMILY_SHORT: Record<RoleFamily, string> = Object.fromEntries(
 ) as Record<RoleFamily, string>;
 
 // ---------------------------------------------------------------------------
+// Programme type (season) taxonomy
+//
+// Hand-written string-literal union kept deliberately INDEPENDENT of the
+// Prisma-generated enum so all consuming logic stays DB-independent (the
+// Prisma enum in schema.prisma is the persisted mirror and MUST use the same
+// spelling). Mirrors the ROLE_FAMILIES option-list / label-map shape so the
+// tracker filters + UI consume them the same way.
+//
+// The tracker is UK-only (ADR-005); region was removed. ADR-006 narrows the
+// tracked scope to the 3 core competitive finance internship seasons — Spring
+// Week / Summer / Off-Cycle. Industrial placements (plus pre-university and
+// apprenticeships) are EXCLUDED upstream in classify.ts, "for now".
+// ---------------------------------------------------------------------------
+
+export type ProgrammeType = "SPRING_WEEK" | "SUMMER_INTERNSHIP" | "OFF_CYCLE";
+
+export const PROGRAMME_TYPES: { value: ProgrammeType; label: string }[] = [
+  { value: "SPRING_WEEK", label: "Spring Week" },
+  { value: "SUMMER_INTERNSHIP", label: "Summer Internship" },
+  { value: "OFF_CYCLE", label: "Off-Cycle" },
+];
+
+export const PROGRAMME_TYPE_LABELS: Record<ProgrammeType, string> =
+  Object.fromEntries(
+    PROGRAMME_TYPES.map((p) => [p.value, p.label]),
+  ) as Record<ProgrammeType, string>;
+
+// ---------------------------------------------------------------------------
 // Status
 // ---------------------------------------------------------------------------
 

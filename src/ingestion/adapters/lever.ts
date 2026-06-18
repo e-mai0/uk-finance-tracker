@@ -63,6 +63,7 @@ export function mapLeverPostings(
       employer: employer.name,
       title: posting.text.trim(),
       roleFamily: verdict.roleFamily,
+      programmeType: verdict.programmeType,
       divisionDesk: department ?? undefined,
       location: location || "London",
       status: "OPEN",
