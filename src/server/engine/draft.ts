@@ -4,6 +4,8 @@ import { recordUsage } from "@/server/ai/budget";
 import { classifyQuestion, selectStories, employerSlugOf } from "@/server/engine/stories";
 import { critiqueAndRevise, checkTells } from "@/server/engine/critique";
 import { writingSkill } from "@/server/engine/skills";
+import { inferRegister } from "@/server/engine/register";
+import { REGISTER, DIVISION_EMPHASIS } from "@/server/engine/playbook";
 import type { DraftArgs, DraftContext, DraftResult } from "@/server/engine/types";
 
 /**
@@ -69,8 +71,46 @@ function voiceBlock(ctx: DraftContext): string {
   return parts.join("\n");
 }
 
-function buildSystem(ctx: DraftContext): string {
-  return writingSkill.body.replace("{{voice}}", voiceBlock(ctx));
+/**
+ * Tailoring block appended to the writing-skill system prompt: the inferred
+ * REGISTER + DIVISION_EMPHASIS guidance (from the canonical playbook), the
+ * individual-weave mandate, and — when a firm hook is expected but grounding is
+ * thin — an explicit DISCLOSE-do-not-invent instruction. This carries the
+ * applications expertise through to generation without weakening the
+ * anti-fabrication hard rules already in the skill body.
+ */
+function tailoringBlock(opts: {
+  register: ReturnType<typeof inferRegister>["programme"];
+  division: ReturnType<typeof inferRegister>["division"];
+  firmHookExpected: boolean;
+  firmHookDisclosed: boolean;
+}): string {
+  const parts: string[] = ["REGISTER + DIVISION TAILORING (apply to this answer):"];
+  parts.push(REGISTER[opts.register]);
+  if (opts.division !== "unknown") parts.push(DIVISION_EMPHASIS[opts.division]);
+
+  parts.push(
+    "INDIVIDUAL WEAVE: tie every firm fact back to the applicant's own evidence (their CV, stories or profile). A fact about the firm only earns its place when it connects to what this applicant has done or wants to do. Listing firm facts without connecting any of them to yourself is a failure mode graders reject.",
+  );
+
+  if (opts.firmHookExpected && !opts.firmHookDisclosed) {
+    parts.push(
+      "FIRM HOOK REQUIRED: weave in at least one specific, checkable firm hook (a named recent deal, a specific desk/group/programme, a named fund or research piece) that survives the competitor-swap test. Generic, swappable praise is a fail.",
+    );
+  }
+  if (opts.firmHookExpected && opts.firmHookDisclosed) {
+    parts.push(
+      "THIN FIRM GROUNDING: no concrete, checkable firm hook is available in the reference material for this why-firm/commercial question. Do NOT invent a deal, fund, person or initiative to fill the gap. Write honestly in general terms about genuine, defensible motivation, and where a specific hook is expected, be honest that the applicant should research one rather than fabricating it. An honest general sentence beats a fabricated specific, always.",
+    );
+  }
+  return parts.join("\n\n");
+}
+
+function buildSystem(
+  ctx: DraftContext,
+  tailoring: ReturnType<typeof tailoringBlock>,
+): string {
+  return `${writingSkill.body.replace("{{voice}}", voiceBlock(ctx))}\n\n${tailoring}`;
 }
 
 /** Build a profile line from only the non-empty fields. */
@@ -86,6 +126,19 @@ function buildProfileLine(ctx: DraftContext): string {
 
 export async function draftText(userId: string, ctx: DraftContext, args: DraftArgs): Promise<DraftResult> {
   const { kind: questionKind, themes } = classifyQuestion(args.question);
+
+  // Register + division inferred from role/question TEXT (not the tracker column).
+  const { programme: register, division } = inferRegister(args.roleTitle ?? "", args.question);
+
+  // Firm-hook expectation: why-firm (motivation) and commercial questions, and every
+  // cover letter (which must answer "why them"), must carry a specific, checkable hook.
+  const firmHookExpected =
+    args.kind === "COVER_LETTER" || questionKind === "motivation" || questionKind === "commercial";
+  // A concrete hook is "available" when there is shared employer research OR the applicant's
+  // own company notes to draw a checkable detail from. With neither, a hook would have to be
+  // invented — so we DISCLOSE the gap instead of fabricating.
+  const concreteHookAvailable = ctx.research !== null || ctx.companyNotes !== null;
+  const firmHookDisclosed = firmHookExpected && !concreteHookAvailable;
 
   // Item 2: Employer-slug dedup — derive slug from name if not provided
   const slug = args.employerSlug ?? (args.employerName ? employerSlugOf(args.employerName) : undefined);
@@ -104,6 +157,14 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
   } else {
     parts.push(`Application question${args.employerName ? ` for ${args.employerName}` : ""}${args.roleTitle ? ` (${args.roleTitle})` : ""}: ${args.question}`);
     if (args.charLimit) parts.push(`Hard limit: ${args.charLimit} characters. Aim under it.`);
+  }
+
+  // Thread the stated word cap (if any) into generation. The cap is hard: instruct the
+  // model to obey it. This is the form's word limit, distinct from the charLimit trim.
+  if (args.wordLimit) {
+    parts.push(
+      `Stated word cap: ${args.wordLimit} words. This is a hard limit; obey it exactly and do not exceed it. 70% of it with substance beats 100% with padding.`,
+    );
   }
 
   // Item 11: Build profile from non-empty fields only
@@ -134,7 +195,8 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
 
   const maxOutputTokens =
     args.kind === "COVER_LETTER" ? 1200 : Math.min(1024, Math.floor((args.charLimit ?? 2048) / 2) + 256);
-  const system = buildSystem(ctx);
+  const tailoring = tailoringBlock({ register, division, firmHookExpected, firmHookDisclosed });
+  const system = buildSystem(ctx, tailoring);
   const prompt = parts.join("\n");
 
   const { text, usage } = await generateText({ model: sonnet, system, prompt, maxOutputTokens });
@@ -147,10 +209,15 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
   // Item 3: Honest provenance — re-check tells on the final text
   const residualTells = checkTells(final, ctx.voice.bannedTells);
 
-  // Thin grounding: story-backed question with no stories selected, or commercial question with no research
+  // Thin grounding triggers (the draft DISCLOSES the gap rather than inventing):
+  //  - a story-backed question with no stories selected;
+  //  - a commercial question with no shared employer research (preserved original signal);
+  //  - a why-firm/commercial question for which no concrete, checkable firm hook is
+  //    available at all (firmHookDisclosed — also covers cover letters).
   const thinGrounding =
     (themes.length > 0 && stories.length === 0) ||
-    (questionKind === "commercial" && ctx.research === null);
+    (questionKind === "commercial" && ctx.research === null) ||
+    firmHookDisclosed;
 
   return {
     text: final,
@@ -164,6 +231,11 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
       model: SONNET_ID,
       residualTells,
       thinGrounding,
+      register,
+      division,
+      wordCap: args.wordLimit ?? null,
+      firmHookExpected,
+      firmHookDisclosed,
     },
   };
 }

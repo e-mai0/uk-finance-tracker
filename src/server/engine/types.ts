@@ -7,6 +7,10 @@ export type DraftArgs = {
   employerSlug?: string;
   roleTitle?: string;
   charLimit?: number;
+  /** Stated word cap for the answer, if the form specifies one (e.g. "max 250 words").
+   *  Threaded into the generation prompt so the model obeys it. Distinct from the
+   *  hard `charLimit` character cap, which still governs the post-hoc trim. */
+  wordLimit?: number;
   /** Story slugs to exclude from selection (e.g. user clicked "Different story"). */
   excludeStories?: string[];
 };
@@ -58,8 +62,20 @@ export type Provenance = {
   model: string;
   residualTells: string[]; // tells remaining in the final text
   /** True when grounding is thin: story-backed question with no stories selected,
-   *  or commercial question with no research. Signals elevated fabrication risk. */
+   *  or a why-firm/commercial question with no concrete firm hook available.
+   *  Signals elevated fabrication risk; the draft DISCLOSES rather than invents. */
   thinGrounding: boolean;
+  /** Inferred application programme register (from role/question text, not the tracker column). */
+  register: "spring_week" | "summer" | "off_cycle" | "placement";
+  /** Inferred division emphasis (from role/question text). */
+  division: "ibd" | "markets" | "am_wm" | "research" | "unknown";
+  /** The stated word cap threaded into generation, if any (null when none was supplied). */
+  wordCap: number | null;
+  /** True when this question demands a specific, checkable firm hook (why-firm / commercial). */
+  firmHookExpected: boolean;
+  /** True when a firm hook was expected but grounding was too thin to supply one, so the
+   *  draft was instructed to DISCLOSE the gap rather than fabricate a hook. */
+  firmHookDisclosed: boolean;
 };
 
 export type DraftResult = { text: string; provenance: Provenance };
