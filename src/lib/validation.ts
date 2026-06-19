@@ -37,7 +37,15 @@ export const signupSchema = z.object({
   // Early-access gate. Optional in the schema (so signup works once the gate is
   // lifted); when EARLY_ACCESS_CODE is set, signupAction enforces a match. The
   // secret is checked server-side only and never reaches the client bundle.
-  inviteCode: z.string().trim().max(100).optional(),
+  // When the gate is OFF the form omits this field, so `formData.get("inviteCode")`
+  // is `null`; `.optional()` accepts `undefined` but REJECTS `null`, which would
+  // make a valid gate-off signup silently fail to parse. Coerce null → undefined
+  // first so signup works whether or not the gate is on, while keeping the
+  // trim/max(100) bound and the gate-on match (still enforced in signupAction).
+  inviteCode: z.preprocess(
+    (v) => v ?? undefined,
+    z.string().trim().max(100).optional(),
+  ),
 });
 
 export const loginSchema = z.object({

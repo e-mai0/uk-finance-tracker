@@ -44,11 +44,36 @@ export interface SeedCoachOpeningArgs {
   cv: CvData;
 }
 
+/**
+ * The seeded opening as a UIMessage-shaped object (id + role + parts), so a
+ * caller can feed it straight into the chat's initialMessages on an in-place
+ * transition WITHOUT a refetch or full reload (Cycle 6 F2). The parts mirror
+ * exactly what was persisted (a text part + a `data-coach-chips` part), which
+ * is what cv-chat renders — so the chat shows the assessment + 3 chips the
+ * instant it mounts on the empty→has-CV upload transition.
+ */
+export interface CoachOpeningMessage {
+  /** Stable id = the dedup clientId, so it matches the DB row toUIMessages later loads. */
+  id: string;
+  role: "assistant";
+  parts: Array<
+    | { type: "text"; text: string }
+    | { type: "data-coach-chips"; data: CoachChipsData }
+  >;
+}
+
 export interface SeedCoachOpeningResult {
   /** True if a row was (attempted to be) written this call; false only if we skipped. */
   seeded: boolean;
   /** The stable clientId used for dedup — same scheme U3 must use for the upload path. */
   clientId: string;
+  /**
+   * The seeded opening as a UIMessage (id/role/parts), present when the opening
+   * was successfully built. Lets the upload path render the opening + chips in
+   * place immediately (F2) instead of waiting for the next /cv load. Undefined
+   * only if building/persisting threw.
+   */
+  message?: CoachOpeningMessage;
 }
 
 const MAX_CV_PROMPT_CHARS = 12_000;
@@ -233,7 +258,7 @@ export async function seedCoachOpening({
   try {
     const { assessment, chips } = await buildOpening(userId, cv);
 
-    const parts = [
+    const parts: CoachOpeningMessage["parts"] = [
       { type: "text", text: assessment },
       { type: "data-coach-chips", data: { chips } satisfies CoachChipsData },
     ];
@@ -253,7 +278,15 @@ export async function seedCoachOpening({
       skipDuplicates: true,
     });
 
-    return { seeded: true, clientId };
+    // Return the opening as a UIMessage so the upload path (F2) can render it in
+    // place immediately. The id is the clientId, which is exactly what
+    // toUIMessages uses when the row is later loaded on a fresh /cv visit — so
+    // the in-place message and the persisted one share an id and never double up.
+    return {
+      seeded: true,
+      clientId,
+      message: { id: clientId, role: "assistant", parts },
+    };
   } catch (err) {
     // NEVER block the caller (draft/upload must still succeed).
     console.error("[cv coach] failed to seed opening:", err);

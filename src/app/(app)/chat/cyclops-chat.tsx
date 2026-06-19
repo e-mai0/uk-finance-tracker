@@ -15,7 +15,7 @@ import {
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/markdown";
-import { nextNavigationPush } from "@/lib/cv-handoff";
+import { nextNavigationPush, collectHandledNavIds } from "@/lib/cv-handoff";
 
 // ---------------------------------------------------------------------------
 // Tool label map
@@ -326,7 +326,18 @@ export function CyclopsChat({
   // part; without the guard we would router.push on every render. We push
   // exactly ONCE per signal id and remember it here so re-renders / re-streams
   // of the same signal are no-ops.
-  const handledNavRef = useRef<Set<string>>(new Set());
+  //
+  // F3: SEED the guard from the loaded history on mount. Without this the ref is
+  // a fresh empty Set every mount, so a persisted go_to_cv signal sitting in the
+  // initial messages re-fires router.push on mount — replaying a PAST handoff
+  // and yanking the user (e.g. /today → /cv). Pre-seeding every history-resident
+  // signal id marks them ALREADY HANDLED, so only genuinely new (streamed this
+  // session) signals route. useRef only adopts the value from the FIRST render,
+  // so this seed is applied exactly once for the component's lifetime — and the
+  // whole chat is keyed by sessionId, so a thread switch remounts and re-seeds.
+  const handledNavRef = useRef<Set<string>>(
+    collectHandledNavIds(initialMessages),
+  );
 
   const { messages, sendMessage, regenerate, stop, status, error } = useChat({
     id: sessionId,

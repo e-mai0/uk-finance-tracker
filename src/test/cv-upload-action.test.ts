@@ -84,7 +84,28 @@ beforeEach(() => {
   parseCv.mockResolvedValue(PARSED_CV);
   persist.mockResolvedValue(PARSED_CV);
   ensureSession.mockResolvedValue("sess-1");
-  seedCoach.mockResolvedValue({ seeded: true, clientId: "coach-opening:sess-1" });
+  seedCoach.mockResolvedValue({
+    seeded: true,
+    clientId: "coach-opening:sess-1",
+    // F2: the seeded opening as a UIMessage (assessment text + exactly 3 chips).
+    message: {
+      id: "coach-opening:sess-1",
+      role: "assistant",
+      parts: [
+        { type: "text", text: "I read your CV — strong projects, thin experience." },
+        {
+          type: "data-coach-chips",
+          data: {
+            chips: [
+              { label: "Add a summary", prompt: "Draft a summary." },
+              { label: "Sharpen bullets", prompt: "Rewrite my bullets for impact." },
+              { label: "Tailor to a role", prompt: "Tailor my CV to a finance internship." },
+            ],
+          },
+        },
+      ],
+    },
+  });
 });
 
 describe("uploadCvAction — happy path", () => {
@@ -113,6 +134,36 @@ describe("uploadCvAction — happy path", () => {
     expect(arg.sessionId).toBe("sess-1");
     // The coach must receive the persisted/parsed CV (so its assessment is grounded).
     expect(arg.cv.fullName).toBe("Eric Mai");
+  });
+
+  // F2: the action must additively RETURN the seeded coach opening so the /cv
+  // client can render the assessment + chips IN PLACE on the empty→has-CV
+  // upload transition (no full reload, no refetch). This is the headline
+  // "upload → get coached" moment that was previously silent on first paint.
+  it("returns the seeded coach opening (assessment text + exactly 3 chips)", async () => {
+    const res = await uploadCvAction(makeFormData());
+    expect(res.coachOpening).toBeDefined();
+    const opening = res.coachOpening!;
+    // UIMessage shape: stable id (= dedup clientId) + assistant role + parts.
+    expect(opening.role).toBe("assistant");
+    expect(opening.id).toBe("coach-opening:sess-1");
+    const textPart = opening.parts.find((p) => p.type === "text") as
+      | { type: "text"; text: string }
+      | undefined;
+    expect(textPart?.text && textPart.text.length).toBeTruthy();
+    const chipPart = opening.parts.find((p) => p.type === "data-coach-chips") as
+      | { type: "data-coach-chips"; data: { chips: unknown[] } }
+      | undefined;
+    expect(chipPart).toBeDefined();
+    expect(chipPart!.data.chips).toHaveLength(3);
+  });
+
+  it("the Settings caller contract is preserved (ok/cvParsed present regardless of the additive coachOpening)", async () => {
+    const res = await uploadCvAction(makeFormData());
+    expect(res.ok).toBe(true);
+    expect(res.cvParsed).toBe(true);
+    // coachOpening is purely additive — Settings ignores it; the existing
+    // fields it relies on are unchanged.
   });
 });
 

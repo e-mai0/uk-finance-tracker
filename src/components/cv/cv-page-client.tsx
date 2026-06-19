@@ -54,6 +54,13 @@ export function CvPageClient({
   // a normal page load opens the preview pane. A handoff arrives with
   // initialPane="chat" so the user lands mid-conversation in the coach view.
   const [shellPane, setShellPane] = useState<"preview" | "chat">(initialPane);
+  // F2: the messages the CvShell mounts the chat with. Starts as the
+  // server-loaded history; on an in-place upload transition we splice in the
+  // freshly-seeded coach opening so the assessment + chips render immediately,
+  // without a full reload (router.refresh) or a refetch. CvShell only mounts in
+  // the has-CV branch below, so it picks these up fresh on the transition.
+  const [chatMessages, setChatMessages] =
+    useState<UIMessage[]>(initialMessages);
 
   const handleBuilt = useCallback((built: CvData) => {
     setCv(built);
@@ -61,14 +68,28 @@ export function CvPageClient({
     setHasCv(true);
   }, []);
 
-  const handleUploaded = useCallback((parsed: CvData) => {
-    // Upload carries the parsed CvData up so we flip into the has-CV shell in
-    // place — no full page reload (router.refresh). The user lands in the
-    // refine pane with their CV shown and the coach opening already seeded.
-    setCv(parsed);
-    setShellPane("chat");
-    setHasCv(true);
-  }, []);
+  const handleUploaded = useCallback(
+    (parsed: CvData, coachOpening?: UIMessage) => {
+      // Upload carries the parsed CvData up so we flip into the has-CV shell in
+      // place — no full page reload (router.refresh). The user lands in the
+      // refine pane with their CV shown and the coach opening already seeded.
+      setCv(parsed);
+      // F2: seed the chat with the coach opening so it shows on first paint.
+      // The opening's id is its dedup clientId, identical to what a later /cv
+      // load would assign the persisted row — so even if both are ever present
+      // the chat dedups on id rather than double-rendering the opening.
+      if (coachOpening) {
+        setChatMessages((prev) =>
+          prev.some((m) => m.id === coachOpening.id)
+            ? prev
+            : [...prev, coachOpening],
+        );
+      }
+      setShellPane("chat");
+      setHasCv(true);
+    },
+    [],
+  );
 
   if (!hasCv) {
     return <CvEmptyState onBuilt={handleBuilt} onUploaded={handleUploaded} />;
@@ -77,7 +98,7 @@ export function CvPageClient({
   return (
     <CvShell
       sessionId={sessionId}
-      initialMessages={initialMessages}
+      initialMessages={chatMessages}
       initialCv={cv}
       initialPane={shellPane}
       handoff={handoff}

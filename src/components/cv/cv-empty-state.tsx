@@ -26,13 +26,18 @@ import { Button } from "@/components/ui/button";
 import { draftCvFromKnown } from "@/server/actions/cv";
 import { uploadCvAction } from "@/server/actions/applyProfile";
 import { isCvEmpty, type CvData } from "@/lib/cv";
+import type { UIMessage } from "ai";
 
 export function CvEmptyState({
   onBuilt,
   onUploaded,
 }: {
   onBuilt: (cv: CvData) => void;
-  onUploaded: (cv: CvData) => void;
+  // F2: the parsed CV plus the seeded coach-opening message (assessment + 3
+  // chips), so the parent can flip into the has-CV shell AND seed the chat with
+  // the opening in place — the headline "upload → get coached" moment renders
+  // immediately, with no full reload (router.refresh) and no refetch.
+  onUploaded: (cv: CvData, coachOpening?: UIMessage) => void;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +87,10 @@ export function CvEmptyState({
           if (res.cvParsed && res.cv) {
             // In-place transition: hand the parsed CV up so the page flips into
             // the has-CV shell without a full reload. No router.refresh().
-            onUploaded(res.cv);
+            // F2: also hand up the seeded coach opening (assessment + chips) so
+            // the chat shows it immediately on the transition. It may be absent
+            // if seeding failed; the chat then simply opens empty (as before).
+            onUploaded(res.cv, res.coachOpening as UIMessage | undefined);
           } else {
             setNotice(
               'We saved your CV file, but could not turn it into an editable CV right now. Try "Build with Cyclops", or upload again.',
