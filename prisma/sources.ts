@@ -220,6 +220,30 @@ export const liveSources: LiveSource[] = [
     url: "https://pjtpartners.wd1.myworkdayjobs.com/Students",
     config: { ats: "workday", host: "pjtpartners.wd1.myworkdayjobs.com", tenant: "pjtpartners", site: "Students" } },
 
+  // --- Workday CXS — UK ring-fenced banks + asset manager (full-tenant sites;
+  //     the adapter's EARLY_CAREERS term-union + classify.ts gate the volume
+  //     down to UK early-careers). Hosts/sites RE-VERIFIED live 2026-06-19 with
+  //     a CXS POST (200 + jobPostings; London/Edinburgh roles present). The wdN
+  //     data-centre differs per tenant — confirmed by probing wd1/wd3/wd5:
+  //       · NatWest    rbs.wd3   /rbs/RBS              → 200, 153 roles, London+Edinburgh
+  //       · Lloyds     lbg.wd3   /lbg/LBG_Careers      → 200, 115 roles, London (wd1/wd5 422)
+  //       · Wellington wellington.wd5 /wellington/External → 200, 133 roles, "London, United Kingdom" (wd1/wd3 422)
+  { kind: "WORKDAY", identifier: "natwest-rbs", employerName: "NatWest Group", sector: "Retail & Commercial Bank",
+    url: "https://rbs.wd3.myworkdayjobs.com/RBS",
+    config: { ats: "workday", host: "rbs.wd3.myworkdayjobs.com", tenant: "rbs", site: "RBS" } },
+  { kind: "WORKDAY", identifier: "lloyds-lbg", employerName: "Lloyds Banking Group", sector: "Retail & Commercial Bank",
+    url: "https://lbg.wd3.myworkdayjobs.com/LBG_Careers",
+    config: { ats: "workday", host: "lbg.wd3.myworkdayjobs.com", tenant: "lbg", site: "LBG_Careers" } },
+  { kind: "WORKDAY", identifier: "wellington-external", employerName: "Wellington Management", sector: "Asset Management",
+    url: "https://wellington.wd5.myworkdayjobs.com/External",
+    config: { ats: "workday", host: "wellington.wd5.myworkdayjobs.com", tenant: "wellington", site: "External" } },
+
+  // --- Greenhouse — PDT Partners (quant HF). boards-api token `pdtpartners`
+  //     re-verified live 2026-06-19: 200, 56 jobs incl. London. Config-less:
+  //     the identifier IS the board token. classify.ts gates to UK early careers.
+  { kind: "GREENHOUSE", identifier: "pdtpartners", employerName: "PDT Partners", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/pdtpartners" },
+
   // --- SAP SuccessFactors Career Site Builder (server-rendered job tiles at
   //     /tile-search-results/?q=&startrow=N; the legacy career?company= RCM
   //     portal is JS-only and unusable — pin the CSB host). Endpoints + tile
