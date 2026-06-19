@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { auth } from "@/server/auth";
-import { type CvData } from "@/lib/cv";
+import { isCvEmpty, type CvData } from "@/lib/cv";
 import { persistCv, ensureCvChatSession } from "@/server/cv/store";
 import { syncCvGrounding } from "@/server/cv/grounding";
 import { gatherKnownProfile } from "@/server/cv/known-profile";
@@ -26,6 +26,14 @@ export async function draftCvFromKnown(): Promise<BuildCvResult> {
 
   const known = await gatherKnownProfile(userId);
   const cv = await draftCvDataFromKnown(userId, known);
+  // The draft failed transiently AND the user has an uploaded CV: do NOT persist
+  // the lossy baseline stub — that would clobber the rich uploaded CV already in
+  // builtCv.data. Leave the saved CV untouched and tell the user it's safe.
+  if (!cv) return { error: "Draft failed — your uploaded CV is still saved." };
+  // The from-scratch baseline yielded nothing substantive (no profile to draft
+  // from): don't clobber an existing CV with an empty stub. The client surfaces
+  // a "needs more to work with" notice for the (ok: true, no cv) shape.
+  if (isCvEmpty(cv)) return { ok: true };
   const saved = await persistCv(userId, cv);
 
   // Seed the CV coach's grounded opening (assessment + 3 chips) as the chat
