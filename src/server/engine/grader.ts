@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { sonnet } from "@/server/ai/models";
+import { modelFor } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 import {
   FIRM_HOOK,
@@ -130,7 +130,7 @@ ${draft}`;
   // each a key, a boolean and a brief fix. 1024 tokens is generous headroom while bounding a
   // runaway generation that would otherwise bill against the (uncapped) default.
   const { object, usage } = await generateObject({
-    model: sonnet,
+    model: modelFor("grader"),
     schema: VerdictSchema,
     prompt,
     maxOutputTokens: 1024,

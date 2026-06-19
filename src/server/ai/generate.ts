@@ -30,7 +30,15 @@ function client(): Anthropic {
 }
 
 export function aiConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  // True when ANY supported provider is configured: the direct Anthropic key, the
+  // Vercel AI Gateway key, or the gateway's OIDC token (auto-injected on Vercel).
+  // The model role-seam routes non-Claude roles through the gateway, so a gateway
+  // credential alone is enough to make the engine operable.
+  return Boolean(
+    process.env.ANTHROPIC_API_KEY ||
+      process.env.AI_GATEWAY_API_KEY ||
+      process.env.VERCEL_OIDC_TOKEN,
+  );
 }
 
 export interface ApplicantContext {

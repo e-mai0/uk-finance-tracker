@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { haiku } from "@/server/ai/models";
+import { modelFor } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 import { writingSkill } from "@/server/engine/skills";
 import type { VoiceProfile } from "@/server/engine/types";
@@ -46,7 +46,7 @@ export async function critiqueAndRevise(
   if (!failed.length) return { text: draft, checksFailed: [], revised: false, residualTells: [] };
 
   const { text: revisedText, usage } = await generateText({
-    model: haiku,
+    model: modelFor("critique"),
     // Output cap (cost): the revision is a same-length rewrite of `draft`, never longer.
     // 1536 sits above the largest draft budget (the 1200-token cover-letter draft) with
     // margin, so it bounds a runaway generation while NEVER truncating a legitimate rewrite.
