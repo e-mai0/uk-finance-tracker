@@ -1,5 +1,5 @@
-import type { PrismaClient } from "@prisma/client";
-import type { RawDataset } from "./types";
+import type { PrismaClient, SourceType } from "@prisma/client";
+import type { NormalizedOpportunity, RawDataset } from "./types";
 import { normalizeAll } from "./normalize";
 import { decideTransitions } from "./status";
 
@@ -17,6 +17,45 @@ export interface ImportResult {
   employers: number;
 }
 
+export interface ImportTouchedCohort {
+  employerName: string;
+  sourceType: SourceType;
+}
+
+export interface ImportOptions {
+  touchedCohorts?: ImportTouchedCohort[];
+}
+
+function cohortKey(employerId: string, sourceType: SourceType): string {
+  return `${employerId}:${sourceType}`;
+}
+
+export function buildPresentByCohort(
+  normalized: Pick<NormalizedOpportunity, "employer" | "sourceType" | "title" | "location">[],
+  employerIdByName: Map<string, string>,
+  touchedCohorts: ImportTouchedCohort[] = [],
+): Map<string, Set<string>> {
+  const presentByCohort = new Map<string, Set<string>>(); // `${employerId}:${sourceType}` -> keys
+
+  for (const touched of touchedCohorts) {
+    const employerId = employerIdByName.get(touched.employerName);
+    if (employerId) {
+      presentByCohort.set(cohortKey(employerId, touched.sourceType), new Set());
+    }
+  }
+
+  for (const n of normalized) {
+    const employerId = employerIdByName.get(n.employer)!;
+    const cohort = cohortKey(employerId, n.sourceType);
+    const key = `${n.title} ${n.location}`;
+    let set = presentByCohort.get(cohort);
+    if (!set) { set = new Set(); presentByCohort.set(cohort, set); }
+    set.add(key);
+  }
+
+  return presentByCohort;
+}
+
 /**
  * Upsert pipeline: employers → opportunities → tags/sources, wrapped in an
  * IngestionRun record. Idempotent — re-running updates existing rows rather
@@ -26,6 +65,7 @@ export async function importDataset(
   prisma: PrismaClient,
   dataset: RawDataset,
   now: Date = new Date(),
+  options: ImportOptions = {},
 ): Promise<ImportResult> {
   const run = await prisma.ingestionRun.create({
     data: { source: dataset.source, startedAt: now },
@@ -160,15 +200,11 @@ export async function importDataset(
   // as "absent" and flap them OPEN/CLOSED. The robust fix if multi-source-per-
   // type becomes real is to scope the cohort to the originating source id
   // (would require persisting ingestionSourceId on Opportunity).
-  const presentByCohort = new Map<string, Set<string>>(); // `${employerId}:${sourceType}` -> keys
-  for (const n of normalized) {
-    const employerId = employerIdByName.get(n.employer)!;
-    const cohort = `${employerId}:${n.sourceType}`;
-    const key = `${n.title} ${n.location}`;
-    let set = presentByCohort.get(cohort);
-    if (!set) { set = new Set(); presentByCohort.set(cohort, set); }
-    set.add(key);
-  }
+  const presentByCohort = buildPresentByCohort(
+    normalized,
+    employerIdByName,
+    options.touchedCohorts,
+  );
   for (const [cohort, presentKeys] of presentByCohort) {
     const sep = cohort.indexOf(":");
     const employerId = cohort.slice(0, sep);
