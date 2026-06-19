@@ -131,6 +131,40 @@ describe("draftText grader loop", () => {
     expect(out.provenance.gradeResult.skipped).toBe(false);
   });
 
+  it("ships-best-draft: prefers fewer ungrounded claims — a clean initial draft beats a fabricating revision with an equal-or-better verdict", async () => {
+    // Coverage gap the reviewer found unprotected: the best-draft scorer weights ungrounded
+    // claims FIRST (fabrication is the worst failure mode), so a revision that introduces a
+    // fabricated experience must NEVER displace a clean earlier draft — even if its grader
+    // verdict is equal or better.
+    mocks.generateText.mockReset();
+    mocks.generateText
+      // INITIAL: clean + reportative. Zero ungrounded claims against CTX's corpus.
+      .mockResolvedValueOnce({
+        text: "I read about Barclays' markets work and admire their discipline.",
+        usage: { totalTokens: 50 },
+      })
+      // REVISED: fabricates an event absent from the corpus (a Citi careers panel) -> 1 ungrounded.
+      .mockResolvedValue({ text: "I attended a Citi careers panel last week.", usage: { totalTokens: 50 } });
+
+    // Initial grade FAILS (so the loop enters a revise) but the REVISED grade PASSES — a strictly
+    // better verdict. Without the ungrounded penalty the passing revision would ship; the penalty
+    // (fabrication weighted first) must keep the clean initial draft instead.
+    mocks.gradeDraft
+      .mockResolvedValueOnce(grade(false, [{ name: "firm-hook", pass: false, fix: "name a desk" }])) // initial: fail
+      .mockResolvedValue(grade(true, [{ name: "firm-hook", pass: true }])); // revised: pass (better verdict)
+
+    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "How have you engaged with us?", employerName: "Citi" });
+
+    // initial grade + 1 re-grade after the revise (attempt cap = 1).
+    expect(mocks.gradeDraft).toHaveBeenCalledTimes(2);
+    expect(mocks.generateText).toHaveBeenCalledTimes(2); // initial + 1 revise
+    // The CLEAN initial draft must ship, NOT the fabricating revision (despite its passing verdict).
+    expect(out.text).toBe("I read about Barclays' markets work and admire their discipline.");
+    // And the shipped draft carries zero ungrounded claims (the fabricating revision was rejected).
+    expect(out.provenance.ungroundedClaims).toEqual([]);
+    expect(out.provenance.gradeResult.attempts).toBe(1);
+  });
+
   it("cost-cap: the worst case fires at most ONE revise beyond the initial draft (<= 2 Sonnet generateText calls)", async () => {
     // Even on perpetual failure, the loop must not exceed one revise (the collapsed cap).
     mocks.gradeDraft.mockResolvedValue(grade(false, [{ name: "firm-hook", pass: false, fix: "x" }]));
@@ -167,6 +201,85 @@ describe("draftText grader loop", () => {
     expect(mocks.generateText).toHaveBeenCalledTimes(1); // no revise happened
     expect(out.provenance.gradeResult.skipped).toBe(true);
     expect(out.provenance.gradeResult.attempts).toBe(0);
+  });
+
+  it("grounding-guard: an ungrounded experiential claim triggers a revise-or-disclose even when the grader passes", async () => {
+    // The grader PASSES on both grades, so without the deterministic guard NO revise would
+    // fire. The draft contains a fabricated event ("I attended a Citi careers panel") that is
+    // absent from the corpus (CTX has CV "CV TEXT", notes, research — none mention a Citi panel),
+    // so the guard must force one revise carrying the revise-or-disclose instruction.
+    mocks.generateText.mockReset();
+    mocks.generateText
+      .mockResolvedValueOnce({ text: "I attended a Citi careers panel last week.", usage: { totalTokens: 50 } })
+      .mockResolvedValueOnce({ text: "I read about Citi's recent advisory work and admire it.", usage: { totalTokens: 50 } });
+    mocks.gradeDraft.mockResolvedValue(grade(true, [{ name: "firm-hook", pass: true }]));
+
+    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "How have you engaged with us?", employerName: "Citi" });
+
+    // A revise fired (initial + one revise) despite a passing grade.
+    expect(mocks.generateText).toHaveBeenCalledTimes(2);
+    // The revise instruction is REVISE-OR-DISCLOSE (do not silent-delete).
+    const revisePrompt = mocks.generateText.mock.calls[1][0].prompt as string;
+    const lc = revisePrompt.toLowerCase();
+    expect(lc).toMatch(/attending an event|speaking to|meeting/);
+    expect(lc).toMatch(/do not delete|honest|genuine/);
+    // Provenance carries the ungrounded claims found.
+    expect(out.provenance.ungroundedClaims).toBeDefined();
+    expect(Array.isArray(out.provenance.ungroundedClaims)).toBe(true);
+    // After the revise the corrected (reportative) draft ships clean.
+    expect(out.text).toBe("I read about Citi's recent advisory work and admire it.");
+  });
+
+  it("grounding-guard: a clean (grounded/reportative) draft fires NO extra revise", async () => {
+    mocks.generateText.mockReset();
+    // Reportative phrasing only — the guard finds nothing; the grader passes => no revise.
+    mocks.generateText.mockResolvedValue({
+      text: "I read about Barclays' markets work and admire their discipline.",
+      usage: { totalTokens: 50 },
+    });
+    mocks.gradeDraft.mockResolvedValueOnce(grade(true, [{ name: "firm-hook", pass: true }]));
+
+    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "Why Barclays?", employerName: "Barclays" });
+
+    expect(mocks.generateText).toHaveBeenCalledTimes(1); // initial draft only, no revise
+    expect(out.provenance.ungroundedClaims).toEqual([]);
+    expect(out.provenance.gradeResult.attempts).toBe(0);
+  });
+
+  it("grounding-guard: a GROUNDED experience (entity in corpus) is NOT flagged and fires no revise", async () => {
+    mocks.generateText.mockReset();
+    // The claim names a real BlackRock spring week; CTX.profile.cvText must contain it.
+    const groundedCtx: DraftContext = {
+      ...CTX,
+      profile: { ...CTX.profile, cvText: "Eric did a BlackRock spring week in 2024 with the index team." },
+    };
+    mocks.generateText.mockResolvedValue({
+      text: "During my BlackRock spring week I shadowed the index team.",
+      usage: { totalTokens: 50 },
+    });
+    mocks.gradeDraft.mockResolvedValueOnce(grade(true, [{ name: "firm-hook", pass: true }]));
+
+    const out = await draftText("u1", groundedCtx, { kind: "ANSWER", question: "Why BlackRock?", employerName: "BlackRock" });
+
+    expect(mocks.generateText).toHaveBeenCalledTimes(1); // no revise — the experience is grounded
+    expect(out.provenance.ungroundedClaims).toEqual([]);
+  });
+
+  it("grounding-guard: respects the attempt cap — at most ONE revise even with an ungrounded claim that persists", async () => {
+    mocks.generateText.mockReset();
+    // Both drafts contain the same ungrounded claim, so the guard would want to revise again,
+    // but the 1-attempt cap (#54) must hold.
+    mocks.generateText.mockResolvedValue({
+      text: "I attended a Citi careers panel last week.",
+      usage: { totalTokens: 50 },
+    });
+    mocks.gradeDraft.mockResolvedValue(grade(true, [{ name: "firm-hook", pass: true }]));
+
+    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "How have you engaged with us?", employerName: "Citi" });
+
+    // initial + at most one revise — the attempt cap is unchanged.
+    expect(mocks.generateText.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(out.text).toBeTruthy();
   });
 
   it("firmHookDisclosed-not-penalised: passes the disclosed flag into the grade context", async () => {
