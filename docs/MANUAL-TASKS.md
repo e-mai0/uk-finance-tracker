@@ -33,6 +33,19 @@ some gate others. Check them off as you go.
   merge (extension/: `npm run build`, then chrome://extensions → Reload).
   Extension icons still needed before any Web Store submission.
 
+## Slack — "PR logs" channel notifications
+
+- [ ] **Create a Slack Incoming Webhook** for the PR-logs channel
+  (Slack → Apps → *Incoming Webhooks* → Add to the channel → copy the URL).
+- [ ] **Add it as a GitHub Actions secret** named `SLACK_PR_WEBHOOK`
+  (repo → Settings → Secrets and variables → Actions → New repository secret).
+  Until this exists, `.github/workflows/slack-pr-notify.yml` no-ops with a
+  warning — it never fails CI.
+- [ ] **Smoke test**: open a test PR against `main` → a "PR opened" message
+  should land in the channel; when CI finishes you get a pass/fail message;
+  merging posts "PR merged". (Fork PRs get no message — secrets aren't shared
+  with forks; CI-result messages still post since they run in the base repo.)
+
 ## Done
 
 - [x] 2026-06-09 — Phase 1 (memory core + chat) implemented and reviewed.
