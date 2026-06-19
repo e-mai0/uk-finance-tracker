@@ -92,6 +92,15 @@ export async function gradeDraft(
     ? `WORD CAP: the form states a hard cap of ${ctx.wordCap} words. Fail the "word-cap" criterion if the draft clearly exceeds it; 70% of the cap with substance is fine.`
     : `WORD CAP: no stated cap; do not grade length against a number.`;
 
+  // RAGAS-style faithfulness check against the applicant's own grounding material. The
+  // SOURCES are the ONLY evidence: a first-person experiential claim is SUPPORTED only if
+  // the specific event/person appears here, else it is fabricated. This is the grader half
+  // of the anti-fabrication gate (the deterministic guard in grounding-guard.ts is the other).
+  const groundingClause = `NO FABRICATED EXPERIENCE (faithfulness): list every first-person experiential claim in the draft (attending an event, speaking to or meeting a person, having a conversation). For EACH, mark it SUPPORTED only if the specific event or person appears in the PROVIDED SOURCES below, otherwise UNSUPPORTED. The "no-fabricated-experience" criterion FAILS if ANY such claim is UNSUPPORTED. A reportative statement ("I read that…", "according to their research…") is NOT an experiential claim and is fine.`;
+
+  const sourcesSection = `PROVIDED SOURCES (the applicant's own grounding material — the ONLY evidence for verifying experiential claims; if a claimed event or person is not here, it is fabricated):
+${ctx.groundingCorpus || "(no grounding material supplied)"}`;
+
   const prompt = `You are a senior UK-finance applications grader. Judge the DRAFT below against the rubric. Apply the competitor-swap test ruthlessly. For each applicable criterion, return pass/fail and, when it fails, a short targeted fix the writer can act on. Set "passed" true ONLY if every applicable criterion passes.
 
 QUESTION (kind: ${ctx.questionKind}, register: ${ctx.register}, division: ${ctx.division}${ctx.firmName ? `, firm: ${ctx.firmName}` : ""}):
@@ -101,8 +110,12 @@ ${firmHookClause}
 
 ${wordCapClause}
 
+${groundingClause}
+
 RUBRIC (the canonical playbook standards — grade strictly against these):
 ${rubric}
+
+${sourcesSection}
 
 DRAFT TO GRADE:
 ${draft}`;

@@ -79,6 +79,11 @@ export type Provenance = {
   /** The quality-grader verdict for the delivered draft (U3). Null only if the grader
    *  was skipped entirely (e.g. its LLM call threw — see `gradeResult.skipped`). */
   gradeResult: GradeResult;
+  /** First-person experiential claims (an event attended, a person met) found UNGROUNDED
+   *  by the deterministic grounding guard against the applicant's own material, on the
+   *  FINAL delivered draft. Empty when the draft is clean. Each is the offending sentence
+   *  plus why it was flagged — provenance for the anti-fabrication gate. */
+  ungroundedClaims: { sentence: string; trigger: string; entity?: string }[];
 };
 
 /** One playbook-rubric criterion verdict from the quality grader. */
@@ -114,6 +119,11 @@ export type GradeContext = {
   firmHookDisclosed: boolean;
   /** True when this question demands a specific, checkable firm hook (why-firm / commercial). */
   firmHookExpected: boolean;
+  /** The applicant's full grounding material (CV text + stories + memory facts + employer
+   *  research) concatenated. The grader uses it as SOURCES to verify that every first-person
+   *  experiential claim (an event attended, a person met) is SUPPORTED, RAGAS-style. Pass
+   *  the FULL corpus: false positives come from missing evidence. */
+  groundingCorpus: string;
 };
 
 export type DraftResult = { text: string; provenance: Provenance };

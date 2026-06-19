@@ -7,6 +7,7 @@ import {
   DIVISION_EMPHASIS,
   UK_NORMS,
   GRADER_PRINCIPLES,
+  ENGAGEMENT_GUIDANCE,
   coachBlock,
   draftStandards,
 } from "@/server/engine/playbook";
@@ -43,6 +44,37 @@ describe("playbook FIRM_HOOK", () => {
     expect(FIRM_HOOK).toContain("great culture");
     expect(FIRM_HOOK).toContain("strong reputation");
     noEmDash(FIRM_HOOK);
+  });
+
+  it("forbids inventing an EVENT/attendance, not just a person (broadened anti-invention rule)", () => {
+    const lc = FIRM_HOOK.toLowerCase();
+    // Never claim to have attended an event you did not attend.
+    expect(lc).toMatch(/never claim to have attended/);
+    // The specific event/experience types are enumerated.
+    expect(lc).toMatch(/event|presentation|webinar|careers fair|panel|insight day|open day|coffee chat/);
+    // Inventing attendance/a conversation is fabrication and an instant reject.
+    expect(lc).toMatch(/attendance|spoken to|met anyone/);
+    expect(lc).toContain("fabrication");
+    expect(lc).toContain("instant reject");
+    noEmDash(FIRM_HOOK);
+  });
+});
+
+describe("playbook ENGAGEMENT_GUIDANCE", () => {
+  it("exists, pivots engagement questions to genuine self-directed research, never invented attendance", () => {
+    const lc = ENGAGEMENT_GUIDANCE.toLowerCase();
+    expect(ENGAGEMENT_GUIDANCE.length).toBeGreaterThan(200);
+    // Targets engagement/"how have you engaged / events or people" questions.
+    expect(lc).toMatch(/engage|events or people|learn about/);
+    // The strong honest answer is SPECIFIC SELF-DIRECTED RESEARCH, not events/contacts.
+    expect(lc).toMatch(/research/);
+    // Recruiters do NOT expect prior networking (esp. spring weeks).
+    expect(lc).toMatch(/do not expect|not expect.*networking|recruiters/);
+    // Never invent attendance/a conversation; mention an event/contact only if real.
+    expect(lc).toMatch(/only if real|never invent|genuinely/);
+    // The cause-and-effect template: a real grounded action -> what appealed -> connection.
+    expect(lc).toMatch(/deal.*read|published research|course|competition|own project|market reading/);
+    noEmDash(ENGAGEMENT_GUIDANCE);
   });
 });
 

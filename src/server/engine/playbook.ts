@@ -17,6 +17,7 @@
 export const FIRM_HOOK = `FIRM HOOK (why this firm / why this division):
 - Every "why them" claim must carry at least one SPECIFIC, CHECKABLE hook: a named recent deal or transaction, a specific desk, group or programme, a named person you genuinely met (with their title and office), or a specific fund, strategy or research piece.
 - NEVER invent a person, meeting, conversation or networking contact. A named-contact hook is valid ONLY when the applicant genuinely met them and it is grounded in the applicant's own materials (their stories, memory or CV). Inventing a contact you did not meet is fabrication and an instant reject.
+- Never claim to have attended any event, presentation, webinar, careers fair, panel, insight day, open day or coffee chat, or to have spoken to or met anyone, unless it is present in the applicant's own materials. Inventing attendance or a conversation is fabrication and an instant reject.
 - Prefer a checkable, non-personal specific (a named deal, a specific desk, group or programme, a fund or strategy, a research piece) over a personal-meeting claim: a non-personal hook does not rest on an unverifiable personal claim and is the safer, stronger choice.
 - The competitor-swap test: if a sentence still reads true after you swap in a rival firm's name, it is filler. Cut it.
 - Banned filler (fails the swap test): "market leader", "prestigious", "great culture", "smart people", "strong reputation", "exposure to big deals". One precise, sourced reason beats five generic ones.
@@ -40,6 +41,21 @@ export const COMMERCIAL_AWARENESS = `COMMERCIAL AWARENESS (deals and markets):
 - ALWAYS end on a view backed by at least two hard numbers. An answer with no named risk and no view is a fail.
 - IB register = deal mechanics: accretion or dilution, synergies, antitrust and execution risk, who pays what and why.
 - AM and markets register = a MISPRICING thesis with metrics (P/E, EV/EBITDA, rates, positioning) naming real asset classes, sectors or funds. The question is "what is the market missing", not "why is this company good".`;
+
+/**
+ * ENGAGEMENT_GUIDANCE - the research-backed answer shape for "how have you engaged
+ * with us / what have you done to learn about us / what events or people have you
+ * engaged with" questions. These are where the draft engine most often fabricates an
+ * EVENT or a CONVERSATION the applicant never had. The fix is not a softer warning, it
+ * is a positive template: recruiters do NOT expect prior networking (especially for
+ * spring weeks), so the STRONG HONEST answer is SPECIFIC SELF-DIRECTED RESEARCH, and
+ * pivoting to it is the EXPECTED answer, not a fallback.
+ */
+export const ENGAGEMENT_GUIDANCE = `ENGAGEMENT QUESTIONS (how have you engaged with us / what have you done to learn about us / what events or people have you engaged with):
+- The STRONG HONEST answer is SPECIFIC SELF-DIRECTED RESEARCH, not events or contacts. Recruiters do NOT expect prior networking from early-career applicants, especially for spring weeks; an honest, specific research answer beats a vague or invented "I attended / I spoke to".
+- Use a cause-and-effect template, grounded in something REAL the applicant did: a deal they actually read about plus their own view; the firm's published research; a relevant course, competition or own project; a spring week they genuinely did ELSEWHERE; their own market reading. State the real action, then what specifically appealed, then the connection to this firm or division.
+- Reference firm material in the applicant's OWN words; never recite website copy.
+- Mention an event, presentation or contact ONLY if it is real and present in the applicant's materials. Never invent attendance or a conversation to answer this. Pivoting to genuine research is the EXPECTED answer here, not a last resort.`;
 
 /**
  * REGISTER - keyed by programme. Spring weeks differ sharply from summers.
@@ -118,6 +134,7 @@ export function draftStandards(): string {
     FIRM_HOOK,
     STAR_RULES,
     COMMERCIAL_AWARENESS,
+    ENGAGEMENT_GUIDANCE,
     UK_NORMS,
     GRADER_PRINCIPLES,
   ].join("\n\n");
