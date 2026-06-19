@@ -50,17 +50,33 @@ some gate others. Check them off as you go.
 
 `.github/workflows/daily-status.yml` posts a 4-section digest (site status /
 yesterday's PRs / running tasks / things to work on) every morning at 6am UK.
+Section 4 ("things to work on") is written by the Cyclops **state-assessor**
+agent running headless in CI via `anthropics/claude-code-action`; without an AI
+credential — or if that step fails — it falls back to mechanical content (CI
+status + open issues + manual to-dos), so the digest never fails just because
+the credential is absent.
 
-- [ ] **Create the `#daily-status-check` channel** in Slack (if it doesn't
-  exist yet).
+- [x] **Create the `#daily-status-check` channel** in Slack — exists (verified
+  2026-06-19, channel `C0BBNRLA67M`).
 - [ ] **Create an Incoming Webhook** bound to `#daily-status-check`, copy the
   URL.
 - [ ] **Add it as a GitHub Actions secret** named `SLACK_STATUS_WEBHOOK`.
   Until it exists the workflow no-ops with a warning (never fails).
+- [ ] **(Optional — enables the agent-written section 4)** Add an AI credential
+  as a repo secret: `ANTHROPIC_API_KEY` (metered, pay-per-use) **or**
+  `CLAUDE_CODE_OAUTH_TOKEN` (rides a Claude subscription — generate with
+  `claude setup-token`). Without it, section 4 uses the mechanical fallback.
+  Cost is one short run/day: read-only inspection, ≤12 turns, no test suite;
+  swap `--model claude-sonnet-4-6` → `claude-haiku-4-5-20251001` in the
+  workflow for a cheaper run. If the agent step errors with an auth/OIDC
+  message on the first test, add `id-token: write` to the workflow's
+  top-level `permissions:` block.
 - [ ] **Merge the workflow to `main`** — scheduled (`cron`) workflows only run
   from the default branch, so the 6am job won't fire until it's on `main`.
 - [ ] **Test it now**: Actions → *Daily Status (Cyclops)* → **Run workflow**
-  (manual runs skip the 6am gate and post immediately).
+  (manual runs skip the 6am gate and post immediately). With an AI credential
+  set you'll see the 🤖 agent assessment in section 4; without one, the
+  mechanical fallback.
 
 ## Done
 
