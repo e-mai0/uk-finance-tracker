@@ -177,6 +177,30 @@ export const liveSources: LiveSource[] = [
   { kind: "GREENHOUSE", identifier: "generalatlantic", employerName: "General Atlantic", sector: "Private Equity",
     url: "https://job-boards.greenhouse.io/generalatlantic" },
 
+  // --- Greenhouse batch 2: prop-trading / market-maker / quant HFs ---
+  // All verified 200 on boards-api.greenhouse.io/v1/boards/<token>/jobs with
+  // London/UK postings present (probed 2026-06-19). classify.ts gates each board
+  // down to UK early-careers roles. No config — identifier IS the board token.
+  //   · oldmissioncapital: 200, 93 jobs, live London grad quant-trader role
+  //   · virtu:             200, 37 jobs, UK mentions
+  //   · flowtraders:       200, 192 jobs, UK mentions
+  //   · worldquant:        200, 102 jobs, London roles
+  //   · akunacapital:      200, 168 jobs, "London, England, United Kingdom"
+  //   · chicagotrading:    200, 56 jobs, "London, England, United Kingdom" (CTC;
+  //     the bare `ctc` token 404s — chicagotrading is the live board)
+  { kind: "GREENHOUSE", identifier: "oldmissioncapital", employerName: "Old Mission Capital", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/oldmissioncapital" },
+  { kind: "GREENHOUSE", identifier: "virtu", employerName: "Virtu Financial", sector: "Market Maker",
+    url: "https://job-boards.greenhouse.io/virtu" },
+  { kind: "GREENHOUSE", identifier: "flowtraders", employerName: "Flow Traders", sector: "Market Maker",
+    url: "https://job-boards.greenhouse.io/flowtraders" },
+  { kind: "GREENHOUSE", identifier: "worldquant", employerName: "WorldQuant", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/worldquant" },
+  { kind: "GREENHOUSE", identifier: "akunacapital", employerName: "Akuna Capital", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/akunacapital" },
+  { kind: "GREENHOUSE", identifier: "chicagotrading", employerName: "Chicago Trading Company", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/chicagotrading" },
+
   // --- tal.net campus boards (board number AUDITED against the live board) ---
   // Bank of America campus apply is bankcampuscareers.tal.net; board 1 is the
   // live campus/early-careers board (verified 16 opp tiles, candidate-opp-tile
