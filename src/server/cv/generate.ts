@@ -70,13 +70,23 @@ ${cvText.slice(0, MAX_CV_PROMPT_CHARS)}
   }
 }
 
-/** Draft a CvData from known profile/memory data. Falls back to the deterministic baseline. */
-export async function draftCvDataFromKnown(userId: string, known: KnownProfile): Promise<CvData> {
+/**
+ * Draft a CvData from known profile/memory data.
+ *
+ * When the user has NO uploaded CV text, a transient AI failure falls back to
+ * the deterministic baseline (the from-scratch path is unchanged). But when the
+ * user HAS uploaded CV text, the baseline is a lossy stub — persisting it would
+ * silently clobber the rich uploaded CV already saved in builtCv.data. In that
+ * case we fail to `null` instead, and the caller declines to persist.
+ */
+export async function draftCvDataFromKnown(userId: string, known: KnownProfile): Promise<CvData | null> {
   const baseline = knownToBaselineCv(known);
+  const hasUploadedCvText = Boolean(known.uploadedCvText?.trim());
+  const fallback = () => (hasUploadedCvText ? null : baseline);
   try {
-    if (!process.env.ANTHROPIC_API_KEY) return baseline;
+    if (!process.env.ANTHROPIC_API_KEY) return fallback();
     const budget = await checkBudget(userId).catch(() => ({ ok: false }));
-    if (!budget.ok) return baseline;
+    if (!budget.ok) return fallback();
 
     const { text, usage } = await generateText({
       model: sonnet,
@@ -96,9 +106,9 @@ ${JSON.stringify(baseline)}
     });
     recordUsage(userId, usage?.totalTokens ?? 0).catch(() => {});
     const parsed = cvDataSchema.safeParse(extractCvJson(text));
-    return parsed.success ? parsed.data : baseline;
+    return parsed.success ? parsed.data : fallback();
   } catch (err) {
     console.error("[cv generate] draft failed; using baseline:", err);
-    return baseline;
+    return fallback();
   }
 }

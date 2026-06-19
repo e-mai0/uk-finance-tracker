@@ -62,4 +62,28 @@ describe("draftCvFromKnown", () => {
     expect(res.error).toMatch(/session/i);
     expect(gather).not.toHaveBeenCalled();
   });
+
+  it("does NOT clobber when the draft fails (returns null) — no persist, CV preserved", async () => {
+    // Simulates an uploaded-CV user whose transient draft failed: the generate
+    // step returns null, so the action must decline to persist (which would
+    // overwrite the rich uploaded CV in builtCv.data) and report it's safe.
+    draft.mockResolvedValueOnce(null);
+    const res = await draftCvFromKnown();
+    expect(res.error).toMatch(/still saved/i);
+    expect(res.cv).toBeUndefined();
+    expect(persist).not.toHaveBeenCalled();
+    expect(seedCoach).not.toHaveBeenCalled();
+  });
+
+  it("does NOT persist an empty/stub CV from the from-scratch path", async () => {
+    // The deterministic baseline yielded nothing substantive (empty stub):
+    // persisting it would clobber any existing CV. The action returns ok with
+    // no cv so the client surfaces a "needs more to work with" notice.
+    draft.mockResolvedValueOnce(cvDataSchema.parse({ fullName: "Eric Mai" }));
+    const res = await draftCvFromKnown();
+    expect(res.ok).toBe(true);
+    expect(res.cv).toBeUndefined();
+    expect(persist).not.toHaveBeenCalled();
+    expect(seedCoach).not.toHaveBeenCalled();
+  });
 });
