@@ -112,6 +112,43 @@ export function isImpervaBlocked(body: string): boolean {
   );
 }
 
+/**
+ * Detect an oleeoProtect / altcha "Quick Check Needed" bot-challenge served with
+ * a 200 (a disguised block). Four tal.net IB boards (Jefferies, Rothschild,
+ * Evercore, Lazard) intermittently return a small (~3 KB) interstitial stub
+ * instead of the job board; it carries none of the Imperva tokens, so it used to
+ * pass as a clean body — the tal.net parser then found zero opportunity tiles
+ * and the downstream close-sweep silently closed those firms' real roles.
+ *
+ * Keyed on the challenge CLASS, not a literal stub: oleeoProtect's interstitial
+ * is built around the altcha proof-of-work widget under a "verify you are human"
+ * heading. We treat ANY oleeoProtect marker as a block, OR the combination of an
+ * altcha widget/script with verification-interstitial copy. A REAL board never
+ * carries these (it carries `candidate-opp-tile` job cards instead), so this
+ * does not false-positive on a populated board — the presence of an `altcha`
+ * widget alone, absent the verification copy, would not be enough, and a real
+ * board has neither.
+ */
+export function isChallengeBlocked(body: string): boolean {
+  const head = body.slice(0, 8000).toLowerCase();
+  // oleeoProtect is the bot-protection product name and only appears on the
+  // challenge stub — an unambiguous, stable signal on its own.
+  if (head.includes("oleeoprotect")) return true;
+  // Otherwise require an altcha challenge widget/script PLUS interstitial copy,
+  // so an incidental mention can't trip detection.
+  const hasAltchaWidget =
+    head.includes("<altcha-widget") ||
+    head.includes("altcha.min.js") ||
+    head.includes("data-challengeurl");
+  const hasVerifyCopy =
+    head.includes("quick check needed") ||
+    head.includes("verifying you are human") ||
+    head.includes("verify that you are human") ||
+    head.includes("verify you are human") ||
+    head.includes("complete the verification");
+  return hasAltchaWidget && hasVerifyCopy;
+}
+
 /** Deterministic exponential backoff schedule (no jitter — caller adds it). */
 export function backoffDelays(attempts: number, base: number, cap: number): number[] {
   return Array.from({ length: attempts }, (_, i) => Math.min(base * 2 ** i, cap));
@@ -124,6 +161,16 @@ export function backoffDelays(attempts: number, base: number, cap: number): numb
  * layer can mark the host unreachable rather than publishing garbage.
  */
 export class ImpervaBlockedError extends Error {}
+
+/**
+ * A 200-disguised bot challenge (oleeoProtect/altcha "Quick Check Needed").
+ * Extends ImpervaBlockedError so the sync layer's existing
+ * `instanceof ImpervaBlockedError` handling marks the source UNREACHABLE and
+ * skips the close-sweep — without it, an empty parse from the stub would close
+ * the firm's live roles. Throwing here is the complete fix (verified: a thrown
+ * adapter fetch error short-circuits importDataset, which owns the close-sweep).
+ */
+export class ChallengeBlockedError extends ImpervaBlockedError {}
 
 export async function fetchTextRobust(
   url: string,
@@ -147,10 +194,11 @@ export async function fetchTextRobust(
       if (!res.ok) throw new Error(`GET ${url} → ${res.status} ${res.statusText}`);
       const body = await res.text();
       if (isImpervaBlocked(body)) throw new ImpervaBlockedError(`Imperva interstitial at ${url}`);
+      if (isChallengeBlocked(body)) throw new ChallengeBlockedError(`bot challenge (oleeoProtect/altcha) at ${url}`);
       return body;
     } catch (err) {
       lastErr = err;
-      if (err instanceof ImpervaBlockedError) throw err; // don't retry a challenge
+      if (err instanceof ImpervaBlockedError) throw err; // don't retry a challenge (covers ChallengeBlockedError)
       if (i < attempts - 1) await sleep(delays[i]);
     }
   }
@@ -196,6 +244,10 @@ export function fetchTextLenient(
           const body = Buffer.concat(chunks).toString("utf8");
           if (isImpervaBlocked(body)) {
             reject(new ImpervaBlockedError(`Imperva interstitial at ${url}`));
+            return;
+          }
+          if (isChallengeBlocked(body)) {
+            reject(new ChallengeBlockedError(`bot challenge (oleeoProtect/altcha) at ${url}`));
             return;
           }
           resolve(body);
