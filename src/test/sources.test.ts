@@ -206,6 +206,21 @@ describe("liveSources registry", () => {
     expect(pdt?.url, "pdt url").toMatch(/greenhouse\.io\//);
   });
 
+  it("tracks Two Sigma as an Avature twosigma variant (OpenRoles SSR list)", () => {
+    const byKey = new Map(liveSources.map((s) => [key(s), s]));
+    const ts = byKey.get("AVATURE::twosigma");
+    expect(ts, "Two Sigma present").toBeDefined();
+    expect(ts?.employerName).toBe("Two Sigma");
+    expect(ts?.config).toEqual({
+      ats: "avature",
+      variant: "twosigma",
+      base: "https://careers.twosigma.com",
+    });
+    // listing url lives on the configured Avature base host
+    const c = ts!.config as Extract<NonNullable<typeof ts>["config"], { ats: "avature" }>;
+    expect(new URL(ts!.url).host).toBe(new URL(c.base).host);
+  });
+
   it("watches Capula's reachable jobs.json as a CAREERS_PAGE radar row", () => {
     const byKey = new Map(liveSources.map((s) => [key(s), s]));
     const capula = byKey.get("CAREERS_PAGE::capula-jobs-json");
