@@ -8,6 +8,14 @@ import { ROLE_FAMILY_LABEL } from "./constants";
  * human-readable reason. The total is clamped to 0–100 so it reads as a
  * percentage-style match. The function is pure: same inputs → same output,
  * which is what the unit tests assert.
+ *
+ * Rebalance (Cycle 4 — degree-subject affinity):
+ *   Old: roleFamily(30) + timing(15) + locationExact(20) + workAuth(15)
+ *        + employer(15) + skills(5) = 100
+ *   New: roleFamily(25) + timing(12) + locationExact(18) + workAuth(12)
+ *        + employer(13) + skills(10) + degreeAffinity(10) = 100
+ *   All incumbent weights trimmed proportionally to make room for degreeAffinity(10)
+ *   and to double skills from 5 → 10 so academic/skills signals meaningfully move ranking.
  */
 
 // The summer the seeded internships run. As of the 2026 build, the live cycle
@@ -16,22 +24,116 @@ import { ROLE_FAMILY_LABEL } from "./constants";
 export const INTERNSHIP_CYCLE_SUMMER_YEAR = 2027;
 
 export const WEIGHTS = {
-  roleFamily: 30,
-  timing: 15,
-  locationExact: 20,
-  locationAnywhere: 10,
-  workAuth: 15,
-  workAuthVisaUnknown: 5,
-  employer: 15,
-  skills: 5,
-  eligibilityPenalty: -15,
+  roleFamily: 25,       // was 30; trimmed to fund degreeAffinity + skills bump
+  timing: 12,           // was 15; trimmed proportionally
+  locationExact: 18,    // was 20; trimmed proportionally
+  locationAnywhere: 9,  // was 10; trimmed proportionally
+  workAuth: 12,         // was 15; trimmed proportionally
+  workAuthVisaUnknown: 4, // was 5; trimmed proportionally
+  employer: 13,         // was 15; trimmed proportionally
+  skills: 10,           // was 5; doubled — skills now move ranking meaningfully
+  degreeAffinity: 10,   // NEW — degree-subject → role-family alignment bonus
+  eligibilityPenalty: -15, // unchanged
 } as const;
+
+// ---------------------------------------------------------------------------
+// Degree-subject → role-family affinity map (NEEDS-JUDGMENT — local constant,
+// never imported from constants.ts which is tracker-owned).
+//
+// Design choices and uncertainty notes:
+//  • "Mathematics", "Statistics", "Physics" → QUANT + MARKETS: well-established
+//    pipeline into systematic / quant trading; low uncertainty.
+//  • "Computer Science", "Engineering" → QUANT: quant firms recruit CS/Eng
+//    heavily; lower certainty for non-quant roles so limited to QUANT here.
+//  • "Economics", "Finance", "Accounting" → IB + ASSET_MGMT + CORP_BANKING +
+//    RESEARCH: the canonical pipeline; low uncertainty.
+//  • "Economics" → MARKETS: Sales & Trading recruits economists heavily; moderate
+//    certainty.
+//  • "Law" → IB: M&A / capital markets have a secondary law pipeline; moderate
+//    uncertainty — kept but worth user review.
+//  • PRIVATE_EQUITY and HEDGE_FUND overlap significantly with IB/ASSET_MGMT
+//    pipelines; same degree groups apply; mapped accordingly.
+//  • Subjects NOT listed (e.g. History, Art History, Classics, Drama, Sociology)
+//    → NO affinity (0 points). This is deliberate: not penalised, just neutral.
+//    Some recruiters value these for IB (writing ability) but the signal is too
+//    weak to map deterministically — flag for user review if desired.
+// ---------------------------------------------------------------------------
+
+// Normalise a raw degree subject string for map lookup.
+function normDegree(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+// Map from normalised-subject keywords → RoleFamilies that benefit.
+// Lookup is substring-based: if any key appears in the normalised subject string,
+// those families receive the degreeAffinity bonus.
+const DEGREE_AFFINITY_MAP: Array<{ keywords: string[]; families: RoleFamily[] }> = [
+  {
+    // Pure maths / statistics / physics → quant and markets
+    keywords: ["mathematics", "maths", "statistics", "statistical", "physics"],
+    families: ["QUANT", "MARKETS", "RESEARCH"],
+  },
+  {
+    // Computer science / software engineering / data science → quant
+    keywords: ["computer science", "computing", "software engineering", "data science", "machine learning", "artificial intelligence"],
+    families: ["QUANT"],
+  },
+  {
+    // Engineering (non-software) → quant (secondary pipeline)
+    keywords: ["engineering", "electrical", "mechanical", "chemical engineering"],
+    families: ["QUANT"],
+  },
+  {
+    // Economics → broad finance pipeline (IB, Markets, AM, CB, Research)
+    keywords: ["economics", "econometrics"],
+    families: ["IB", "MARKETS", "ASSET_MGMT", "CORP_BANKING", "RESEARCH"],
+  },
+  {
+    // Finance / accounting → IB, AM, CB
+    keywords: ["finance", "accounting", "accountancy", "financial mathematics", "financial engineering"],
+    families: ["IB", "ASSET_MGMT", "CORP_BANKING", "PRIVATE_EQUITY", "HEDGE_FUND"],
+  },
+  {
+    // Business / management → IB, CB, AM (weaker signal; included but borderline)
+    keywords: ["business", "management", "commerce"],
+    families: ["IB", "CORP_BANKING", "ASSET_MGMT"],
+  },
+  {
+    // Law → IB (M&A / capital markets secondary pipeline)
+    keywords: ["law", "legal"],
+    families: ["IB"],
+  },
+];
+
+/**
+ * Returns the degree-affinity bonus (WEIGHTS.degreeAffinity or 0).
+ * Neutral (0) for empty/unknown subject. No negative score possible.
+ */
+function degreeAffinityScore(
+  degreeSubject: string | undefined | null,
+  oppRoleFamily: RoleFamily,
+): number {
+  if (!degreeSubject) return 0;
+  const norm = normDegree(degreeSubject);
+  if (!norm) return 0;
+
+  for (const entry of DEGREE_AFFINITY_MAP) {
+    if (entry.keywords.some((kw) => norm.includes(kw))) {
+      if (entry.families.includes(oppRoleFamily)) {
+        return WEIGHTS.degreeAffinity;
+      }
+    }
+  }
+  return 0;
+}
 
 export interface ScoreProfile {
   workAuth: WorkAuth | null;
   graduationYear: number;
   currentYear: number;
   skills: string[];
+  /** Field of study (e.g. "Mathematics", "Economics"). Optional — null/empty → neutral. */
+  degreeSubject?: string | null;
 }
 
 export interface ScorePreferences {
@@ -231,6 +333,16 @@ export function scoreOpportunity(
   if (matchedSkills.length > 0) {
     score += WEIGHTS.skills;
     reasons.push(`Your skills overlap (${matchedSkills.slice(0, 3).join(", ")})`);
+  }
+
+  // 7. Degree-subject affinity -----------------------------------------------
+  // Neutral for empty/unknown degreeSubject — no bonus, no penalty.
+  const affinityBonus = degreeAffinityScore(profile.degreeSubject, opp.roleFamily);
+  if (affinityBonus > 0) {
+    score += affinityBonus;
+    reasons.push(
+      `Your degree in ${profile.degreeSubject} aligns well with ${ROLE_FAMILY_LABEL[opp.roleFamily]} roles`,
+    );
   }
 
   return { score: clamp(score, 0, 100), reasons };
