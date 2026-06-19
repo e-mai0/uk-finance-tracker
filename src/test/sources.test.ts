@@ -133,6 +133,27 @@ describe("liveSources registry", () => {
     }
   });
 
+  it("includes the Greenhouse batch-2 prop/market-maker/quant firms", () => {
+    const byKey = new Map(liveSources.map((s) => [key(s), s]));
+    // Each board probed 200 with London/UK postings (2026-06-19). The bare `ctc`
+    // token 404s; `chicagotrading` is the live CTC board.
+    const batch2: Record<string, string> = {
+      oldmissioncapital: "Old Mission Capital",
+      virtu: "Virtu Financial",
+      flowtraders: "Flow Traders",
+      worldquant: "WorldQuant",
+      akunacapital: "Akuna Capital",
+      chicagotrading: "Chicago Trading Company",
+    };
+    for (const [tok, name] of Object.entries(batch2)) {
+      const s = byKey.get(`GREENHOUSE::${tok}`);
+      expect(s, `greenhouse ${tok} present`).toBeDefined();
+      expect(s?.employerName, `greenhouse ${tok} name`).toBe(name);
+      expect(s?.config, `greenhouse ${tok} has no config`).toBeUndefined();
+      expect(s?.url, `greenhouse ${tok} url`).toMatch(/greenhouse\.io\//);
+    }
+  });
+
   it("tracks D. E. Shaw as a real CAREERS_PAGE feed (deshaw.com SSR blob)", () => {
     const byKey = new Map(liveSources.map((s) => [key(s), s]));
     const desco = byKey.get("CAREERS_PAGE::deshaw-careers-next");
