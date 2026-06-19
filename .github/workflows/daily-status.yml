@@ -1,0 +1,122 @@
+name: Daily Status (Cyclops)
+
+# Posts a 4-section status digest to the #daily-status-check Slack channel
+# every morning at 06:00 UK time, via a Slack Incoming Webhook stored in the
+# SLACK_STATUS_WEBHOOK repo secret.
+#
+# Scheduled workflows run ONLY from the default branch (main) — this must be on
+# main to fire. Use the "Run workflow" button (workflow_dispatch) to test early.
+#
+# Timezone: GitHub cron is UTC and has no DST. We schedule at both 05:00 and
+# 06:00 UTC and only proceed when it is actually 06:00 in Europe/London, so the
+# digest lands at 6am UK year-round (BST or GMT) without double-posting.
+
+on:
+  schedule:
+    - cron: "0 5 * * *" # 06:00 London during BST (summer)
+    - cron: "0 6 * * *" # 06:00 London during GMT (winter)
+  workflow_dispatch: {} # manual test run (skips the 06:00 time gate)
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: daily-status
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SITE_URL: https://trackr-brown.vercel.app
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_STATUS_WEBHOOK }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compose and post daily status
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "::warning::SLACK_STATUS_WEBHOOK not set; skipping daily status."
+            exit 0
+          fi
+
+          # Fire only at 06:00 Europe/London for scheduled runs (handles BST/GMT).
+          # Manual workflow_dispatch runs always proceed so we can test on demand.
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ]; then
+            if [ "$(TZ=Europe/London date +%H)" != "06" ]; then
+              echo "Not 06:00 in London right now — skipping this scheduled trigger."
+              exit 0
+            fi
+          fi
+
+          yday=$(TZ=Europe/London date -d 'yesterday' +%F)
+          human_date=$(TZ=Europe/London date -d 'yesterday' '+%a %d %b %Y')
+
+          # --- 1. Website status ---------------------------------------------
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 25 --retry 2 --retry-delay 3 "$SITE_URL" || echo "000")
+          if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
+            site_line=":large_green_circle: *Running* — $SITE_URL (HTTP $code)"
+          else
+            site_line=":red_circle: *DOWN* — $SITE_URL (HTTP $code)"
+          fi
+
+          # Shared jq: render search/issues items as Slack bullet lines, escaping
+          # mrkdwn specials in untrusted titles and truncating to keep it short.
+          fmt='if (.items | length) == 0 then "_None._" else ([.items[] | "• <\(.html_url)|#\(.number)> " + ((.title[:90]) | gsub("&";"&amp;") | gsub("<";"&lt;") | gsub(">";"&gt;")) + " — " + .user.login + (if .draft then "  _(draft)_" else "" end)] | join("\n")) end'
+
+          # --- 2. PRs from the previous day (merged + opened) ----------------
+          merged_pr=$(gh api -X GET search/issues -f q="repo:$REPO is:pr merged:$yday" --jq "$fmt" 2>/dev/null || echo "_(lookup failed)_")
+          opened_pr=$(gh api -X GET search/issues -f q="repo:$REPO is:pr created:$yday" --jq "$fmt" 2>/dev/null || echo "_(lookup failed)_")
+          prs_text=$(printf '*Merged*\n%s\n\n*Opened*\n%s' "$merged_pr" "$opened_pr")
+
+          # --- 3. Running tasks = currently open PRs (work in flight) --------
+          open_pr=$(gh api -X GET search/issues -f q="repo:$REPO is:pr is:open" -f sort=updated -f order=desc --jq "$fmt" 2>/dev/null || echo "_(lookup failed)_")
+
+          # --- 4. Things to work on: main CI + open issues + manual to-dos ---
+          ci=$(gh run list --branch main --workflow CI --limit 1 --json conclusion,status,url \
+                --jq 'if length == 0 then "_no runs yet_" else (.[0] | if .status != "completed" then ":hourglass_flowing_sand: in progress" elif .conclusion == "success" then ":white_check_mark: passing" else ":x: \(.conclusion)" end) + " — <\(.[0].url)|latest run>" end' 2>/dev/null || echo "_(lookup failed)_")
+
+          issues=$(gh api -X GET search/issues -f q="repo:$REPO is:issue is:open" -f sort=updated -f order=desc --jq "$fmt" 2>/dev/null || echo "_(lookup failed)_")
+
+          tasks="_None._"
+          if [ -f docs/MANUAL-TASKS.md ]; then
+            t=$(grep -E '^[[:space:]]*- \[ \]' docs/MANUAL-TASKS.md | head -5 \
+                | sed -E 's/^[[:space:]]*- \[ \][[:space:]]*/• /; s/\*\*//g' || true)
+            [ -n "$t" ] && tasks="$t"
+          fi
+
+          # Cap each block well under Slack's 3000-char/section limit.
+          prs_text=${prs_text:0:2500}
+          open_pr=${open_pr:0:2500}
+          issues=${issues:0:1500}
+          tasks=${tasks:0:1000}
+
+          payload=$(jq -n \
+            --arg date "$human_date" \
+            --arg site "$site_line" \
+            --arg prs "$prs_text" \
+            --arg running "$open_pr" \
+            --arg issues "$issues" \
+            --arg tasks "$tasks" \
+            --arg ci "$ci" \
+            '{
+              blocks: [
+                { type: "header", text: { type: "plain_text", text: "Cyclops — Daily Status", emoji: true } },
+                { type: "context", elements: [ { type: "mrkdwn", text: ("Report for " + $date) } ] },
+                { type: "divider" },
+                { type: "section", text: { type: "mrkdwn", text: ("*1. Website status*\n" + $site) } },
+                { type: "section", text: { type: "mrkdwn", text: ("*2. PRs from " + $date + "*\n" + $prs) } },
+                { type: "section", text: { type: "mrkdwn", text: ("*3. Running tasks*  _(changes in flight)_\n" + $running) } },
+                { type: "section", text: { type: "mrkdwn", text: ("*4. Things to work on*\nCI on `main`: " + $ci + "\n\n*Open issues*\n" + $issues + "\n\n*Manual to-dos*\n" + $tasks) } }
+              ]
+            }')
+
+          curl -sSf -X POST -H 'Content-Type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
+          echo "Daily status posted to Slack."
