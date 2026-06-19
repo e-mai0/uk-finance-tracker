@@ -6,6 +6,7 @@ import { GreenhouseAdapter } from "./adapters/greenhouse";
 import { LeverAdapter } from "./adapters/lever";
 import { AshbyAdapter } from "./adapters/ashby";
 import { JaneStreetAdapter } from "./adapters/janestreet";
+import { DeShawAdapter } from "./adapters/deshaw";
 import { DeutscheBankBeesiteAdapter } from "./adapters/deutsche-beesite";
 import { GoldmanHigherAdapter } from "./adapters/goldman-higher";
 import { JsonLdPageAdapter } from "./adapters/jsonld-page";
@@ -56,6 +57,11 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
       // Greenhouse board only carries experienced/new-grad roles).
       if (new URL(source.url).hostname.endsWith("janestreet.com")) {
         return new JaneStreetAdapter(employer);
+      }
+      // D. E. Shaw's /careers page ships its openings in a __NEXT_DATA__ blob;
+      // the adapter fetches the page and parses that SSR payload.
+      if (new URL(source.url).hostname.endsWith("deshaw.com")) {
+        return new DeShawAdapter(employer);
       }
       if (new URL(source.url).hostname.endsWith("careers.db.com")) {
         return new DeutscheBankBeesiteAdapter(employer);
