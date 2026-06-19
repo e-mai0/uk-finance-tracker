@@ -142,4 +142,14 @@ describe("gradeDraft (production grader)", () => {
     const prompt = mocks.generateObject.mock.calls.at(-1)![0].prompt as string;
     expect(prompt).toContain("200");
   });
+
+  it("caps output tokens to the verdict's small size (cost): bounded but ample for 12 criteria + fixes", async () => {
+    mockVerdict({ criteria: [{ name: "firm-hook", pass: true }], passed: true });
+    await gradeDraft("u1", "draft", baseCtx);
+    const cap = mocks.generateObject.mock.calls.at(-1)![0].maxOutputTokens as number;
+    // The verdict is a small structured object (<=12 short criteria). It must be capped so
+    // a runaway generation can't bill thousands of output tokens, but ample for the schema.
+    expect(cap).toBeGreaterThanOrEqual(512);
+    expect(cap).toBeLessThanOrEqual(1024);
+  });
 });

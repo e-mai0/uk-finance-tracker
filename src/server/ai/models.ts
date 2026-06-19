@@ -14,3 +14,20 @@ export const HAIKU_ID = "claude-haiku-4-5";
 
 export const sonnet = anthropic(SONNET_ID);
 export const haiku = anthropic(HAIKU_ID);
+
+/**
+ * Anthropic prompt-caching breakpoint. Attach as `providerOptions` on the message
+ * (or system-message part) whose CUMULATIVE prefix should be cached: Anthropic caches
+ * everything from the start of the request up to and including the marked block.
+ *
+ * Cached reads bill at ~10% of input and do not count against the input-tokens-per-
+ * minute rate limit, so repeating an identical large static prefix (e.g. the playbook
+ * across a draft's revise loop) becomes almost free after the first call.
+ *
+ * Minimum cacheable prefix (provider rule): 1024 tokens for Sonnet 4.x, 4096 for
+ * Haiku 4.5. Only mark a block whose preceding content reliably clears that bar AND
+ * is byte-identical across calls, or the write is wasted (no read ever hits).
+ */
+export const ANTHROPIC_CACHE_BREAKPOINT = {
+  anthropic: { cacheControl: { type: "ephemeral" as const } },
+} as const;

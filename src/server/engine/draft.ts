@@ -1,5 +1,5 @@
-import { generateText } from "ai";
-import { sonnet, SONNET_ID } from "@/server/ai/models";
+import { generateText, type SystemModelMessage } from "ai";
+import { sonnet, SONNET_ID, ANTHROPIC_CACHE_BREAKPOINT } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 import { classifyQuestion, selectStories, employerSlugOf } from "@/server/engine/stories";
 import { critiqueAndRevise, checkTells } from "@/server/engine/critique";
@@ -15,8 +15,16 @@ import type {
   GradeResult,
 } from "@/server/engine/types";
 
-/** Max grade→revise attempts. After this many failed grades we ship the best draft we have. */
-const MAX_GRADER_ATTEMPTS = 2;
+/**
+ * Max grade→revise attempts. After this many failed grades we ship the best draft we have.
+ *
+ * Collapsed from 2 to 1 (cost): the grader loop already (a) always ships the BEST draft seen
+ * and (b) has a fail-safe that ships the pre-grader draft if the grader throws, so a single
+ * targeted revise captures the high-value fix while halving the worst-case Sonnet revise
+ * calls. Both guarantees are unchanged and pinned in engine-grader-loop.test.ts. Quality is
+ * unaffected: prompts, model and the draft's own output budget are identical.
+ */
+const MAX_GRADER_ATTEMPTS = 1;
 
 /** Build a single targeted revise instruction from a verdict's failed criteria. */
 function reviseInstructionFromVerdict(grade: GradeResult): string {
@@ -134,11 +142,34 @@ function tailoringBlock(opts: {
   return parts.join("\n\n");
 }
 
+/**
+ * Build the draft system prompt as a TWO-message array so Anthropic prompt-caching can
+ * cache the large static playbook/craft prefix and skip the per-request remainder.
+ *
+ * Message 0 (CACHED): `writingSkill.bodyStaticPrefix` — the byte-identical playbook/craft
+ *   prefix. Nothing dynamic (voice, tailoring, references) precedes it, so the cached
+ *   block is identical across the initial draft AND every revise call in the grader loop.
+ * Message 1 (UNCACHED): the per-user voice block, the static body tail, then the
+ *   per-request register/division/firm-hook tailoring.
+ *
+ * The concatenation `prefix + voice + suffix + "\n\n" + tailoring` reproduces the previous
+ * single-string system EXACTLY (no inserted separators — Anthropic concatenates system text
+ * blocks), so the model receives identical bytes and draft quality is unchanged. Only the
+ * billing changes: the static prefix is written once and read cheaply thereafter.
+ */
 function buildSystem(
   ctx: DraftContext,
   tailoring: ReturnType<typeof tailoringBlock>,
-): string {
-  return `${writingSkill.body.replace("{{voice}}", voiceBlock(ctx))}\n\n${tailoring}`;
+): SystemModelMessage[] {
+  const dynamicSuffix = `${voiceBlock(ctx)}${writingSkill.bodyStaticSuffix}\n\n${tailoring}`;
+  return [
+    {
+      role: "system",
+      content: writingSkill.bodyStaticPrefix,
+      providerOptions: ANTHROPIC_CACHE_BREAKPOINT,
+    },
+    { role: "system", content: dynamicSuffix },
+  ];
 }
 
 /** Build a profile line from only the non-empty fields. */

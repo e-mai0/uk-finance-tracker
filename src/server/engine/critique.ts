@@ -47,6 +47,13 @@ export async function critiqueAndRevise(
 
   const { text: revisedText, usage } = await generateText({
     model: haiku,
+    // Output cap (cost): the revision is a same-length rewrite of `draft`, never longer.
+    // 1536 sits above the largest draft budget (the 1200-token cover-letter draft) with
+    // margin, so it bounds a runaway generation while NEVER truncating a legitimate rewrite.
+    // No prompt-cache breakpoint: this prompt is small and fully dynamic (the draft + the
+    // specific tells found), with no large static prefix, and it runs on Haiku 4.5 whose
+    // cache minimum is 4096 tokens — far above anything here.
+    maxOutputTokens: 1536,
     prompt: `Rewrite this application-answer draft to remove the listed problems while keeping meaning, length, facts, and the writer's plain style. Do not add new claims. British English, contractions fine, no em dashes.
 
 Problems found: ${failed.join("; ")}

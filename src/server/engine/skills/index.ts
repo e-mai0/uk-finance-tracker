@@ -125,15 +125,44 @@ Return only the final text, no preamble.`;
 export type WritingSkill = {
   /** System-prompt body with {{bannedTells}} resolved; {{voice}} still present. */
   body: string;
+  /**
+   * The fully-STATIC portion of {@link body} that precedes the `{{voice}}` token —
+   * byte-identical across every draft regardless of user, question or firm. This is
+   * the large playbook/craft prefix Anthropic prompt-caching targets: nothing dynamic
+   * (per-user voice, tailoring, references) sits before it. `bodyStaticPrefix +
+   * "{{voice}}" + bodyStaticSuffix === body` exactly, so splitting the body at this
+   * point does NOT change a single byte the model receives.
+   */
+  bodyStaticPrefix: string;
+  /** The static tail of {@link body} that FOLLOWS the `{{voice}}` token. */
+  bodyStaticSuffix: string;
   /** Canonical banned-AI-tells list, consumed by checkTells in critique.ts. */
   bannedTells: string[];
 };
 
+const RESOLVED_BODY = BODY.replace("{{bannedTells}}", BANNED_TELLS.join(", ")).replace(
+  "{{standards}}",
+  draftStandards(),
+);
+
+// Split the resolved body at the per-user {{voice}} seam. Everything before it is
+// static (the cacheable playbook/craft prefix); everything after it is static too,
+// but is re-emitted AFTER the dynamic voice block so it must live in the uncached
+// suffix. The token appears exactly once; guarded so a future edit that removes or
+// duplicates it fails loudly rather than silently breaking the cache split.
+const VOICE_TOKEN = "{{voice}}";
+const voiceParts = RESOLVED_BODY.split(VOICE_TOKEN);
+if (voiceParts.length !== 2) {
+  throw new Error(
+    `writingSkill: expected exactly one ${VOICE_TOKEN} token in BODY, found ${voiceParts.length - 1}`,
+  );
+}
+const [BODY_STATIC_PREFIX, BODY_STATIC_SUFFIX] = voiceParts;
+
 /** The writing-craft skill. Single source of truth for craft + tells. */
 export const writingSkill: WritingSkill = {
   bannedTells: BANNED_TELLS,
-  body: BODY.replace("{{bannedTells}}", BANNED_TELLS.join(", ")).replace(
-    "{{standards}}",
-    draftStandards(),
-  ),
+  body: RESOLVED_BODY,
+  bodyStaticPrefix: BODY_STATIC_PREFIX,
+  bodyStaticSuffix: BODY_STATIC_SUFFIX,
 };
