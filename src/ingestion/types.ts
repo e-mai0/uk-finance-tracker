@@ -96,7 +96,7 @@ export type SourceConfig =
   | { ats: "workday"; host: string; tenant: string; site: string }
   | { ats: "oracle"; host: string; site: string }
   | { ats: "eightfold"; host: string; domain: string; endpoint: "apply" | "pcsx" }
-  | { ats: "avature"; variant: "ubs" | "macquarie"; base: string; siteid?: string }
+  | { ats: "avature"; variant: "ubs" | "macquarie" | "twosigma"; base: string; siteid?: string }
   | { ats: "radancy"; base: string }
   | { ats: "talnet"; host: string; board: number }
   | { ats: "smartrecruiters"; company: string }

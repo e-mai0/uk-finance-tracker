@@ -96,6 +96,12 @@ export const liveSources: LiveSource[] = [
   { kind: "AVATURE", identifier: "macquarie", employerName: "Macquarie", sector: "Investment Bank",
     url: "https://recruitment.macquarie.com/en_US/careers/SearchJobs",
     config: { ats: "avature", variant: "macquarie", base: "https://recruitment.macquarie.com" } },
+  // Two Sigma — Avature OpenRoles list is server-rendered `article--result`
+  // cards (title link .../careers/JobDetail/<slug>/<id> + location span);
+  // verified 200 with London + US roles via plain fetch (2026-06-19).
+  { kind: "AVATURE", identifier: "twosigma", employerName: "Two Sigma", sector: "Hedge Fund",
+    url: "https://careers.twosigma.com/careers/OpenRoles",
+    config: { ats: "avature", variant: "twosigma", base: "https://careers.twosigma.com" } },
   // --- Bespoke SPAs via CAREERS_PAGE hostname dispatch ---
   { kind: "CAREERS_PAGE", identifier: "goldman-higher-gs", employerName: "Goldman Sachs", sector: "Investment Bank",
     url: "https://higher.gs.com/" },
