@@ -199,7 +199,10 @@ export async function syncSource(
 
   try {
     const dataset = await adapter.fetch();
-    const result = await importDataset(prisma, dataset);
+    const now = new Date();
+    const result = await importDataset(prisma, dataset, now, {
+      touchedCohorts: [{ employerName: source.employerName, sourceType: source.kind }],
+    });
     await prisma.ingestionSource.update({
       where: { id: source.id },
       data: {
