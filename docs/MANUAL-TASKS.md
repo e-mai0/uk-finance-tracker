@@ -46,6 +46,22 @@ some gate others. Check them off as you go.
   merging posts "PR merged". (Fork PRs get no message — secrets aren't shared
   with forks; CI-result messages still post since they run in the base repo.)
 
+## Slack — daily status digest (#daily-status-check, 6am UK)
+
+`.github/workflows/daily-status.yml` posts a 4-section digest (site status /
+yesterday's PRs / running tasks / things to work on) every morning at 6am UK.
+
+- [ ] **Create the `#daily-status-check` channel** in Slack (if it doesn't
+  exist yet).
+- [ ] **Create an Incoming Webhook** bound to `#daily-status-check`, copy the
+  URL.
+- [ ] **Add it as a GitHub Actions secret** named `SLACK_STATUS_WEBHOOK`.
+  Until it exists the workflow no-ops with a warning (never fails).
+- [ ] **Merge the workflow to `main`** — scheduled (`cron`) workflows only run
+  from the default branch, so the 6am job won't fire until it's on `main`.
+- [ ] **Test it now**: Actions → *Daily Status (Cyclops)* → **Run workflow**
+  (manual runs skip the 6am gate and post immediately).
+
 ## Done
 
 - [x] 2026-06-09 — Phase 1 (memory core + chat) implemented and reviewed.
