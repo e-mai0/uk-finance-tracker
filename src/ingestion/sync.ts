@@ -15,6 +15,8 @@ import { WorkdayAdapter } from "./adapters/workday";
 import { EightfoldAdapter } from "./adapters/eightfold";
 import { RadancyAdapter } from "./adapters/radancy";
 import { AvatureAdapter } from "./adapters/avature";
+import { SmartRecruitersAdapter } from "./adapters/smartrecruiters";
+import { SuccessFactorsAdapter } from "./adapters/successfactors";
 import { describeError, fetchText, ImpervaBlockedError } from "./adapters/common";
 import { mapPool } from "./pool";
 import { evaluateWatch, type WatchState } from "./watch";
@@ -86,6 +88,14 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
     case "AVATURE": {
       const c = source.config as unknown as Extract<SourceConfig, { ats: "avature" }>;
       return new AvatureAdapter(c, employer);
+    }
+    case "SMARTRECRUITERS": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "smartrecruiters" }>;
+      return new SmartRecruitersAdapter(c, employer);
+    }
+    case "SUCCESSFACTORS": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "successfactors" }>;
+      return new SuccessFactorsAdapter(c, employer);
     }
     default:
       return null;

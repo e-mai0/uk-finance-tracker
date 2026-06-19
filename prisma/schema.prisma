@@ -66,6 +66,8 @@ enum SourceType {
   RADANCY
   TALNET
   MANUAL
+  SUCCESSFACTORS
+  SMARTRECRUITERS
 }
 
 // Applicant tracking system the external application form is hosted on.

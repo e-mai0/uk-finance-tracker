@@ -56,6 +56,18 @@ describe("liveSources registry", () => {
         expect(Number.isInteger(c.board), key(s)).toBe(true);
         expect(new URL(s.url).host, key(s)).toBe(c.host);
       }
+      if (s.kind === "SUCCESSFACTORS") {
+        expect(s.config?.ats, key(s)).toBe("successfactors");
+        const c = s.config as Extract<typeof s.config, { ats: "successfactors" }>;
+        expect(c.host, key(s)).toBeTruthy();
+        // listing url must point at the configured CSB host
+        expect(new URL(s.url).host, key(s)).toBe(c.host);
+      }
+      if (s.kind === "SMARTRECRUITERS") {
+        expect(s.config?.ats, key(s)).toBe("smartrecruiters");
+        const c = s.config as Extract<typeof s.config, { ats: "smartrecruiters" }>;
+        expect(c.company, key(s)).toBeTruthy();
+      }
       if (s.kind === "GREENHOUSE") {
         // Greenhouse needs no config — the identifier IS the board token and the
         // adapter hits boards-api.greenhouse.io/{identifier} regardless of the
