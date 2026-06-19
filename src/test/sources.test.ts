@@ -132,4 +132,27 @@ describe("liveSources registry", () => {
       expect(s?.config, `greenhouse ${tok} has no config`).toBeUndefined();
     }
   });
+
+  it("tracks D. E. Shaw as a real CAREERS_PAGE feed (deshaw.com SSR blob)", () => {
+    const byKey = new Map(liveSources.map((s) => [key(s), s]));
+    const desco = byKey.get("CAREERS_PAGE::deshaw-careers-next");
+    expect(desco, "D. E. Shaw present").toBeDefined();
+    expect(desco?.employerName).toBe("D. E. Shaw");
+    // a real tracked feed, not watch-only — the DeShawAdapter parses __NEXT_DATA__
+    expect(desco?.watchOnly ?? false).toBe(false);
+    expect(desco?.config, "deshaw needs no config").toBeUndefined();
+    // hostname dispatch in sync.ts keys off deshaw.com
+    expect(new URL(desco!.url).hostname.endsWith("deshaw.com")).toBe(true);
+  });
+
+  it("watches Capula's reachable jobs.json as a CAREERS_PAGE radar row", () => {
+    const byKey = new Map(liveSources.map((s) => [key(s), s]));
+    const capula = byKey.get("CAREERS_PAGE::capula-jobs-json");
+    expect(capula, "Capula present").toBeDefined();
+    expect(capula?.employerName).toBe("Capula Investment Management");
+    // honest watch-only: the feed is reachable (200) but empty off-season, so we
+    // diff it for change rather than auto-publish a guessed schema.
+    expect(capula?.watchOnly).toBe(true);
+    expect(capula?.config, "watch-only needs no config").toBeUndefined();
+  });
 });

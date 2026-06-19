@@ -80,6 +80,17 @@ describe("canonicalTalNetUrl", () => {
       "https://jefferies.tal.net/vx/candidate/so/pm/1/pl/2/opp/1813-foo/en-GB";
     expect(canonicalTalNetUrl(u, "jefferies.tal.net")).toBe(u);
   });
+
+  it("rebuilds the exact /vx/candidate/so/pm/N/pl/M/opp/{id-slug}/en-GB tail from a realistic deep link (PIN — verified live-correct, do not regress)", () => {
+    // A live Nomura deep link carrying the full volatile session prefix. The
+    // rebuilt apply URL keeps ONLY the stable resolving tail; this format was
+    // verified live (returns 200 + the right role). Guard its well-formedness.
+    const href =
+      "https://nomuracampus.tal.net/vx/lang-en-GB/mobile-0/appcentre-1/brand-4/xf-9f2c1ab30001/candidate/so/pm/2/pl/13/opp/1388-2026-Global-Markets-Summer-Internship-London/en-GB";
+    expect(canonicalTalNetUrl(href, "nomuracampus.tal.net")).toBe(
+      "https://nomuracampus.tal.net/vx/candidate/so/pm/2/pl/13/opp/1388-2026-Global-Markets-Summer-Internship-London/en-GB",
+    );
+  });
 });
 
 describe("mapTalNetBoard", () => {
