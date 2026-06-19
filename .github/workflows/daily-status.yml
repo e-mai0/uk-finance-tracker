@@ -6,9 +6,10 @@ name: Daily Status (Cyclops)
 #
 # Section 4 ("Things to work on") is written by an AGENT — the Cyclops
 # state-assessor (.claude/agents/cyclops-state-assessor.md) — running headless
-# via anthropics/claude-code-action. It needs an AI credential in a repo
-# secret: ANTHROPIC_API_KEY (metered) or CLAUDE_CODE_OAUTH_TOKEN (rides a Claude
-# subscription). WITHOUT that secret — or if the agent step fails — the digest
+# via anthropics/claude-code-action. It authenticates with a Claude Code OAuth
+# token (CLAUDE_CODE_OAUTH_TOKEN repo secret), which rides a Claude subscription
+# rather than metered API billing; generate it locally with `claude
+# setup-token`. WITHOUT that secret — or if the agent step fails — the digest
 # falls back to the previous mechanical content (CI status + open issues +
 # manual to-dos), so it never fails just because the credential is absent. To
 # keep daily cost low the agent does fast read-only inspection only (no test
@@ -45,13 +46,13 @@ jobs:
       REPO: ${{ github.repository }}
       SITE_URL: https://trackr-brown.vercel.app
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_STATUS_WEBHOOK }}
-      # Either credential enables the agent-written section 4 (see header).
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Enables the agent-written section 4 (see header). Claude Code OAuth
+      # token — rides a Claude subscription rather than metered API billing.
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
-      # Decide whether to proceed BEFORE spending any API budget: only at 06:00
+      # Decide whether to proceed BEFORE spending any budget: only at 06:00
       # Europe/London for scheduled runs (handles BST/GMT), and only if a Slack
       # webhook is configured. Manual workflow_dispatch runs always proceed.
       - name: Gate (time + webhook)
@@ -71,17 +72,16 @@ jobs:
           echo "proceed=true" >> "$GITHUB_OUTPUT"
 
       # Section 4 ("Things to work on") — the Cyclops state-assessor, headless.
-      # Runs only when proceeding AND a credential is present. Writes its
+      # Runs only when proceeding AND the OAuth token is present. Writes its
       # prioritised assessment to agent-section.md. Non-fatal on failure: the
       # compose step falls back to mechanical content.
       - name: Assess things-to-work-on (Cyclops state-assessor)
         id: assess
-        if: ${{ steps.gate.outputs.proceed == 'true' && (env.ANTHROPIC_API_KEY != '' || env.CLAUDE_CODE_OAUTH_TOKEN != '') }}
+        if: ${{ steps.gate.outputs.proceed == 'true' && env.CLAUDE_CODE_OAUTH_TOKEN != '' }}
         continue-on-error: true
         timeout-minutes: 10
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # Read-only tools + Write only: the agent inspects and writes one file;

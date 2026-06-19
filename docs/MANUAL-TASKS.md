@@ -62,12 +62,13 @@ the credential is absent.
   URL.
 - [ ] **Add it as a GitHub Actions secret** named `SLACK_STATUS_WEBHOOK`.
   Until it exists the workflow no-ops with a warning (never fails).
-- [ ] **(Optional — enables the agent-written section 4)** Add an AI credential
-  as a repo secret: `ANTHROPIC_API_KEY` (metered, pay-per-use) **or**
-  `CLAUDE_CODE_OAUTH_TOKEN` (rides a Claude subscription — generate with
-  `claude setup-token`). Without it, section 4 uses the mechanical fallback.
-  Cost is one short run/day: read-only inspection, ≤12 turns, no test suite;
-  swap `--model claude-sonnet-4-6` → `claude-haiku-4-5-20251001` in the
+- [ ] **(Optional — enables the agent-written section 4)** Add the
+  `CLAUDE_CODE_OAUTH_TOKEN` repo secret so the agent rides your Claude
+  subscription (no metered API billing). Generate it locally with `claude
+  setup-token` (requires Claude Pro/Max), then add it under repo → Settings →
+  Secrets and variables → Actions. Without it, section 4 uses the mechanical
+  fallback. Cost is one short run/day: read-only inspection, ≤12 turns, no test
+  suite; swap `--model claude-sonnet-4-6` → `claude-haiku-4-5-20251001` in the
   workflow for a cheaper run. If the agent step errors with an auth/OIDC
   message on the first test, add `id-token: write` to the workflow's
   top-level `permissions:` block.
