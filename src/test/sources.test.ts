@@ -56,6 +56,18 @@ describe("liveSources registry", () => {
         expect(Number.isInteger(c.board), key(s)).toBe(true);
         expect(new URL(s.url).host, key(s)).toBe(c.host);
       }
+      if (s.kind === "SUCCESSFACTORS") {
+        expect(s.config?.ats, key(s)).toBe("successfactors");
+        const c = s.config as Extract<typeof s.config, { ats: "successfactors" }>;
+        expect(c.host, key(s)).toBeTruthy();
+        // listing url must point at the configured CSB host
+        expect(new URL(s.url).host, key(s)).toBe(c.host);
+      }
+      if (s.kind === "SMARTRECRUITERS") {
+        expect(s.config?.ats, key(s)).toBe("smartrecruiters");
+        const c = s.config as Extract<typeof s.config, { ats: "smartrecruiters" }>;
+        expect(c.company, key(s)).toBeTruthy();
+      }
       if (s.kind === "GREENHOUSE") {
         // Greenhouse needs no config — the identifier IS the board token and the
         // adapter hits boards-api.greenhouse.io/{identifier} regardless of the
@@ -119,5 +131,89 @@ describe("liveSources registry", () => {
       expect(s, `greenhouse ${tok} present`).toBeDefined();
       expect(s?.config, `greenhouse ${tok} has no config`).toBeUndefined();
     }
+  });
+
+  it("includes the Greenhouse batch-2 prop/market-maker/quant firms", () => {
+    const byKey = new Map(liveSources.map((s) => [key(s), s]));
+    // Each board probed 200 with London/UK postings (2026-06-19). The bare `ctc`
+    // token 404s; `chicagotrading` is the live CTC board.
+    const batch2: Record<string, string> = {
+      oldmissioncapital: "Old Mission Capital",
+      virtu: "Virtu Financial",
+      flowtraders: "Flow Traders",
+      worldquant: "WorldQuant",
+      akunacapital: "Akuna Capital",
+      chicagotrading: "Chicago Trading Company",
+    };
+    for (const [tok, name] of Object.entries(batch2)) {
+      const s = byKey.get(`GREENHOUSE::${tok}`);
+      expect(s, `greenhouse ${tok} present`).toBeDefined();
+      expect(s?.employerName, `greenhouse ${tok} name`).toBe(name);
+      expect(s?.config, `greenhouse ${tok} has no config`).toBeUndefined();
+      expect(s?.url, `greenhouse ${tok} url`).toMatch(/greenhouse\.io\//);
+    }
+  });
+
+  it("tracks D. E. Shaw as a real CAREERS_PAGE feed (deshaw.com SSR blob)", () => {
+    const byKey = new Map(liveSources.map((s) => [key(s), s]));
+    const desco = byKey.get("CAREERS_PAGE::deshaw-careers-next");
+    expect(desco, "D. E. Shaw present").toBeDefined();
+    expect(desco?.employerName).toBe("D. E. Shaw");
+    // a real tracked feed, not watch-only — the DeShawAdapter parses __NEXT_DATA__
+    expect(desco?.watchOnly ?? false).toBe(false);
+    expect(desco?.config, "deshaw needs no config").toBeUndefined();
+    // hostname dispatch in sync.ts keys off deshaw.com
+    expect(new URL(desco!.url).hostname.endsWith("deshaw.com")).toBe(true);
+  });
+
+  it("includes the Workday-bank + PDT onboarding batch (reused adapters)", () => {
+    const byKey = new Map(liveSources.map((s) => [key(s), s]));
+
+    // workday — NatWest (tenant rbs / site RBS), verified 200 + London/Edinburgh
+    const natwest = byKey.get("WORKDAY::natwest-rbs");
+    expect(natwest?.employerName).toBe("NatWest Group");
+    expect(natwest?.config).toEqual({
+      ats: "workday",
+      host: "rbs.wd3.myworkdayjobs.com",
+      tenant: "rbs",
+      site: "RBS",
+    });
+
+    // workday — Lloyds Banking Group (tenant lbg / site LBG_Careers on wd3)
+    const lloyds = byKey.get("WORKDAY::lloyds-lbg");
+    expect(lloyds?.employerName).toBe("Lloyds Banking Group");
+    expect(lloyds?.config).toEqual({
+      ats: "workday",
+      host: "lbg.wd3.myworkdayjobs.com",
+      tenant: "lbg",
+      site: "LBG_Careers",
+    });
+
+    // workday — Wellington Management (tenant wellington / site External on wd5)
+    const wellington = byKey.get("WORKDAY::wellington-external");
+    expect(wellington?.employerName).toBe("Wellington Management");
+    expect(wellington?.config).toEqual({
+      ats: "workday",
+      host: "wellington.wd5.myworkdayjobs.com",
+      tenant: "wellington",
+      site: "External",
+    });
+
+    // greenhouse — PDT Partners (board token IS the identifier, no config)
+    const pdt = byKey.get("GREENHOUSE::pdtpartners");
+    expect(pdt?.employerName).toBe("PDT Partners");
+    expect(pdt?.config, "pdt has no config").toBeUndefined();
+    expect(pdt?.url, "pdt url").toMatch(/greenhouse\.io\//);
+  });
+
+  it("watches Capula's reachable jobs.json as a CAREERS_PAGE radar row", () => {
+    const byKey = new Map(liveSources.map((s) => [key(s), s]));
+    const capula = byKey.get("CAREERS_PAGE::capula-jobs-json");
+    expect(capula, "Capula present").toBeDefined();
+    expect(capula?.employerName).toBe("Capula Investment Management");
+    // honest watch-only: the feed is reachable (200) but empty off-season, so we
+    // diff it for change rather than auto-publish a guessed schema.
+    expect(capula?.watchOnly).toBe(true);
+    expect(capula?.config, "watch-only needs no config").toBeUndefined();
   });
 });

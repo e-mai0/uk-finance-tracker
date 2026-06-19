@@ -4,7 +4,7 @@ const generateMock = vi.hoisted(() => ({ generateText: vi.fn() }));
 vi.mock("ai", () => ({ generateText: generateMock.generateText }));
 vi.mock("@/server/ai/budget", () => ({ recordUsage: vi.fn(async () => {}) }));
 
-import { checkTells, critiqueAndRevise, GLOBAL_TELLS } from "@/server/engine/critique";
+import { checkTells, critiqueAndRevise } from "@/server/engine/critique";
 
 describe("checkTells", () => {
   it("flags em dashes and global tells", () => {

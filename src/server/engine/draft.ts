@@ -7,12 +7,14 @@ import { writingSkill } from "@/server/engine/skills";
 import { inferRegister } from "@/server/engine/register";
 import { REGISTER, DIVISION_EMPHASIS } from "@/server/engine/playbook";
 import { gradeDraft } from "@/server/engine/grader";
+import { findUngroundedClaims, type UngroundedClaim } from "@/server/engine/grounding-guard";
 import type {
   DraftArgs,
   DraftContext,
   DraftResult,
   GradeContext,
   GradeResult,
+  Story,
 } from "@/server/engine/types";
 
 /**
@@ -37,6 +39,39 @@ Problems to fix:
 ${fixes.join("\n")}
 
 Return only the revised answer text.`;
+}
+
+/**
+ * REVISE-OR-DISCLOSE instruction for ungrounded first-person experiential claims found by
+ * the deterministic grounding guard. It must NOT silently delete the claim and leave a gap;
+ * it must replace it with the honest, stronger answer from genuine grounded material (per the
+ * engagement guidance). Folded into the SAME revise that the grader loop already runs (no new
+ * LLM call, attempt cap unchanged).
+ */
+function groundingReviseInstruction(claims: UngroundedClaim[]): string {
+  const list = claims.map((c) => `- "${c.sentence}"`).join("\n");
+  return `GROUNDING FIX (this draft contains first-person experiential claims that are NOT in the applicant's own materials — fabricated experience is an instant reject):
+${list}
+
+Remove any claim of attending an event or speaking to or meeting anyone that is not in the applicant's materials. Do NOT delete and leave a gap. Instead write the honest, stronger answer from genuine grounded material: a deal they actually read about plus their view, the firm's published research, a relevant course, competition or own project, or a spring week they genuinely did elsewhere. For "how have you engaged with us" type questions, pivoting to specific self-directed research is the EXPECTED answer, not a fallback.`;
+}
+
+/**
+ * Build the grounding corpus the guard and grader verify against: the applicant's OWN
+ * material (CV text, selected story bodies, company notes) plus shared employer research.
+ * Verify against the FULL corpus, since false positives come from missing evidence.
+ */
+function buildGroundingCorpus(ctx: DraftContext, stories: Story[]): string {
+  const parts: string[] = [];
+  if (ctx.profile.cvText) parts.push(ctx.profile.cvText);
+  for (const s of stories) {
+    parts.push(s.title);
+    parts.push(s.finalVersions || s.rawNotes);
+  }
+  if (ctx.companyNotes) parts.push(ctx.companyNotes);
+  if (ctx.research) parts.push(ctx.research);
+  for (const p of ctx.pastAnswers) parts.push(p.excerpt);
+  return parts.filter(Boolean).join("\n\n");
 }
 
 /**
@@ -270,6 +305,10 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
   // existing draft-model path (NO new fabrication path), then re-grade. Capped at
   // MAX_GRADER_ATTEMPTS. Always returns the best draft. If the grader throws at any point
   // it is a FAIL-SAFE: we ship the pre-grader draft unchanged and flag the grade skipped.
+  // Grounding corpus: the applicant's OWN material + shared employer research. Both the
+  // deterministic guard (below) and the grader verify experiential claims against it.
+  const groundingCorpus = buildGroundingCorpus(ctx, stories);
+
   const gradeCtx: GradeContext = {
     question: args.question,
     questionKind,
@@ -279,6 +318,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
     wordCap: args.wordLimit ?? null,
     firmHookDisclosed,
     firmHookExpected,
+    groundingCorpus,
   };
 
   // Score a verdict so we can always keep the BEST draft seen: a passed verdict beats any
@@ -288,16 +328,27 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
 
   let final = preGrader;
   let gradeResult: GradeResult;
+  // Ungrounded experiential claims on the FINAL delivered draft (anti-fabrication gate).
+  let ungroundedClaims: UngroundedClaim[] = findUngroundedClaims(preGrader, groundingCorpus);
   try {
     let grade = await gradeDraft(userId, final, gradeCtx);
     let attempts = 0;
-    // Track the best draft + its verdict so a later (capped) revision never ships something
-    // worse than an earlier one.
+    // Track the best draft + its verdict + its ungrounded claims so a later (capped) revision
+    // never ships something worse than an earlier one.
     let bestText = final;
     let bestGrade = grade;
-    while (!grade.passed && attempts < MAX_GRADER_ATTEMPTS) {
+    let bestUngrounded = ungroundedClaims;
+    // Revise when EITHER the grader fails OR the deterministic guard found an ungrounded
+    // experiential claim. Reuses the EXISTING ≤1 revise (no new LLM call, attempt cap from #54
+    // unchanged).
+    while ((!grade.passed || ungroundedClaims.length > 0) && attempts < MAX_GRADER_ATTEMPTS) {
       attempts += 1;
-      const revisePrompt = reviseInstructionFromVerdict(grade);
+      // Compose the revise instruction: the grader's targeted fixes (only when it failed) plus
+      // a REVISE-OR-DISCLOSE instruction (only when the guard found ungrounded claims).
+      const segments: string[] = [];
+      if (!grade.passed) segments.push(reviseInstructionFromVerdict(grade));
+      if (ungroundedClaims.length > 0) segments.push(groundingReviseInstruction(ungroundedClaims));
+      const revisePrompt = segments.join("\n\n");
       const { text: revisedText, usage: revUsage } = await generateText({
         model: modelFor("draft"),
         system,
@@ -308,19 +359,28 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
       const revised = trimToLimit(revisedText.trim(), args.charLimit);
 
       const reGrade = await gradeDraft(userId, revised, gradeCtx);
+      const reUngrounded = findUngroundedClaims(revised, groundingCorpus);
       final = revised;
       grade = reGrade;
-      if (verdictScore(reGrade) >= verdictScore(bestGrade)) {
+      ungroundedClaims = reUngrounded;
+      // Best-draft score: prefer fewer ungrounded claims first (fabrication is the worst
+      // failure mode), then the verdict score. >= keeps the latest among equals.
+      const score = (g: GradeResult, u: UngroundedClaim[]) => verdictScore(g) - u.length * 2000;
+      if (score(reGrade, reUngrounded) >= score(bestGrade, bestUngrounded)) {
         bestText = revised;
         bestGrade = reGrade;
+        bestUngrounded = reUngrounded;
       }
     }
     // Always ship the best draft seen across attempts.
     final = bestText;
+    ungroundedClaims = bestUngrounded;
     gradeResult = { ...bestGrade, attempts, skipped: false };
   } catch {
-    // Fail-safe: the grader is never allowed to block delivery. Ship the pre-grader draft.
+    // Fail-safe: the grader is never allowed to block delivery. Ship the pre-grader draft and
+    // report its ungrounded claims (the guard is pure, so it still runs).
     final = preGrader;
+    ungroundedClaims = findUngroundedClaims(preGrader, groundingCorpus);
     gradeResult = { criteria: [], passed: false, attempts: 0, skipped: true };
   }
 
@@ -355,6 +415,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
       firmHookExpected,
       firmHookDisclosed,
       gradeResult,
+      ungroundedClaims,
     },
   };
 }

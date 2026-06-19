@@ -25,6 +25,7 @@ const baseCtx: GradeContext = {
   wordCap: 250,
   firmHookDisclosed: false,
   firmHookExpected: true,
+  groundingCorpus: "Eric did a BlackRock spring week. Treasurer of the rowing club.",
 };
 
 function mockVerdict(verdict: {
@@ -141,6 +142,22 @@ describe("gradeDraft (production grader)", () => {
     await gradeDraft("u1", "draft", { ...baseCtx, wordCap: 200 });
     const prompt = mocks.generateObject.mock.calls.at(-1)![0].prompt as string;
     expect(prompt).toContain("200");
+  });
+
+  it("includes the no-fabricated-experience criterion + grounding corpus in the SOURCES (RAGAS faithfulness)", async () => {
+    mockVerdict({ criteria: [{ name: "no-fabricated-experience", pass: true }], passed: true });
+    await gradeDraft("u1", "During my BlackRock spring week I shadowed the index team.", baseCtx);
+    const prompt = mocks.generateObject.mock.calls.at(-1)![0].prompt as string;
+    const lc = prompt.toLowerCase();
+    // The grounding corpus is provided to the grader as SOURCES so it can verify claims.
+    expect(prompt).toContain("BlackRock spring week");
+    expect(lc).toMatch(/sources/);
+    // The no-fabricated-experience criterion: list every first-person experiential claim,
+    // mark SUPPORTED only if the specific event/person appears in the provided sources.
+    expect(lc).toMatch(/first-person experiential claim|experiential claim/);
+    expect(lc).toMatch(/supported/);
+    expect(lc).toMatch(/unsupported/);
+    expect(lc).toMatch(/no-fabricated-experience|fabricated experience/);
   });
 
   it("caps output tokens to the verdict's small size (cost): bounded but ample for 12 criteria + fixes", async () => {

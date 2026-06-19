@@ -60,6 +60,49 @@ function norm(s: string): string {
   return s.trim().toLowerCase();
 }
 
+/**
+ * Normalise a skill or opportunity text fragment for phrase matching.
+ *
+ * Rules:
+ *  - lowercase + trim  (covers case-insensitivity)
+ *  - hyphens and ampersands → space  (so "data-analysis" ≡ "data analysis",
+ *    and "M&A" ≡ "m a" which is the same tokens as the tag "m&a")
+ *  - collapse multiple spaces into one
+ *
+ * This normalisation is applied consistently to both the student skill strings
+ * and the opportunity corpus (tags + title), so matching is symmetric.
+ */
+function normSkill(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[-&]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Return true if the normalised skill phrase appears in the normalised corpus
+ * on word boundaries.  Word boundaries use `\b` for alphanumeric characters;
+ * for skills/corpus that consist entirely of word characters (after normSkill)
+ * this is sufficient.  A skill like "m&a" normalises to "m a" and is matched
+ * as two separate words "m" then "a" — but the corpus "m&a" also normalises
+ * to "m a", so they align correctly.
+ *
+ * False-positive safety:
+ *  - "java" won't match "javascript" because \b prevents partial-word hits.
+ *  - "r" won't match "research" for the same reason.
+ *  - "mna" won't match "m&a" because "m&a"→"m a" and "mna"→"mna" diverge.
+ */
+function skillMatchesCorpus(normalisedSkill: string, normalisedCorpus: string): boolean {
+  if (!normalisedSkill) return false;
+  // Escape any regex-special characters in the skill (e.g. parentheses).
+  const escaped = normalisedSkill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // \b works at word-character (\w) boundaries; spaces in a multi-word skill
+  // are already literal spaces in the corpus, so the pattern reads naturally.
+  const pattern = new RegExp(`(?<![\\w])${escaped}(?![\\w])`, "i");
+  return pattern.test(normalisedCorpus);
+}
+
 const NO_SPONSORSHIP_PATTERNS = [
   "no sponsorship",
   "no visa sponsorship",
@@ -166,12 +209,25 @@ export function scoreOpportunity(
   }
 
   // 6. Skill / tag overlap ---------------------------------------------------
-  const haystack = new Set(
-    [...opp.tags, ...opp.title.split(/[^a-zA-Z]+/)].map(norm).filter(Boolean),
-  );
+  //
+  // Build a single normalised corpus from the opportunity's tags and title.
+  // Tags may be multi-word phrases ("financial modelling") and the title is
+  // free-form text.  We join them with spaces so a phrase search works across
+  // both without needing separate Set membership checks.
+  //
+  // NOTE: descriptionSummary is deliberately excluded.  It is long, unstructured
+  // text where a naive phrase search risks false positives (e.g. "python" in a
+  // sentence about "Python scripting is not required").  Tags+title are
+  // curated/structured and safe for phrase matching.
+  const corpusRaw = [...opp.tags, opp.title].join(" ");
+  const corpus = normSkill(corpusRaw);
+
   const matchedSkills = profile.skills
-    .map(norm)
-    .filter((s) => s && haystack.has(s));
+    .map(norm) // keep display form (lowercase, trimmed)
+    .filter((s) => {
+      if (!s) return false;
+      return skillMatchesCorpus(normSkill(s), corpus);
+    });
   if (matchedSkills.length > 0) {
     score += WEIGHTS.skills;
     reasons.push(`Your skills overlap (${matchedSkills.slice(0, 3).join(", ")})`);

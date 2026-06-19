@@ -6,6 +6,7 @@ import { GreenhouseAdapter } from "./adapters/greenhouse";
 import { LeverAdapter } from "./adapters/lever";
 import { AshbyAdapter } from "./adapters/ashby";
 import { JaneStreetAdapter } from "./adapters/janestreet";
+import { DeShawAdapter } from "./adapters/deshaw";
 import { DeutscheBankBeesiteAdapter } from "./adapters/deutsche-beesite";
 import { GoldmanHigherAdapter } from "./adapters/goldman-higher";
 import { JsonLdPageAdapter } from "./adapters/jsonld-page";
@@ -15,6 +16,8 @@ import { WorkdayAdapter } from "./adapters/workday";
 import { EightfoldAdapter } from "./adapters/eightfold";
 import { RadancyAdapter } from "./adapters/radancy";
 import { AvatureAdapter } from "./adapters/avature";
+import { SmartRecruitersAdapter } from "./adapters/smartrecruiters";
+import { SuccessFactorsAdapter } from "./adapters/successfactors";
 import { describeError, fetchText, ImpervaBlockedError } from "./adapters/common";
 import { mapPool } from "./pool";
 import { evaluateWatch, type WatchState } from "./watch";
@@ -55,6 +58,11 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
       if (new URL(source.url).hostname.endsWith("janestreet.com")) {
         return new JaneStreetAdapter(employer);
       }
+      // D. E. Shaw's /careers page ships its openings in a __NEXT_DATA__ blob;
+      // the adapter fetches the page and parses that SSR payload.
+      if (new URL(source.url).hostname.endsWith("deshaw.com")) {
+        return new DeShawAdapter(employer);
+      }
       if (new URL(source.url).hostname.endsWith("careers.db.com")) {
         return new DeutscheBankBeesiteAdapter(employer);
       }
@@ -86,6 +94,14 @@ export function adapterFor(source: IngestionSource): SourceAdapter | null {
     case "AVATURE": {
       const c = source.config as unknown as Extract<SourceConfig, { ats: "avature" }>;
       return new AvatureAdapter(c, employer);
+    }
+    case "SMARTRECRUITERS": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "smartrecruiters" }>;
+      return new SmartRecruitersAdapter(c, employer);
+    }
+    case "SUCCESSFACTORS": {
+      const c = source.config as unknown as Extract<SourceConfig, { ats: "successfactors" }>;
+      return new SuccessFactorsAdapter(c, employer);
     }
     default:
       return null;

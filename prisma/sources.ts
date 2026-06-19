@@ -14,7 +14,8 @@ import type { SourceConfig } from "../src/ingestion/types";
 export interface LiveSource {
   kind:
     | "GREENHOUSE" | "CAREERS_PAGE" | "WORKDAY"
-    | "ORACLE_CLOUD" | "EIGHTFOLD" | "AVATURE" | "RADANCY" | "TALNET";
+    | "ORACLE_CLOUD" | "EIGHTFOLD" | "AVATURE" | "RADANCY" | "TALNET"
+    | "SUCCESSFACTORS" | "SMARTRECRUITERS";
   identifier: string;
   employerName: string;
   sector?: string;
@@ -100,11 +101,27 @@ export const liveSources: LiveSource[] = [
     url: "https://higher.gs.com/" },
   { kind: "CAREERS_PAGE", identifier: "deutsche-bank-careers", employerName: "Deutsche Bank", sector: "Investment Bank",
     url: "https://careers.db.com/students-graduates/search-programmes/index?language_id=1" },
-  // --- Custom-ATS watchers (sitemap diffs) — keep as watch-only ---
+  // D. E. Shaw runs a custom Next.js careers app whose /careers page SERVER-
+  // RENDERS the full opening list into its __NEXT_DATA__ blob (verified live
+  // 2026-06-19: 200 + 14 internships incl. live London Trader/Analyst + Investor
+  // Relations Summer-2027). The deshaw.com hostname dispatch routes to the
+  // DeShawAdapter, which parses that SSR payload — no headless browser.
+  { kind: "CAREERS_PAGE", identifier: "deshaw-careers-next", employerName: "D. E. Shaw", sector: "Hedge Fund",
+    url: "https://www.deshaw.com/careers" },
+  // --- Custom-ATS watchers (sitemap diffs / opaque JSON) — keep as watch-only ---
   { kind: "CAREERS_PAGE", identifier: "citadel-career-sitemap", employerName: "Citadel", sector: "Hedge Fund",
     url: "https://www.citadel.com/career-sitemap.xml", watchOnly: true },
   { kind: "CAREERS_PAGE", identifier: "citadel-securities-career-sitemap", employerName: "Citadel Securities", sector: "Market Maker",
     url: "https://www.citadelsecurities.com/career-sitemap.xml", watchOnly: true },
+  // Capula's careers site is a custom Vue SPA backed by a public JSON feed at
+  // /api/entries/jobs.json (verified live 2026-06-19: 200 + valid JSON, but
+  // {"data":[]} — off-season, no live vacancies right now). Pinned as watchOnly:
+  // the watch hash flags on /radar the moment a job posts, at which point a
+  // future cycle can capture the real row shape and add a verified adapter (the
+  // bundle exposes job.title / location{slug,label} / department / excerpt /
+  // postDate, but with zero live rows the mapping can't yet be TDD-confirmed).
+  { kind: "CAREERS_PAGE", identifier: "capula-jobs-json", employerName: "Capula Investment Management", sector: "Hedge Fund",
+    url: "https://capula.com/api/entries/jobs.json", watchOnly: true },
 
   // ===================================================================
   // Cycle-3d onboarding — high-confidence UK finance firms that REUSE an
@@ -160,6 +177,30 @@ export const liveSources: LiveSource[] = [
   { kind: "GREENHOUSE", identifier: "generalatlantic", employerName: "General Atlantic", sector: "Private Equity",
     url: "https://job-boards.greenhouse.io/generalatlantic" },
 
+  // --- Greenhouse batch 2: prop-trading / market-maker / quant HFs ---
+  // All verified 200 on boards-api.greenhouse.io/v1/boards/<token>/jobs with
+  // London/UK postings present (probed 2026-06-19). classify.ts gates each board
+  // down to UK early-careers roles. No config — identifier IS the board token.
+  //   · oldmissioncapital: 200, 93 jobs, live London grad quant-trader role
+  //   · virtu:             200, 37 jobs, UK mentions
+  //   · flowtraders:       200, 192 jobs, UK mentions
+  //   · worldquant:        200, 102 jobs, London roles
+  //   · akunacapital:      200, 168 jobs, "London, England, United Kingdom"
+  //   · chicagotrading:    200, 56 jobs, "London, England, United Kingdom" (CTC;
+  //     the bare `ctc` token 404s — chicagotrading is the live board)
+  { kind: "GREENHOUSE", identifier: "oldmissioncapital", employerName: "Old Mission Capital", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/oldmissioncapital" },
+  { kind: "GREENHOUSE", identifier: "virtu", employerName: "Virtu Financial", sector: "Market Maker",
+    url: "https://job-boards.greenhouse.io/virtu" },
+  { kind: "GREENHOUSE", identifier: "flowtraders", employerName: "Flow Traders", sector: "Market Maker",
+    url: "https://job-boards.greenhouse.io/flowtraders" },
+  { kind: "GREENHOUSE", identifier: "worldquant", employerName: "WorldQuant", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/worldquant" },
+  { kind: "GREENHOUSE", identifier: "akunacapital", employerName: "Akuna Capital", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/akunacapital" },
+  { kind: "GREENHOUSE", identifier: "chicagotrading", employerName: "Chicago Trading Company", sector: "Proprietary Trading",
+    url: "https://job-boards.greenhouse.io/chicagotrading" },
+
   // --- tal.net campus boards (board number AUDITED against the live board) ---
   // Bank of America campus apply is bankcampuscareers.tal.net; board 1 is the
   // live campus/early-careers board (verified 16 opp tiles, candidate-opp-tile
@@ -178,6 +219,64 @@ export const liveSources: LiveSource[] = [
   { kind: "WORKDAY", identifier: "pjt-partners-students", employerName: "PJT Partners", sector: "Investment Bank",
     url: "https://pjtpartners.wd1.myworkdayjobs.com/Students",
     config: { ats: "workday", host: "pjtpartners.wd1.myworkdayjobs.com", tenant: "pjtpartners", site: "Students" } },
+
+  // --- Workday CXS — UK ring-fenced banks + asset manager (full-tenant sites;
+  //     the adapter's EARLY_CAREERS term-union + classify.ts gate the volume
+  //     down to UK early-careers). Hosts/sites RE-VERIFIED live 2026-06-19 with
+  //     a CXS POST (200 + jobPostings; London/Edinburgh roles present). The wdN
+  //     data-centre differs per tenant — confirmed by probing wd1/wd3/wd5:
+  //       · NatWest    rbs.wd3   /rbs/RBS              → 200, 153 roles, London+Edinburgh
+  //       · Lloyds     lbg.wd3   /lbg/LBG_Careers      → 200, 115 roles, London (wd1/wd5 422)
+  //       · Wellington wellington.wd5 /wellington/External → 200, 133 roles, "London, United Kingdom" (wd1/wd3 422)
+  { kind: "WORKDAY", identifier: "natwest-rbs", employerName: "NatWest Group", sector: "Retail & Commercial Bank",
+    url: "https://rbs.wd3.myworkdayjobs.com/RBS",
+    config: { ats: "workday", host: "rbs.wd3.myworkdayjobs.com", tenant: "rbs", site: "RBS" } },
+  { kind: "WORKDAY", identifier: "lloyds-lbg", employerName: "Lloyds Banking Group", sector: "Retail & Commercial Bank",
+    url: "https://lbg.wd3.myworkdayjobs.com/LBG_Careers",
+    config: { ats: "workday", host: "lbg.wd3.myworkdayjobs.com", tenant: "lbg", site: "LBG_Careers" } },
+  { kind: "WORKDAY", identifier: "wellington-external", employerName: "Wellington Management", sector: "Asset Management",
+    url: "https://wellington.wd5.myworkdayjobs.com/External",
+    config: { ats: "workday", host: "wellington.wd5.myworkdayjobs.com", tenant: "wellington", site: "External" } },
+
+  // --- Greenhouse — PDT Partners (quant HF). boards-api token `pdtpartners`
+  //     re-verified live 2026-06-19: 200, 56 jobs incl. London. Config-less:
+  //     the identifier IS the board token. classify.ts gates to UK early careers.
+  { kind: "GREENHOUSE", identifier: "pdtpartners", employerName: "PDT Partners", sector: "Hedge Fund",
+    url: "https://job-boards.greenhouse.io/pdtpartners" },
+
+  // --- SAP SuccessFactors Career Site Builder (server-rendered job tiles at
+  //     /tile-search-results/?q=&startrow=N; the legacy career?company= RCM
+  //     portal is JS-only and unusable — pin the CSB host). Endpoints + tile
+  //     layout verified live (Jun 18); off-season now, so most rows are
+  //     full-time and correctly excluded until early-careers roles post. ---
+  { kind: "SUCCESSFACTORS", identifier: "janus-henderson", employerName: "Janus Henderson", sector: "Asset Manager",
+    url: "https://jobs.janushenderson.com/",
+    config: { ats: "successfactors", host: "jobs.janushenderson.com" } },
+  { kind: "SUCCESSFACTORS", identifier: "mizuho-emea", employerName: "Mizuho", sector: "Investment Bank",
+    url: "https://careers.mizuhoemea.com/",
+    config: { ats: "successfactors", host: "careers.mizuhoemea.com" } },
+  { kind: "SUCCESSFACTORS", identifier: "partners-group", employerName: "Partners Group", sector: "Private Markets",
+    url: "https://jobs.partnersgroup.com/",
+    config: { ats: "successfactors", host: "jobs.partnersgroup.com" } },
+  { kind: "SUCCESSFACTORS", identifier: "swiss-re", employerName: "Swiss Re", sector: "Insurance",
+    url: "https://careers.swissre.com/",
+    config: { ats: "successfactors", host: "careers.swissre.com" } },
+
+  // --- SmartRecruiters public Posting API
+  //     (api.smartrecruiters.com/v1/companies/{company}/postings). SG identifier
+  //     confirmed `SocieteGenerale4` (200 + valid empty content off-season). ---
+  { kind: "SMARTRECRUITERS", identifier: "societe-generale", employerName: "Societe Generale", sector: "Investment Bank",
+    url: "https://careers.smartrecruiters.com/SocieteGenerale4",
+    config: { ats: "smartrecruiters", company: "SocieteGenerale4" } },
+  { kind: "SMARTRECRUITERS", identifier: "legal-and-general", employerName: "Legal & General", sector: "Insurance Asset Manager",
+    url: "https://jobs.smartrecruiters.com/LegalAndGeneral",
+    config: { ats: "smartrecruiters", company: "LegalAndGeneral" } },
+  { kind: "SMARTRECRUITERS", identifier: "mufg-investor-services", employerName: "MUFG Investor Services", sector: "Asset Servicing",
+    url: "https://jobs.smartrecruiters.com/MUFGInvestorServices",
+    config: { ats: "smartrecruiters", company: "MUFGInvestorServices" } },
+  { kind: "SMARTRECRUITERS", identifier: "evelyn-partners", employerName: "Evelyn Partners", sector: "Wealth Manager",
+    url: "https://jobs.smartrecruiters.com/EvelynPartners",
+    config: { ats: "smartrecruiters", company: "EvelynPartners" } },
 ];
 
 /** Idempotent upsert of every live source. Safe to run repeatedly and against

@@ -274,7 +274,8 @@ describe("request validation", () => {
   });
 
   it("returns 400 when externalUrl is missing", async () => {
-    const { externalUrl: _, ...bodyWithout } = VALID_BODY;
+    const bodyWithout = { ...VALID_BODY };
+    delete (bodyWithout as Record<string, unknown>).externalUrl;
     const res = await POST(makeRequest(bodyWithout));
     expect(res.status).toBe(400);
     expect(upsert).not.toHaveBeenCalled();
@@ -301,7 +302,8 @@ describe("request validation", () => {
   });
 
   it("defaults status to AUTOFILLED when not provided", async () => {
-    const { status: _, ...bodyWithoutStatus } = VALID_BODY;
+    const bodyWithoutStatus = { ...VALID_BODY };
+    delete (bodyWithoutStatus as Record<string, unknown>).status;
     upsert.mockResolvedValue({ id: "app-1", status: "AUTOFILLED" });
 
     await POST(makeRequest(bodyWithoutStatus));

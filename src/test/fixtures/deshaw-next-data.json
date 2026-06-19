@@ -1,0 +1,86 @@
+{
+  "props": {
+    "pageProps": {
+      "internships": [
+        {
+          "id": 5862,
+          "displayName": "Trader/Analyst Intern (London) - Summer 2027",
+          "office": [{ "abbreviation": "LON", "name": "London" }],
+          "category": ["Investment Analysis"],
+          "data": {
+            "jobUrl": "Trader-Analyst-Intern-London-Summer-2027-5862",
+            "validFromDate": "2026-04-06",
+            "validToDate": null,
+            "isActive": true,
+            "closingDateNotPassed": true
+          }
+        },
+        {
+          "id": 5890,
+          "displayName": "Quantitative Analyst Intern (New York) - Summer 2027",
+          "office": [{ "abbreviation": "NYC", "name": "New York" }],
+          "category": ["Quantitative Strategies"],
+          "data": {
+            "jobUrl": "Quantitative-Analyst-Intern-New-York-Summer-2027-5890",
+            "validFromDate": "2026-04-29",
+            "validToDate": null,
+            "isActive": true,
+            "closingDateNotPassed": true
+          }
+        },
+        {
+          "id": 5917,
+          "displayName": "Investor Relations Intern (London) - Summer 2027",
+          "office": [{ "abbreviation": "LON", "name": "London" }],
+          "category": ["Strategy and Business Development"],
+          "data": {
+            "jobUrl": "Investor-Relations-Intern-London-Summer-2027-5917",
+            "validFromDate": "2026-05-14",
+            "validToDate": "2026-11-30",
+            "isActive": true,
+            "closingDateNotPassed": true
+          }
+        },
+        {
+          "id": 5922,
+          "displayName": "Systems Administrator Industry Placement Year (London)",
+          "office": [{ "abbreviation": "LON", "name": "London" }],
+          "category": ["Technology"],
+          "data": {
+            "jobUrl": "Systems-Administrator-Industry-Placement-Year-London-5922",
+            "validFromDate": "2026-05-19",
+            "validToDate": null,
+            "isActive": true,
+            "closingDateNotPassed": true
+          }
+        },
+        {
+          "id": 5731,
+          "displayName": "Proprietary Trading Intern (New York) - Summer 2027",
+          "office": [{ "abbreviation": "NYC", "name": "New York" }],
+          "category": ["Trading"],
+          "data": {
+            "jobUrl": "Proprietary-Trading-Intern-New-York-Summer-2027-5731",
+            "validFromDate": "2025-12-26",
+            "validToDate": null,
+            "isActive": true,
+            "closingDateNotPassed": true
+          }
+        },
+        {
+          "id": 5999,
+          "displayName": "Closed London Trading Intern - Summer 2026",
+          "office": [{ "abbreviation": "LON", "name": "London" }],
+          "category": ["Trading"],
+          "data": {
+            "jobUrl": "Closed-London-Trading-Intern-Summer-2026-5999",
+            "validFromDate": "2025-01-01",
+            "validToDate": "2025-02-01",
+            "isActive": false,
+            "closingDateNotPassed": false
+          }
+        }
+      ]
+    }
+  }
+}

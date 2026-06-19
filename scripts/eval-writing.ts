@@ -137,6 +137,22 @@ function buildContext() {
   };
 }
 
+// Grounding corpus for the rubric grader's faithfulness (RAGAS) check. Mirrors the
+// engine's buildGroundingCorpus over the eval fixtures: the applicant's CV text plus
+// every story (title + body). The eval has no companyNotes/research/pastAnswers. The
+// grader contract requires the FULL corpus (false positives come from missing evidence),
+// so we pass all stories, not just the selected subset — this only makes the grader more
+// accurate, never more lenient toward fabrication.
+function buildGroundingCorpus(): string {
+  const parts: string[] = [];
+  if (profileRaw.cvText) parts.push(profileRaw.cvText);
+  for (const s of stories) {
+    parts.push(s.title);
+    parts.push(s.finalVersions || s.rawNotes);
+  }
+  return parts.filter(Boolean).join("\n\n");
+}
+
 // ─── Arm runner: toggle the role override around a single draftText call ──────────
 type ArmOutput = { text: string; inputTokens: number; outputTokens: number; modelId: string };
 
@@ -213,6 +229,7 @@ async function gradeArm(q: Question, text: string): Promise<boolean | "FAILED"> 
     wordCap: null,
     firmHookDisclosed: false,
     firmHookExpected,
+    groundingCorpus: buildGroundingCorpus(),
   };
   try {
     // Grader always runs on Claude (its role is not overridden by EVAL_ROLE unless

@@ -107,3 +107,184 @@ describe("fitTier", () => {
     expect(fitTier(10)).toBe("low");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Skills sub-score matching
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal fixtures used across skills tests.
+ * baseOpp (IB/London/Goldman) already has tags ["excel","m&a"] and the title
+ * "Investment Banking Summer Analyst", so it conveniently exercises title-word
+ * matching too.  These local overrides layer on top.
+ */
+
+describe("skills sub-score — multi-word phrase matching", () => {
+  it("matches a multi-word student skill against a tag that is an exact phrase", () => {
+    // "financial modelling" is one skill string; the opp has it as a tag.
+    // Old code would split the tag into "financial"/"modelling" tokens and the
+    // Set lookup for the whole string "financial modelling" would miss.
+    const profile: ScoreProfile = {
+      ...baseProfile,
+      skills: ["financial modelling"],
+    };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["financial modelling"],
+      title: "Summer Internship",
+    };
+    const { score, reasons } = scoreOpportunity(profile, basePrefs, opp);
+    expect(score).toBeGreaterThanOrEqual(5); // skills credit fires
+    expect(reasons.some((r) => r.toLowerCase().includes("financial modelling"))).toBe(true);
+  });
+
+  it("matches a multi-word student skill that appears as a phrase in the title", () => {
+    // Title contains "Financial Modelling" (mixed case); skill is "financial modelling".
+    const profile: ScoreProfile = {
+      ...baseProfile,
+      skills: ["financial modelling"],
+    };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: [],
+      title: "Financial Modelling Summer Analyst",
+    };
+    const { score, reasons } = scoreOpportunity(profile, basePrefs, opp);
+    expect(score).toBeGreaterThanOrEqual(5);
+    expect(reasons.some((r) => r.toLowerCase().includes("financial modelling"))).toBe(true);
+  });
+
+  it("still matches a single-word skill the same as before", () => {
+    // Regression: single-word "python" should still fire.
+    const profile: ScoreProfile = { ...baseProfile, skills: ["python"] };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["python"],
+      title: "Quantitative Analyst",
+    };
+    const { score } = scoreOpportunity(profile, basePrefs, opp);
+    expect(score).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe("skills sub-score — normalisation (case & punctuation)", () => {
+  it("matches 'M&A' skill against an 'm&a' tag case-insensitively", () => {
+    // baseOpp already has tag "m&a"; skill "M&A" should normalise to the same.
+    const profile: ScoreProfile = { ...baseProfile, skills: ["M&A"] };
+    const { score, reasons } = scoreOpportunity(profile, basePrefs, baseOpp);
+    expect(score).toBeGreaterThanOrEqual(5);
+    expect(reasons.some((r) => r.toLowerCase().includes("m&a"))).toBe(true);
+  });
+
+  it("matches 'data-analysis' skill against 'data analysis' tag (hyphen ↔ space)", () => {
+    const profile: ScoreProfile = { ...baseProfile, skills: ["data-analysis"] };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["data analysis"],
+      title: "Analyst",
+    };
+    const { reasons } = scoreOpportunity(profile, basePrefs, opp);
+    // The skills-overlap reason must fire (other dimensions are unchanged by
+    // the skills list, so we check the reason rather than total score).
+    expect(reasons.some((r) => /your skills overlap/i.test(r))).toBe(true);
+  });
+
+  it("matches 'data analysis' skill against 'data-analysis' tag (space ↔ hyphen)", () => {
+    const profile: ScoreProfile = { ...baseProfile, skills: ["data analysis"] };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["data-analysis"],
+      title: "Analyst",
+    };
+    const { reasons } = scoreOpportunity(profile, basePrefs, opp);
+    expect(reasons.some((r) => /your skills overlap/i.test(r))).toBe(true);
+  });
+});
+
+describe("skills sub-score — false-positive prevention (word-boundary)", () => {
+  it("does NOT match 'java' against a title/tags containing only 'javascript'", () => {
+    // Critical: substring match would fire; word-boundary match must not.
+    const profile: ScoreProfile = { ...baseProfile, skills: ["java"] };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["javascript"],
+      title: "Front-End Developer JavaScript",
+    };
+    const { reasons } = scoreOpportunity(profile, basePrefs, opp);
+    // The skills reason must not mention java (no skills credit for java alone).
+    expect(reasons.some((r) => /your skills overlap/i.test(r))).toBe(false);
+  });
+
+  it("does NOT match single-letter skill 'r' against arbitrary words", () => {
+    // "r" as a skill (R programming language) must not match words like
+    // "research", "review", "internship" which contain the letter r.
+    const profile: ScoreProfile = { ...baseProfile, skills: ["r"] };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["research", "internship"],
+      title: "Research Analyst Role",
+    };
+    const { reasons } = scoreOpportunity(profile, basePrefs, opp);
+    expect(reasons.some((r) => /your skills overlap/i.test(r))).toBe(false);
+  });
+
+  it("does NOT match 'mna' against an opp tagged 'm&a'", () => {
+    // After normalisation "m&a" should not become "mna" and vice versa.
+    const profile: ScoreProfile = { ...baseProfile, skills: ["mna"] };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["m&a"],
+      title: "Analyst",
+    };
+    const { reasons } = scoreOpportunity(profile, basePrefs, opp);
+    expect(reasons.some((r) => /your skills overlap/i.test(r))).toBe(false);
+  });
+});
+
+describe("skills sub-score — no overlap → zero credit", () => {
+  it("gives no skills credit and no spurious reason when skills are disjoint", () => {
+    const profile: ScoreProfile = { ...baseProfile, skills: ["accounting", "powerpoint"] };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["python", "sql"],
+      title: "Quantitative Analyst",
+    };
+    const { reasons } = scoreOpportunity(profile, basePrefs, opp);
+    expect(reasons.some((r) => /your skills overlap/i.test(r))).toBe(false);
+  });
+});
+
+describe("skills sub-score — reason lists matched skills (up to 3)", () => {
+  it("names the matched skill in the reason string", () => {
+    const profile: ScoreProfile = { ...baseProfile, skills: ["financial modelling"] };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["financial modelling", "valuation"],
+      title: "Valuation Analyst",
+    };
+    const { reasons } = scoreOpportunity(profile, basePrefs, opp);
+    const skillReason = reasons.find((r) => /your skills overlap/i.test(r));
+    expect(skillReason).toBeDefined();
+    expect(skillReason!.toLowerCase()).toContain("financial modelling");
+  });
+
+  it("lists at most 3 matched skills in the reason", () => {
+    const profile: ScoreProfile = {
+      ...baseProfile,
+      skills: ["python", "sql", "excel", "vba"],
+    };
+    const opp: ScoreOpportunity = {
+      ...baseOpp,
+      tags: ["python", "sql", "excel", "vba"],
+      title: "Analyst",
+    };
+    const { reasons } = scoreOpportunity(profile, basePrefs, opp);
+    const skillReason = reasons.find((r) => /your skills overlap/i.test(r));
+    expect(skillReason).toBeDefined();
+    // Reason text should list at most 3 skills (comma-separated inside parentheses).
+    const inside = skillReason!.match(/\(([^)]+)\)/)?.[1] ?? "";
+    const listed = inside.split(",").map((s) => s.trim()).filter(Boolean);
+    expect(listed.length).toBeLessThanOrEqual(3);
+  });
+});
+

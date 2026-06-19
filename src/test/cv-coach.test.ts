@@ -163,6 +163,35 @@ describe("seedCoachOpening — stable clientId / dedup", () => {
   });
 });
 
+describe("seedCoachOpening — returns the opening as a UIMessage (F2)", () => {
+  it("returns a message (id=clientId, role=assistant, text + chips parts) so the upload path can render it in place", async () => {
+    const cv = makeCv();
+    generateText.mockResolvedValueOnce(modelResponseFor(cv));
+
+    const res = await seedCoachOpening({ userId: "u1", sessionId: "sess-xyz", cv });
+
+    expect(res.seeded).toBe(true);
+    expect(res.message).toBeDefined();
+    const msg = res.message!;
+    // id is the stable dedup clientId, so it matches the row toUIMessages later
+    // assigns on a fresh /cv load (the in-place + persisted copies share an id).
+    expect(msg.id).toBe("coach-opening:sess-xyz");
+    expect(msg.id).toBe(res.clientId);
+    expect(msg.role).toBe("assistant");
+    // The returned parts must equal what was persisted to the DB row.
+    const row = createMany.mock.calls[0][0].data[0] as { parts: string };
+    expect(msg.parts).toEqual(JSON.parse(row.parts));
+    const textPart = msg.parts.find((p) => p.type === "text") as
+      | { type: "text"; text: string }
+      | undefined;
+    expect(textPart?.text).toContain("Zentari Capital");
+    const chipPart = msg.parts.find((p) => p.type === "data-coach-chips") as
+      | { type: "data-coach-chips"; data: { chips: unknown[] } }
+      | undefined;
+    expect(chipPart!.data.chips).toHaveLength(3);
+  });
+});
+
 describe("seedCoachOpening — graceful fallback", () => {
   it("does not throw when the LLM call fails; still seeds a generic opener", async () => {
     const cv = makeCv();

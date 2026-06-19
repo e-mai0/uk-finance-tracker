@@ -11,7 +11,7 @@ import {
   type TrackPayload,
   type RecordResult,
 } from "./record";
-import { Panel } from "./panel";
+import { Panel, type PanelHandlers } from "./panel";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -138,7 +138,7 @@ describe("Panel.showRecordError — error is visible in the panel", () => {
       onAgentApply: vi.fn().mockReturnValue(false),
       onAgentAnswer: vi.fn(),
     };
-    const panel = new Panel(handlers as any);
+    const panel = new Panel(handlers as unknown as PanelHandlers);
     panel.mount();
 
     panel.showRecordError("Couldn't save this application — click Apply to retry");
@@ -159,7 +159,7 @@ describe("Panel.showRecordError — error is visible in the panel", () => {
       onAgentApply: vi.fn().mockReturnValue(false),
       onAgentAnswer: vi.fn(),
     };
-    const panel = new Panel(handlers as any);
+    const panel = new Panel(handlers as unknown as PanelHandlers);
     panel.mount();
 
     panel.showRecordError("Couldn't save this application — click Apply to retry");

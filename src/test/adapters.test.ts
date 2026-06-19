@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mapGreenhouseJobs } from "../ingestion/adapters/greenhouse";
 import { mapLeverPostings } from "../ingestion/adapters/lever";
 import { mapAshbyJobs } from "../ingestion/adapters/ashby";
+import { mapSmartRecruiterPostings } from "../ingestion/adapters/smartrecruiters";
 import type { AdapterEmployer } from "../ingestion/adapters/common";
 
 const fund: AdapterEmployer = { name: "Acme Capital", sector: "Hedge Fund" };
@@ -151,5 +152,83 @@ describe("mapAshbyJobs", () => {
   it("drops unlisted jobs", () => {
     const out = mapAshbyJobs(payload, fund);
     expect(out.find((o) => o.title === "Unlisted Intern")).toBeUndefined();
+  });
+});
+
+describe("mapSmartRecruiterPostings", () => {
+  const bank: AdapterEmployer = { name: "Big Bank", sector: "Investment Bank" };
+  // Shape mirrors api.smartrecruiters.com/v1/companies/{co}/postings (verified
+  // live against the Visa board: { totalFound, content[] } with nested
+  // location/department/function/typeOfEmployment objects).
+  const payload = {
+    offset: 0,
+    limit: 100,
+    totalFound: 3,
+    content: [
+      {
+        id: "744000111111111",
+        name: "Summer Internship - Markets, 2027",
+        releasedDate: "2026-06-01T09:00:00Z",
+        location: { city: "London", region: "England", country: "gb", fullLocation: "London, England, United Kingdom" },
+        department: { id: "1", label: "Global Markets" },
+        function: { id: "f", label: "Trading" },
+        typeOfEmployment: { id: "intern", label: "Intern" },
+        company: { identifier: "BigBank", name: "Big Bank" },
+      },
+      {
+        id: "744000222222222",
+        name: "Summer Analyst Internship",
+        releasedDate: "2026-06-02T09:00:00Z",
+        location: { city: "New York", region: "NY", country: "us", fullLocation: "New York, NY, United States" },
+        department: { label: "Investment Banking" },
+        company: { identifier: "BigBank" },
+      },
+      {
+        id: "744000333333333",
+        name: "Vice President, Equity Research", // full-time → not-internship
+        releasedDate: "2026-06-03T09:00:00Z",
+        location: { city: "London", country: "gb", fullLocation: "London, United Kingdom" },
+        department: { label: "Research" },
+        typeOfEmployment: { label: "Full-time" },
+        company: { identifier: "BigBank" },
+      },
+    ],
+  };
+
+  it("maps only the UK internship and applies the classifier", () => {
+    const out = mapSmartRecruiterPostings(payload, "BigBank", bank);
+    expect(out).toHaveLength(1);
+    const o = out[0];
+    expect(o.employer).toBe("Big Bank");
+    expect(o.title).toBe("Summer Internship - Markets, 2027");
+    expect(o.roleFamily).toBe("MARKETS");
+    expect(o.programmeType).toBe("SUMMER_INTERNSHIP");
+    expect(o.location).toBe("London, England, United Kingdom");
+    expect(o.status).toBe("OPEN");
+    expect(o.sourceType).toBe("SMARTRECRUITERS");
+    expect(o.firstSeen).toBe("2026-06-01T09:00:00Z");
+  });
+
+  it("builds the public apply URL from the company identifier and posting id", () => {
+    const [o] = mapSmartRecruiterPostings(payload, "BigBank", bank);
+    expect(o.applicationUrl).toBe("https://jobs.smartrecruiters.com/BigBank/744000111111111");
+    expect(o.sourceUrl).toBe(o.applicationUrl);
+  });
+
+  it("excludes the non-UK internship (ADR-005 UK-only)", () => {
+    const out = mapSmartRecruiterPostings(payload, "BigBank", bank);
+    expect(out.find((o) => o.title === "Summer Analyst Internship")).toBeUndefined();
+  });
+
+  it("never republishes employer copy — summary is templated", () => {
+    const [o] = mapSmartRecruiterPostings(payload, "BigBank", bank);
+    expect(o.summary).toContain("SmartRecruiters");
+    expect(o.summary).toContain("Big Bank");
+  });
+
+  it("throws on an unexpected payload shape", () => {
+    expect(() => mapSmartRecruiterPostings({ nope: true }, "BigBank", bank)).toThrow(
+      /content/,
+    );
   });
 });
