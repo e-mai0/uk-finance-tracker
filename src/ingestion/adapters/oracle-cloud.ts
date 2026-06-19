@@ -2,6 +2,15 @@ import type { RawDataset, RawOpportunity, SourceAdapter } from "../types";
 import type { SourceConfig } from "../types";
 import { classifyPosting } from "../classify";
 import { buildDataset, fallbackFamilyFor, fetchJson, originalSummary, type AdapterEmployer } from "./common";
+import { mapPool } from "../pool";
+
+// Bounded concurrency for the per-job detail fetches. JPMorgan's Oracle tenant
+// returns ~47 GB requisitions per sync, each needing one detail call for the
+// real deadline. A sequential await-loop made those ~47 calls strictly serial;
+// an unbounded Promise.all would burst all 47 at once and risk tripping the
+// endpoint's rate-limiting (which would CHANGE observable behavior). A small pool
+// keeps the burst sane while still overlapping the I/O.
+const ORACLE_DETAIL_CONCURRENCY = 6;
 
 interface OracleReq { Id: string; Title: string; PrimaryLocation?: string; PrimaryLocationCountry?: string }
 
@@ -59,9 +68,19 @@ export class OracleCloudAdapter implements SourceAdapter {
       if (count === 0) break;
       offset += count;
     }
-    for (const r of rows) {
+    // Fetch the per-job detail pages with BOUNDED concurrency instead of a
+    // strictly serial loop. mapPool preserves input order (results[i] aligns with
+    // rows[i]) and — like the original loop — propagates a rejection, so a failed
+    // detail fetch still aborts the whole adapter (unchanged error semantics). The
+    // output rows + their order are identical regardless of which fetch finishes
+    // first because we apply each result back onto its own row by index.
+    const details = await mapPool(rows, ORACLE_DETAIL_CONCURRENCY, (r) => {
       const id = (r.applicationUrl ?? "").replace("oracle:", "");
-      const { deadline, url } = await fetchOracleDeadline(this.cfg.host, this.cfg.site, id);
+      return fetchOracleDeadline(this.cfg.host, this.cfg.site, id);
+    });
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const { deadline, url } = details[i];
       r.applicationUrl = url; r.sourceUrl = url;
       if (deadline) r.deadlineAt = deadline; // real deadline → normalize won't infer
     }

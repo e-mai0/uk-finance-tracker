@@ -131,6 +131,44 @@ describe("WorkdayAdapter.fetch — search breadth", () => {
     expect(ds.opportunities.filter((o) => o.title === "2027 Summer Analyst")).toHaveLength(1);
   });
 
+  it("merges terms in a DETERMINISTIC order regardless of which term's fetch finishes first", async () => {
+    // Each term returns one UNIQUE posting. The 'intern' term resolves SLOWEST so,
+    // if order followed completion timing, its row would land last; the adapter must
+    // instead order by EARLY_CAREERS_TERMS (intern first), proving order is keyed
+    // off the term list, not fetch timing.
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as Record<string, unknown>;
+      const q = String(body.searchText ?? "");
+      const off = Number(body.offset ?? 0);
+      if (off > 0) return jsonRes({ total: 1, jobPostings: [] });
+      if (q === "intern") await new Promise((r) => setTimeout(r, 25)); // slowest
+      // Same classified title for every term (so classify treats them identically);
+      // the term is encoded in the externalPath, which is what dedup keys on.
+      return jsonRes({ total: 1, jobPostings: [
+        { title: "2027 Summer Analyst", externalPath: `/job/London/Summer_${q}_JR`, locationsText: "London, UK" },
+      ]});
+    }));
+
+    const ds = await new WorkdayAdapter(cfg, bx).fetch();
+    const terms = ds.opportunities.map((o) => o.applicationUrl?.match(/Summer_(\w+?)_JR/)?.[1]);
+    // intern term resolves last in wall-clock time but must appear FIRST (term order).
+    expect(terms[0]).toBe("intern");
+    expect(terms).toEqual(["intern", "analyst", "graduate", "summer", "placement", "insight"]);
+  });
+
+  it("ABORTS the whole adapter when one term's fetch fails (unchanged error semantics)", async () => {
+    // The original serial loop threw on a non-ok response, aborting the run. The
+    // parallel version (mapPool propagates rejections) must abort identically.
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as Record<string, unknown>;
+      const q = String(body.searchText ?? "");
+      if (q === "graduate") return { ok: false, status: 503, statusText: "Unavailable", json: async () => ({}) } as unknown as Response;
+      return jsonRes({ total: 0, jobPostings: [] });
+    }));
+
+    await expect(new WorkdayAdapter(cfg, bx).fetch()).rejects.toThrow(/503/);
+  });
+
   it("stays bounded on a huge tenant (never pages past the offset<2000 cap per term)", async () => {
     // Morgan Stanley's `External` tenant carries thousands of postings. The crawl
     // must stop at the offset<2000 safety cap, regardless of how broad the query
