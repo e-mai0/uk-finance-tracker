@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { suggestForLabels, type Suggestion } from "@/lib/suggest";
+import { suggestForLabels } from "@/lib/suggest";
 
 const PROFILE_FACTS = [
   "- Notice period: one month (confidence: high, confirmed: 2026-06-01)",
