@@ -87,6 +87,11 @@ const EXPERIENTIAL_VERBS: { re: RegExp; label: string }[] = [
   { re: /\breached\s+out\s+to\b/i, label: "reached out to" },
   { re: /\bconnected\s+with\b/i, label: "connected with" },
   { re: /\bchatted\s+with\b/i, label: "chatted with" },
+  // sit-down / catch-up / coffee phrasings (review recall fix): these read as a real
+  // in-person meeting just like "met with", so an ungrounded one must flag.
+  { re: /\bsat\s+down\s+with\b/i, label: "sat down with" },
+  { re: /\bcaught\s+up\s+with\b/i, label: "caught up with" },
+  { re: /\bgrabbed\s+coffee\s+with\b/i, label: "grabbed coffee with" },
   { re: /\bhad\s+a\s+(?:call|meeting|coffee\s+chat|conversation|chat)\s+with\b/i, label: "had a call/meeting/chat with" },
   { re: /\bcoffee\s+chat\b/i, label: "coffee chat" },
   { re: /\bemailed\b/i, label: "emailed" },
@@ -107,6 +112,9 @@ const EXPERIENTIAL_VERBS: { re: RegExp; label: string }[] = [
  */
 const EVENT_NOUNS: { re: RegExp; label: string }[] = [
   { re: /\binsight\s+day\b/i, label: "insight day" },
+  { re: /\binsight\s+event\b/i, label: "insight event" },
+  { re: /\binsight\s+evening\b/i, label: "insight evening" },
+  { re: /\binsight\s+session\b/i, label: "insight session" },
   { re: /\bopen\s+day\b/i, label: "open day" },
   { re: /\bspring\s+week\b/i, label: "spring week" },
   { re: /\bnetworking\s+event\b/i, label: "networking event" },
@@ -119,6 +127,33 @@ const EVENT_NOUNS: { re: RegExp; label: string }[] = [
   { re: /\btalk\b/i, label: "talk" },
   { re: /\bfair\b/i, label: "fair" },
 ];
+
+/**
+ * Hypothetical / comparative / conditional / negational discriminators. An event noun or
+ * participation verb inside one of these is NOT a claim of having attended — it is a
+ * counterfactual ("...more than any careers fair would have", "if I had attended an insight
+ * day", "rather than a networking event"). Kept deliberately narrow and conservative so a
+ * real "I attended a careers fair" still flags.
+ */
+const HYPOTHETICAL: RegExp[] = [
+  /\bthan\s+any\b/i,
+  /\bwould\s+have\b/i,
+  /\bif\s+I\s+had\b/i,
+  /\bif\s+we\s+had\b/i,
+  /\brather\s+than\b/i,
+  /\binstead\s+of\b/i,
+];
+
+/**
+ * Sentence-opener / function words that are capitalised only because they begin a sentence
+ * (or are too short to be a meaningful entity). These must NEVER be treated as grounding
+ * proper nouns: e.g. the opener "At" must not ground a claim by matching "at" in the corpus.
+ */
+const OPENER_OR_SHORT = new Set([
+  "i", "we", "my", "our", "at", "in", "on", "to", "as", "of", "during", "later",
+  "then", "the", "this", "that", "after", "before", "and", "but", "so", "if",
+  "a", "an", "he", "she", "they", "it",
+]);
 
 /** Split text into sentences, keeping each trimmed and non-empty. */
 function splitSentences(text: string): string[] {
@@ -133,67 +168,107 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-/**
- * Extract the key entity/event tokens to check against the corpus for a flagged
- * sentence: any matched event noun, plus capitalised proper-noun runs (e.g. "Citi",
- * "Goldman Sachs", "James Lin", "BlackRock"). Sentence-initial single capitalised words
- * are included too; that is safe because a sentence is only consulted here AFTER it has
- * been flagged experiential, and a false "present in corpus" only ever DROPS a flag,
- * which is the precision-safe direction.
- */
-function extractEntities(sentence: string): { phrases: string[]; primary?: string } {
-  const phrases: string[] = [];
-
-  // Event nouns present in the sentence.
-  for (const { label } of EVENT_NOUNS) {
-    if (new RegExp(`\\b${label.replace(/\s+/g, "\\s+")}\\b`, "i").test(sentence)) {
-      phrases.push(label);
-    }
-  }
-
-  // Proper-noun runs: one or more capitalised words in a row.
-  const proper = sentence.match(/\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\b/g) ?? [];
-  for (const p of proper) phrases.push(p);
-
-  // The primary entity for reporting: prefer a "<Proper> <eventNoun>" combination
-  // (e.g. "BlackRock spring week", "Citi careers panel") when both are present.
-  const eventLabel = EVENT_NOUNS.find(({ label }) =>
-    new RegExp(`\\b${label.replace(/\s+/g, "\\s+")}\\b`, "i").test(sentence),
-  )?.label;
-  const firstProper = proper[0];
-  let primary: string | undefined;
-  if (firstProper && eventLabel) primary = `${firstProper} ${eventLabel}`;
-  else primary = firstProper ?? eventLabel;
-
-  return { phrases, primary };
+/** Escape a phrase for safe use as a literal inside a RegExp (whitespace stays flexible). */
+function escapeForCorpus(phrase: string): string {
+  return normalize(phrase)
+    .split(" ")
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("\\s+");
 }
 
 /**
- * The entity-present short-circuit. A flagged sentence is GROUNDED (and therefore
- * dropped) when its key entity/event appears in the corpus. We check, in order:
- *  - the full "<Proper> <eventNoun>" combination (e.g. "BlackRock spring week"); then
- *  - each proper-noun run on its own (a real "BlackRock" / "James Lin" in the corpus);
- * An event noun ALONE (e.g. "panel") is deliberately NOT treated as grounding, because
- * generic event words appear everywhere and would punch holes in the gate; grounding
- * requires the specific actor/organisation behind the experience.
+ * WORD-BOUNDARY corpus presence test. Replaces the old `normCorpus.includes(...)` substring
+ * check, which silently grounded a claim when a short token (e.g. the opener "At") matched
+ * inside an unrelated word ("penultim-AT-e"). A phrase is "present" only when it appears as a
+ * whole word / phrase, bounded by non-word characters. Tokens shorter than 3 chars (or that
+ * are sentence-opener function words) are never treated as grounding tokens and return false.
+ */
+function corpusHas(normCorpus: string, phrase: string): boolean {
+  const norm = normalize(phrase);
+  if (!norm) return false;
+  // A single short / function-word token can never ground a claim.
+  if (!norm.includes(" ") && (norm.length < 3 || OPENER_OR_SHORT.has(norm))) return false;
+  const re = new RegExp(`(?<![\\w])${escapeForCorpus(phrase)}(?![\\w])`, "i");
+  return re.test(normCorpus);
+}
+
+/**
+ * GENERIC single-word event nouns whose presence in the corpus must NOT, on its own, ground
+ * an event claim (they appear everywhere: "talk", "fair", "panel"). Grounding such an event
+ * still requires the specific actor/organisation behind it (a "<Proper> <eventNoun>" combo).
+ * The distinctive MULTI-WORD labels ("spring week", "insight day", "careers fair") may ground
+ * on their own, because their bare appearance in the corpus is itself strong evidence.
+ */
+const GENERIC_EVENT_LABELS = new Set(["panel", "conference", "presentation", "talk", "fair", "webinar"]);
+
+/** Capitalised proper-noun runs in a sentence, with openers/short tokens stripped out. */
+function properRuns(sentence: string): string[] {
+  const raw = sentence.match(/\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\b/g) ?? [];
+  const out: string[] = [];
+  for (const run of raw) {
+    // Drop leading opener/function words from the run (e.g. "At Warwick" -> "Warwick",
+    // "During BlackRock" -> "BlackRock"), then keep what remains if it is a real entity.
+    const words = run.split(/\s+/);
+    while (words.length && OPENER_OR_SHORT.has(words[0].toLowerCase())) words.shift();
+    const cleaned = words.join(" ").trim();
+    if (!cleaned) continue;
+    // A single residual token must be >= 3 chars and not an opener to count as an entity.
+    if (!cleaned.includes(" ") && (cleaned.length < 3 || OPENER_OR_SHORT.has(cleaned.toLowerCase()))) continue;
+    out.push(cleaned);
+  }
+  return out;
+}
+
+/** Recognised event-noun labels present in the sentence. */
+function eventLabelsIn(sentence: string): string[] {
+  const out: string[] = [];
+  for (const { label } of EVENT_NOUNS) {
+    if (new RegExp(`\\b${label.replace(/\s+/g, "\\s+")}\\b`, "i").test(sentence)) out.push(label);
+  }
+  return out;
+}
+
+/**
+ * The entity-present short-circuit, refined so grounding matches the EVENT or the PERSON, not
+ * merely any grounded proper noun that happens to share the sentence (the core review hole).
+ *
+ * EVENT claim (an event noun is named): grounded ONLY if the EVENT itself is in the corpus —
+ *   a "<Proper> <eventNoun>" combination (e.g. "BlackRock spring week"), or the distinctive
+ *   multi-word event label on its own ("spring week"). A bare GENERIC event word ("panel")
+ *   never grounds, and an unrelated grounded proper noun ("Citi", "Warwick") never grounds the
+ *   event. So "I attended Citi's insight event at Warwick" stays FLAGGED when no Citi insight
+ *   event is in the materials, while "my BlackRock spring week" is grounded.
+ *
+ * PERSON / generic claim (no event noun): grounded when the named person/org proper-noun run
+ *   appears in the corpus (a real "James Lin" / "BlackRock"). Word-boundary matched, with
+ *   sentence-openers and sub-3-char tokens excluded so "At" can never ground via "penultimate".
  */
 function isGrounded(sentence: string, normCorpus: string): { grounded: boolean; entity?: string } {
-  const { primary } = extractEntities(sentence);
+  const events = eventLabelsIn(sentence);
+  const proper = properRuns(sentence);
 
-  // Full proper+event combination.
-  if (primary && primary.includes(" ") && normCorpus.includes(normalize(primary))) {
-    return { grounded: true, entity: primary };
+  if (events.length > 0) {
+    // EVENT grounding: require the event phrase itself, never a stray proper noun.
+    for (const ev of events) {
+      // 1) "<Proper> <eventNoun>" combination (e.g. "BlackRock spring week", "Citi insight event").
+      for (const p of proper) {
+        const combo = `${p} ${ev}`;
+        if (corpusHas(normCorpus, combo)) return { grounded: true, entity: combo };
+      }
+      // 2) Distinctive multi-word event label on its own (e.g. "spring week", "careers fair").
+      if (ev.includes(" ") && !GENERIC_EVENT_LABELS.has(ev) && corpusHas(normCorpus, ev)) {
+        return { grounded: true, entity: ev };
+      }
+    }
+    const primary = proper[0] ? `${proper[0]} ${events[0]}` : events[0];
+    return { grounded: false, entity: primary };
   }
 
-  // Each proper-noun run individually.
-  const proper = sentence.match(/\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\b/g) ?? [];
+  // PERSON / generic claim: ground on the named person/org if present in the corpus.
   for (const p of proper) {
-    // Skip a sentence-initial first-person "I" / generic openers that are not entities.
-    if (/^(?:I|We|My|Our|During|Later|Then|The|This|After|Before)$/i.test(p)) continue;
-    if (normCorpus.includes(normalize(p))) return { grounded: true, entity: p };
+    if (corpusHas(normCorpus, p)) return { grounded: true, entity: p };
   }
-
-  return { grounded: false, entity: primary };
+  return { grounded: false, entity: proper[0] };
 }
 
 /**
@@ -221,6 +296,11 @@ export function findUngroundedClaims(
 
     // Reportative/informational phrasing is never a lived-experience claim.
     if (REPORTATIVE.some((re) => re.test(sentence))) continue;
+
+    // Hypothetical / comparative / conditional phrasing is a counterfactual, not a claim of
+    // attendance ("...more than any careers fair would have", "if I had attended an insight
+    // day"). Skip these. Deliberately narrow so a real "I attended a careers fair" still flags.
+    if (HYPOTHETICAL.some((re) => re.test(sentence))) continue;
 
     // Experiential by pattern: a verb above, OR an event noun named in a first-person
     // sentence (naming an event implies attendance).

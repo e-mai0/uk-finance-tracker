@@ -147,6 +147,84 @@ describe("findUngroundedClaims - entity-present short-circuit (PRECISION, mandat
   });
 });
 
+describe("findUngroundedClaims - event/person grounding (precision hole #1)", () => {
+  // The core hole: a fabricated EVENT must not ground itself by name-dropping a
+  // grounded proper noun. Grounding requires the EVENT (or PERSON) itself to be present.
+
+  it("FLAGS 'I attended Citi's insight event at Warwick' when Citi+Warwick are in corpus but no Citi insight event is", () => {
+    // Corpus mentions Citi and Warwick, but NOT a Citi insight event.
+    const corpus = "I study at Warwick. I have read about Citi's markets division and its recent gilt mandate.";
+    const claims = findUngroundedClaims("I attended Citi's insight event at Warwick.", corpus);
+    expect(claims).toHaveLength(1);
+    expect(claims[0].sentence).toContain("insight event");
+  });
+
+  it("FLAGS 'At your spring insight evening I spoke to several bankers' (event not in corpus)", () => {
+    const corpus = "Economics at LSE. I have read about the firm's research.";
+    const claims = findUngroundedClaims("At your spring insight evening I spoke to several bankers.", corpus);
+    expect(claims).toHaveLength(1);
+  });
+
+  it("does NOT flag 'During my BlackRock spring week I shadowed the index team' (event phrase grounded) — MANDATORY", () => {
+    const corpus = "Eric did a BlackRock spring week in 2024, working with the index team.";
+    const claims = findUngroundedClaims("During my BlackRock spring week I shadowed the index team.", corpus);
+    expect(claims).toEqual([]);
+  });
+
+  it("grounds a PERSON-interaction claim only when the named person is in the corpus", () => {
+    const corpus = "I spoke to James Lin, a VP on the rates desk, during my internship.";
+    expect(findUngroundedClaims("I spoke to James Lin about gilts.", corpus)).toEqual([]);
+    // A different, ungrounded person is still flagged even though "James Lin" is in corpus.
+    expect(findUngroundedClaims("I spoke to Sarah Wong about gilts.", corpus)).toHaveLength(1);
+  });
+});
+
+describe("findUngroundedClaims - word-boundary matching (substring bug #2)", () => {
+  it("does NOT let the opener 'At' ground a claim by matching inside 'penultimate'", () => {
+    // "At" appears as a substring of "penultim-AT-e" in the corpus; word-boundary matching
+    // must NOT treat that as grounding the sentence.
+    const corpus = "I am a penultimate-year economics student at LSE.";
+    const claims = findUngroundedClaims("At your spring insight evening I spoke to several bankers.", corpus);
+    expect(claims).toHaveLength(1);
+  });
+
+  it("skips short proper-noun runs and sentence-opener function words as grounding tokens", () => {
+    // "On" / "In" / "As" must not ground a claim by substring-matching common corpus words.
+    const corpus = "Online research into the firm. Insight into markets. Associate programme overview.";
+    expect(findUngroundedClaims("On their open day I met a recruiter.", corpus)).toHaveLength(1);
+  });
+});
+
+describe("findUngroundedClaims - additional experiential triggers (recall #3)", () => {
+  it("FLAGS 'I sat down with an analyst' when ungrounded", () => {
+    expect(findUngroundedClaims("I sat down with an analyst from the desk.", EMPTY_CORPUS)).toHaveLength(1);
+  });
+
+  it("FLAGS 'I caught up with someone from the desk' when ungrounded", () => {
+    expect(findUngroundedClaims("I caught up with someone from the desk.", EMPTY_CORPUS)).toHaveLength(1);
+  });
+
+  it("FLAGS 'I grabbed coffee with a trader' when ungrounded", () => {
+    expect(findUngroundedClaims("I grabbed coffee with a trader.", EMPTY_CORPUS)).toHaveLength(1);
+  });
+});
+
+describe("findUngroundedClaims - hypothetical/negational guard (false positive #4)", () => {
+  it("does NOT flag a hypothetical comparison '...more than any careers-fair conversation would have'", () => {
+    const text =
+      "Reading their annual report taught me more than any careers-fair conversation would have.";
+    expect(findUngroundedClaims(text, EMPTY_CORPUS)).toEqual([]);
+  });
+
+  it("still FLAGS a real ungrounded attendance 'I attended a careers fair'", () => {
+    expect(findUngroundedClaims("I attended a careers fair last term.", EMPTY_CORPUS)).toHaveLength(1);
+  });
+
+  it("does NOT flag a conditional 'if I had attended an insight day'", () => {
+    expect(findUngroundedClaims("If I had attended an insight day, I would understand the rotation.", EMPTY_CORPUS)).toEqual([]);
+  });
+});
+
 describe("findUngroundedClaims - edge cases", () => {
   it("returns an empty array for an empty draft", () => {
     expect(findUngroundedClaims("", EMPTY_CORPUS)).toEqual([]);

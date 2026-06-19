@@ -131,6 +131,40 @@ describe("draftText grader loop", () => {
     expect(out.provenance.gradeResult.skipped).toBe(false);
   });
 
+  it("ships-best-draft: prefers fewer ungrounded claims — a clean initial draft beats a fabricating revision with an equal-or-better verdict", async () => {
+    // Coverage gap the reviewer found unprotected: the best-draft scorer weights ungrounded
+    // claims FIRST (fabrication is the worst failure mode), so a revision that introduces a
+    // fabricated experience must NEVER displace a clean earlier draft — even if its grader
+    // verdict is equal or better.
+    mocks.generateText.mockReset();
+    mocks.generateText
+      // INITIAL: clean + reportative. Zero ungrounded claims against CTX's corpus.
+      .mockResolvedValueOnce({
+        text: "I read about Barclays' markets work and admire their discipline.",
+        usage: { totalTokens: 50 },
+      })
+      // REVISED: fabricates an event absent from the corpus (a Citi careers panel) -> 1 ungrounded.
+      .mockResolvedValue({ text: "I attended a Citi careers panel last week.", usage: { totalTokens: 50 } });
+
+    // Initial grade FAILS (so the loop enters a revise) but the REVISED grade PASSES — a strictly
+    // better verdict. Without the ungrounded penalty the passing revision would ship; the penalty
+    // (fabrication weighted first) must keep the clean initial draft instead.
+    mocks.gradeDraft
+      .mockResolvedValueOnce(grade(false, [{ name: "firm-hook", pass: false, fix: "name a desk" }])) // initial: fail
+      .mockResolvedValue(grade(true, [{ name: "firm-hook", pass: true }])); // revised: pass (better verdict)
+
+    const out = await draftText("u1", CTX, { kind: "ANSWER", question: "How have you engaged with us?", employerName: "Citi" });
+
+    // initial grade + 1 re-grade after the revise (attempt cap = 1).
+    expect(mocks.gradeDraft).toHaveBeenCalledTimes(2);
+    expect(mocks.generateText).toHaveBeenCalledTimes(2); // initial + 1 revise
+    // The CLEAN initial draft must ship, NOT the fabricating revision (despite its passing verdict).
+    expect(out.text).toBe("I read about Barclays' markets work and admire their discipline.");
+    // And the shipped draft carries zero ungrounded claims (the fabricating revision was rejected).
+    expect(out.provenance.ungroundedClaims).toEqual([]);
+    expect(out.provenance.gradeResult.attempts).toBe(1);
+  });
+
   it("cost-cap: the worst case fires at most ONE revise beyond the initial draft (<= 2 Sonnet generateText calls)", async () => {
     // Even on perpetual failure, the loop must not exceed one revise (the collapsed cap).
     mocks.gradeDraft.mockResolvedValue(grade(false, [{ name: "firm-hook", pass: false, fix: "x" }]));
