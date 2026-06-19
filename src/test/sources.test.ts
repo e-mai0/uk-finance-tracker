@@ -166,6 +166,46 @@ describe("liveSources registry", () => {
     expect(new URL(desco!.url).hostname.endsWith("deshaw.com")).toBe(true);
   });
 
+  it("includes the Workday-bank + PDT onboarding batch (reused adapters)", () => {
+    const byKey = new Map(liveSources.map((s) => [key(s), s]));
+
+    // workday — NatWest (tenant rbs / site RBS), verified 200 + London/Edinburgh
+    const natwest = byKey.get("WORKDAY::natwest-rbs");
+    expect(natwest?.employerName).toBe("NatWest Group");
+    expect(natwest?.config).toEqual({
+      ats: "workday",
+      host: "rbs.wd3.myworkdayjobs.com",
+      tenant: "rbs",
+      site: "RBS",
+    });
+
+    // workday — Lloyds Banking Group (tenant lbg / site LBG_Careers on wd3)
+    const lloyds = byKey.get("WORKDAY::lloyds-lbg");
+    expect(lloyds?.employerName).toBe("Lloyds Banking Group");
+    expect(lloyds?.config).toEqual({
+      ats: "workday",
+      host: "lbg.wd3.myworkdayjobs.com",
+      tenant: "lbg",
+      site: "LBG_Careers",
+    });
+
+    // workday — Wellington Management (tenant wellington / site External on wd5)
+    const wellington = byKey.get("WORKDAY::wellington-external");
+    expect(wellington?.employerName).toBe("Wellington Management");
+    expect(wellington?.config).toEqual({
+      ats: "workday",
+      host: "wellington.wd5.myworkdayjobs.com",
+      tenant: "wellington",
+      site: "External",
+    });
+
+    // greenhouse — PDT Partners (board token IS the identifier, no config)
+    const pdt = byKey.get("GREENHOUSE::pdtpartners");
+    expect(pdt?.employerName).toBe("PDT Partners");
+    expect(pdt?.config, "pdt has no config").toBeUndefined();
+    expect(pdt?.url, "pdt url").toMatch(/greenhouse\.io\//);
+  });
+
   it("watches Capula's reachable jobs.json as a CAREERS_PAGE radar row", () => {
     const byKey = new Map(liveSources.map((s) => [key(s), s]));
     const capula = byKey.get("CAREERS_PAGE::capula-jobs-json");
