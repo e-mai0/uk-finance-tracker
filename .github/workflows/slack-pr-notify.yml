@@ -1,0 +1,122 @@
+name: Slack PR Notify
+
+# Posts PR-lifecycle and CI-result updates to the "PR logs" Slack channel
+# via an Incoming Webhook stored in the SLACK_PR_WEBHOOK repo secret.
+#
+# Setup: create a Slack Incoming Webhook for the channel, then add its URL as
+#   Settings → Secrets and variables → Actions → New repository secret
+#   Name: SLACK_PR_WEBHOOK
+# Until that secret exists every run no-ops with a warning (never fails CI).
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+# This workflow only talks to Slack; it needs no repo token.
+permissions: {}
+
+jobs:
+  pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack (PR lifecycle)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_WEBHOOK }}
+          ACTION: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Fork PRs do not receive secrets — skip quietly instead of failing.
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "::warning::SLACK_PR_WEBHOOK not set (or unavailable on fork PR); skipping."
+            exit 0
+          fi
+
+          case "$ACTION" in
+            opened)
+              if [ "$DRAFT" = "true" ]; then emoji=":memo:"; verb="opened (draft)"; else emoji=":sparkles:"; verb="opened"; fi ;;
+            reopened)          emoji=":recycle:"; verb="reopened" ;;
+            ready_for_review)  emoji=":eyes:";    verb="ready for review" ;;
+            closed)
+              if [ "$MERGED" = "true" ]; then emoji=":merged:"; verb="merged"; else emoji=":wastebasket:"; verb="closed without merging"; fi ;;
+            *) echo "Unhandled action: $ACTION"; exit 0 ;;
+          esac
+
+          # Build JSON with jq --arg so PR titles / branch names can't break the
+          # payload or inject shell. Backticks live inside the single-quoted jq
+          # program, so the shell never interprets them.
+          payload=$(jq -n \
+            --arg emoji "$emoji" --arg verb "$verb" --arg author "$PR_AUTHOR" \
+            --arg num "$PR_NUMBER" --arg title "$PR_TITLE" --arg url "$PR_URL" \
+            --arg repo "$REPO" --arg head "$HEAD_REF" --arg base "$BASE_REF" \
+            '{
+              blocks: [
+                { type: "section", text: { type: "mrkdwn", text: ($emoji + " *PR " + $verb + "* by " + $author) } },
+                { type: "section", text: { type: "mrkdwn", text: ("<" + $url + "|#" + $num + " " + $title + ">") } },
+                { type: "context", elements: [ { type: "mrkdwn", text: ($repo + " • `" + $head + "` → `" + $base + "`") } ] }
+              ]
+            }')
+
+          curl -sSf -X POST -H 'Content-Type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
+
+  ci:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack (CI result)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_WEBHOOK }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          ACTOR: ${{ github.event.workflow_run.actor.login }}
+          TRIGGER_EVENT: ${{ github.event.workflow_run.event }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "::warning::SLACK_PR_WEBHOOK not set; skipping."
+            exit 0
+          fi
+
+          # Keep the channel focused on PR work: only report CI runs that came
+          # from a pull_request (skip branch pushes to main, etc.).
+          if [ "$TRIGGER_EVENT" != "pull_request" ]; then
+            echo "CI run triggered by '$TRIGGER_EVENT', not a pull_request; skipping."
+            exit 0
+          fi
+
+          case "$CONCLUSION" in
+            success)   emoji=":white_check_mark:"; verb="passed" ;;
+            failure)   emoji=":x:";                verb="failed" ;;
+            cancelled) emoji=":no_entry_sign:";    verb="was cancelled" ;;
+            timed_out) emoji=":hourglass:";        verb="timed out" ;;
+            *) echo "Unreported conclusion: $CONCLUSION"; exit 0 ;;
+          esac
+
+          payload=$(jq -n \
+            --arg emoji "$emoji" --arg verb "$verb" --arg wf "$WF_NAME" \
+            --arg url "$RUN_URL" --arg repo "$REPO" --arg branch "$HEAD_BRANCH" --arg actor "$ACTOR" \
+            '{
+              blocks: [
+                { type: "section", text: { type: "mrkdwn", text: ($emoji + " *" + $wf + " " + $verb + "* on `" + $branch + "`") } },
+                { type: "context", elements: [ { type: "mrkdwn", text: ("<" + $url + "|View run> • " + $repo + " • by " + $actor) } ] }
+              ]
+            }')
+
+          curl -sSf -X POST -H 'Content-Type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
