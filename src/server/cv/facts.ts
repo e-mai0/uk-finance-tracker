@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { haiku } from "@/server/ai/models";
+import { modelFor } from "@/server/ai/models";
 import { checkBudget, recordUsage } from "@/server/ai/budget";
 import { memoryService } from "@/server/memory/service";
 import { applyFact } from "@/server/memory/facts";
@@ -41,7 +41,7 @@ export async function extractCvFactsToMemory(userId: string, cvText: string): Pr
     if (!budget.ok) return;
 
     const { object, usage } = await generateObject({
-      model: haiku,
+      model: modelFor("cvFacts"),
       schema: CvFactsSchema,
       prompt: `Extract up to 8 short factual highlights from this CV for a memory file used to ground job-application drafting. Focus on: work experience (employer, role, one concrete achievement each), standout projects, notable skills or qualifications, awards. One plain sentence per fact, no markdown, max ~25 words each. Only state what the CV actually says — never embellish.
 

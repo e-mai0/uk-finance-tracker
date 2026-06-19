@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { haiku } from "@/server/ai/models";
+import { modelFor } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 
 const MIN_EDITS = 5;
@@ -12,7 +12,7 @@ export async function distillTraits(
   edits: { original: string; edited: string }[],
 ): Promise<string[]> {
   const { object, usage } = await generateObject({
-    model: haiku,
+    model: modelFor("distill"),
     schema: TraitResult,
     // Output cap (cost): the result is at most 5 traits of <=120 chars each. 512 tokens is
     // ample for that JSON while bounding a runaway generation (was previously uncapped).

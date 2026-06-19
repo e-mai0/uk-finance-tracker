@@ -1,5 +1,5 @@
 import { generateText, type SystemModelMessage } from "ai";
-import { sonnet, SONNET_ID, ANTHROPIC_CACHE_BREAKPOINT } from "@/server/ai/models";
+import { modelFor, modelIdFor, ANTHROPIC_CACHE_BREAKPOINT } from "@/server/ai/models";
 import { recordUsage } from "@/server/ai/budget";
 import { classifyQuestion, selectStories, employerSlugOf } from "@/server/engine/stories";
 import { critiqueAndRevise, checkTells } from "@/server/engine/critique";
@@ -258,7 +258,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
   const system = buildSystem(ctx, tailoring);
   const prompt = parts.join("\n");
 
-  const { text, usage } = await generateText({ model: sonnet, system, prompt, maxOutputTokens });
+  const { text, usage } = await generateText({ model: modelFor("draft"), system, prompt, maxOutputTokens });
   recordUsage(userId, usage?.totalTokens ?? 0).catch(() => {});
 
   const trimmed = trimToLimit(text.trim(), args.charLimit);
@@ -299,7 +299,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
       attempts += 1;
       const revisePrompt = reviseInstructionFromVerdict(grade);
       const { text: revisedText, usage: revUsage } = await generateText({
-        model: sonnet,
+        model: modelFor("draft"),
         system,
         prompt: revisePrompt + "\n\nDraft:\n" + final,
         maxOutputTokens,
@@ -346,7 +346,7 @@ export async function draftText(userId: string, ctx: DraftContext, args: DraftAr
       checksFailed: critiqued.checksFailed,
       revised: critiqued.revised,
       questionKind,
-      model: SONNET_ID,
+      model: modelIdFor("draft"),
       residualTells,
       thinGrounding,
       register,

@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { haiku } from "@/server/ai/models";
+import { modelFor } from "@/server/ai/models";
 import type { createMemoryService } from "@/server/memory/service";
 
 type MemoryService = ReturnType<typeof createMemoryService>;
@@ -110,7 +110,7 @@ export async function runGardener(
   try {
     const prompt = await buildGardenerPrompt(userId, svc);
     const { object, usage } = await generateObject({
-      model: haiku,
+      model: modelFor("gardener"),
       schema: GardenerResult,
       prompt,
       maxOutputTokens: 8000,
