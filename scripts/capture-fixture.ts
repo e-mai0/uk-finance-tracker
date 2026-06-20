@@ -9,7 +9,7 @@ async function main(): Promise<void> {
   if (!url || !out) {
     throw new Error("usage: npx tsx scripts/capture-fixture.ts <url> <out.json>");
   }
-  const res = await fetch(url, { headers: { "user-agent": "TrackrBot/1.0 (fixture capture)" } });
+  const res = await fetch(url, { headers: { "user-agent": "CyclopsBot/1.0 (fixture capture)" } });
   await writeFile(out, await res.text());
   console.log(`captured ${url} → ${out} (${res.status})`);
 }

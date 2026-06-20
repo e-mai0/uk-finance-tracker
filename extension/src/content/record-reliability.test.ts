@@ -144,7 +144,7 @@ describe("Panel.showRecordError — error is visible in the panel", () => {
     panel.showRecordError("Couldn't save this application — click Apply to retry");
 
     // The shadow root should contain the error text
-    const shadow = document.getElementById("trackr-autofill-root")!.shadowRoot!;
+    const shadow = document.getElementById("cyclops-autofill-root")!.shadowRoot!;
     expect(shadow.textContent).toContain("Couldn't save this application");
   });
 
@@ -164,7 +164,7 @@ describe("Panel.showRecordError — error is visible in the panel", () => {
 
     panel.showRecordError("Couldn't save this application — click Apply to retry");
 
-    const shadow = document.getElementById("trackr-autofill-root")!.shadowRoot!;
+    const shadow = document.getElementById("cyclops-autofill-root")!.shadowRoot!;
     const errEl = shadow.querySelector(".err");
     expect(errEl).not.toBeNull();
     expect(errEl!.textContent).toContain("Couldn't save this application");

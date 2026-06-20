@@ -1,4 +1,4 @@
-# Trackr — Project Status
+# Cyclops — Project Status
 
 _Last updated: 2026-06-11_
 
@@ -8,7 +8,7 @@ _Last updated: 2026-06-11_
 > merge and are kept for context.
 
 > **Cyclops Phases 1–4 (developed on branch `cyclopslevelup`).**
-> Trackr is being overhauled into **Cyclops**, an AI "application OS"
+> **Cyclops** is an AI "application OS"
 > (spec: `docs/superpowers/specs/2026-06-09-cyclops-application-os-design.md`).
 > All four phases are fully implemented and reviewed on the branch:
 > **Phase 1** — per-user markdown memory tree with revisions + anti-rot gardener,
@@ -73,7 +73,7 @@ extension see `extension/README.md`.
 
 ## 1. Snapshot
 
-- **Live:** https://trackr-brown.vercel.app — demo login `demo@trackr.local` / `demo1234`
+- **Live:** https://cyclops-brown.vercel.app — demo login `demo@cyclops.local` / `demo1234`
 - **Repo:** `github.com/e-mai0/uk-finance-tracker` (private). Default branch **`main`**;
   **push to `main` auto-deploys to Vercel production.**
 - **Local:** `C:\Users\ericc\dev\uk-finance-tracker` (deliberately outside OneDrive).
@@ -257,7 +257,7 @@ npm install
 npm run build          # -> extension/dist
 ```
 Load `extension/dist` via `chrome://extensions` → Developer mode → Load unpacked.
-Connect: Trackr → Settings → Browser extension → Generate token (auto-connects or
+Connect: Cyclops → Settings → Browser extension → Generate token (auto-connects or
 paste in popup). Test on a Greenhouse/Lever/Ashby application form.
 
 **Gotchas**
@@ -291,9 +291,9 @@ paste in popup). Test on a Greenhouse/Lever/Ashby application form.
 
 ## 9. Operational facts
 
-- **Supabase:** project `trackr`, ref `vemgdpahhhabkphgevzx`, region eu-west-2 (London).
+- **Supabase:** project `cyclops`, ref `vemgdpahhhabkphgevzx`, region eu-west-2 (London).
   Pooler host is **aws-1**-eu-west-2 (not aws-0). Private bucket `cvs` (10 MB limit).
-- **Vercel:** team `e-mai0s-projects`, project `trackr`. Prod env vars set:
+- **Vercel:** team `e-mai0s-projects`, project `cyclops`. Prod env vars set:
   `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `AUTH_TRUST_HOST`, `ANTHROPIC_API_KEY`,
   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 - **Branching note:** copilot work was done on `source-research/uk-finance-source-plans`;

@@ -124,7 +124,7 @@ export class Panel {
   constructor(handlers: PanelHandlers) {
     this.handlers = handlers;
     this.host = document.createElement("div");
-    this.host.id = "trackr-autofill-root";
+    this.host.id = "cyclops-autofill-root";
     this.root = this.host.attachShadow({ mode: "open" });
 
     const style = document.createElement("style");
@@ -134,7 +134,7 @@ export class Panel {
     const wrap = el("div", "wrap");
     const head = el("div", "head");
     const brand = el("span", "brand");
-    brand.textContent = "Trackr";
+    brand.textContent = "Cyclops";
     this.statusEl = el("span", "status") as HTMLSpanElement;
     const close = el("button", "close");
     close.textContent = "×";
@@ -148,7 +148,7 @@ export class Panel {
 
     const foot = el("div", "foot");
     const footText = el("span");
-    footText.textContent = "You review and submit. Trackr never submits for you.";
+    footText.textContent = "You review and submit. Cyclops never submits for you.";
     this.discussLink = el<HTMLAnchorElement>("a");
     this.discussLink.target = "_blank";
     this.discussLink.rel = "noopener";
@@ -168,7 +168,7 @@ export class Panel {
   }
 
   mount() {
-    if (!document.getElementById("trackr-autofill-root")) {
+    if (!document.getElementById("cyclops-autofill-root")) {
       document.body.appendChild(this.host);
     }
   }
@@ -447,7 +447,7 @@ export class Panel {
     this.clearBody();
     const p = el("p", "muted");
     p.textContent =
-      "Connect the extension to your Trackr account: open Trackr → Settings → Browser extension, then paste the token in this extension's popup.";
+      "Connect the extension to your Cyclops account: open Cyclops → Settings → Browser extension, then paste the token in this extension's popup.";
     this.body.append(p);
   }
 

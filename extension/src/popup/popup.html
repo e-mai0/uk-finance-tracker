@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Trackr Autofill</title>
+    <title>Cyclops Autofill</title>
     <style>
       :root { color-scheme: light; }
       body {
@@ -37,19 +37,19 @@
     </style>
   </head>
   <body>
-    <h1>Trackr Autofill</h1>
-    <p class="sub">Fills application forms from your Trackr profile. You always review and submit.</p>
+    <h1>Cyclops Autofill</h1>
+    <p class="sub">Fills application forms from your Cyclops profile. You always review and submit.</p>
 
     <div id="status" class="status disconnected">Not connected</div>
 
     <div id="connectForm">
-      <label for="apiBase">Trackr URL</label>
+      <label for="apiBase">Cyclops URL</label>
       <select id="apiBase">
-        <option value="https://trackr-brown.vercel.app">trackr-brown.vercel.app</option>
+        <option value="https://cyclops-brown.vercel.app">cyclops-brown.vercel.app</option>
         <option value="http://localhost:3000">localhost:3000 (dev)</option>
       </select>
       <label for="token">Connection token</label>
-      <input id="token" type="password" placeholder="trk_… (from Trackr → Settings)" />
+      <input id="token" type="password" placeholder="trk_… (from Cyclops → Settings)" />
       <button id="connect">Connect</button>
     </div>
 
@@ -59,7 +59,7 @@
     <div id="msg" class="msg"></div>
 
     <p class="foot">
-      Get a token in Trackr → Settings → Browser extension. Tip: generating the
+      Get a token in Cyclops → Settings → Browser extension. Tip: generating the
       token there can connect this extension automatically.
     </p>
 

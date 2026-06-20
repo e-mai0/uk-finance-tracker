@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const user = await prisma.user.findUnique({
-    where: { email: "demo@trackr.local" },
+    where: { email: "demo@cyclops.local" },
     select: { id: true },
   });
   if (!user) throw new Error("demo user not found");

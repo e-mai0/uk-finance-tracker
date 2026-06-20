@@ -85,14 +85,14 @@ Dormant cue (pre-engage, bottom-right, no network):
 
 ```
         ╭───────────────────────────────╮
-        │ ◆ Trackr — apply with copilot │
+        │ ◆ Cyclops — apply with copilot │
         ╰───────────────────────────────╯
 ```
 
 Engaged panel:
 
 ```
-┌─ Trackr · Citadel — Quant Research Intern ──────── × ┐
+┌─ Cyclops · Citadel — Quant Research Intern ──────── × ┐
 │  Application form detected                            │
 │  ┌─────────────────────────────────────────────────┐ │
 │  │  ✅ Filled 11 fields            [review] [undo]  │ │   ← collapsed by default
@@ -116,7 +116,7 @@ Engaged panel:
 │  │ [redraft] [insert] [save to bank]                 │ │
 │  └─────────────────────────────────────────────────┘ │
 │                                                       │
-│  You review and submit. Trackr never submits for you.│
+│  You review and submit. Cyclops never submits for you.│
 └───────────────────────────────────────────────────────┘
 ```
 

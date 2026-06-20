@@ -56,14 +56,14 @@ export function buildCalendar(
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Trackr//UK Finance Internship Tracker//EN",
+    "PRODID:-//Cyclops//UK Finance Internship Tracker//EN",
     "CALSCALE:GREGORIAN",
-    fold(`X-WR-CALNAME:${escapeIcsText("Trackr — application deadlines")}`),
+    fold(`X-WR-CALNAME:${escapeIcsText("Cyclops — application deadlines")}`),
   ];
   for (const e of events) {
     lines.push(
       "BEGIN:VEVENT",
-      fold(`UID:${escapeIcsText(e.uid)}@trackr`),
+      fold(`UID:${escapeIcsText(e.uid)}@cyclops`),
       `DTSTAMP:${icsTimestamp(now)}`,
       `DTSTART;VALUE=DATE:${icsDate(e.date)}`,
       fold(`SUMMARY:${escapeIcsText(e.title)}`),

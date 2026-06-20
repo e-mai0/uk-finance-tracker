@@ -9,7 +9,7 @@ import { AnswerBankManager } from "@/components/settings/answer-bank-manager";
 import { ExtensionConnect } from "@/components/settings/extension-connect";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Settings — Trackr" };
+export const metadata = { title: "Settings — Cyclops" };
 
 const fmtDate = (d: Date) =>
   new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(d);
@@ -22,7 +22,7 @@ const fmtDate = (d: Date) =>
  * the overnight sweep is a 05:30 cron with per-user budget gates and a global
  * refresh cap (src/app/api/cron/overnight/route.ts); the extension fills only
  * after the user clicks the cue and never touches a submit button
- * (extension/src/content/panel.ts: "Trackr never submits for you").
+ * (extension/src/content/panel.ts: "Cyclops never submits for you").
  */
 const PERMISSIONS: { title: string; meta: string; chip: "on" | "you" }[] = [
   {

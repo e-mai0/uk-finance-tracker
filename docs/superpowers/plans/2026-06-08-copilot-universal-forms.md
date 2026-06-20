@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the Trackr Autofill copilot work on application forms that aren't covered by a built-in ATS adapter (e.g. Greenhouse's new job board, D.E. Shaw's custom ATS, Google Forms) and stop the `"Invalid request"` 400 that kills planning on real-world forms.
+**Goal:** Make the Cyclops Autofill copilot work on application forms that aren't covered by a built-in ATS adapter (e.g. Greenhouse's new job board, D.E. Shaw's custom ATS, Google Forms) and stop the `"Invalid request"` 400 that kills planning on real-world forms.
 
 **Architecture:** Five independent fixes, each separately mergeable. (A) The serializer↔schema contract is made forgiving on both sides so one oversized field can't 400 the whole form. (B) A manual "Activate on this page" trigger in the popup, received by a new content-script message listener, gives a universal escape hatch when auto-detection declines. (C) Auto-detection is repaired for form-less field clusters and the new Greenhouse markup. (D) `all_frames` injection plus a sub-frame size guard handles iframed embeds. (E) An ARIA-widget module serializes and fills Google-Forms-style `role="radio"/"listbox"` controls that native serialization misses.
 
@@ -39,7 +39,7 @@
 - `extension/package.json` — add `vitest` + `jsdom`, `"test"` script.
 - `extension/src/content/serialize.ts` — clamp fields; fold in ARIA controls.
 - `extension/src/content/detect.ts` — export `hasAnyField`; robust `innerText` fallback; relaxed threshold.
-- `extension/src/content/index.ts` — `engage(force)`, `trackr:activate` listener, sub-frame guard.
+- `extension/src/content/index.ts` — `engage(force)`, `cyclops:activate` listener, sub-frame guard.
 - `extension/src/content/autofill.ts` — `FillTarget` union; route ARIA fills.
 - `extension/src/content/adapters/greenhouse.ts` — refresh selectors.
 - `extension/src/popup/popup.html` + `extension/src/popup/popup.ts` — "Activate on this page" button.
@@ -403,7 +403,7 @@ git commit -m "fix(ext): clamp serialized fields to server bounds before plannin
 
 ## Phase B — Manual trigger (popup button + content-script listener)
 
-### Task 4: `engage(force)` + `trackr:activate` listener + `hasAnyField`
+### Task 4: `engage(force)` + `cyclops:activate` listener + `hasAnyField`
 
 **Files:**
 - Modify: `extension/src/content/detect.ts`
@@ -517,10 +517,10 @@ After the `panel` is constructed and before `init()` is defined, register the li
 // owns a form engages, the rest no-op. This is the universal fallback for pages
 // the auto-detector declines.
 chrome.runtime.onMessage.addListener((msg: { type?: string }, _sender, sendResponse) => {
-  if (msg?.type !== "trackr:activate") return false;
+  if (msg?.type !== "cyclops:activate") return false;
   const hasForm = formContainer() != null || hasAnyField();
   if (!hasForm) { sendResponse({ ok: false }); return true; }
-  document.getElementById("trackr-cue-root")?.remove();
+  document.getElementById("cyclops-cue-root")?.remove();
   panel.mount();
   panel.setStatus("");
   void engage(true);
@@ -536,7 +536,7 @@ Expected: no errors.
 
 ```bash
 git add extension/src/content/detect.ts extension/src/content/detect.test.ts extension/src/content/index.ts
-git commit -m "feat(ext): force-engage path + trackr:activate listener + hasAnyField"
+git commit -m "feat(ext): force-engage path + cyclops:activate listener + hasAnyField"
 ```
 
 ### Task 5: "Activate on this page" button in the popup
@@ -568,7 +568,7 @@ activateBtn.addEventListener("click", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) { setMsg("No active tab."); return; }
   // Broadcast to all frames; the frame with a form will engage.
-  chrome.tabs.sendMessage(tab.id, { type: "trackr:activate" }, () => {
+  chrome.tabs.sendMessage(tab.id, { type: "cyclops:activate" }, () => {
     // Swallow "no receiving end" when the content script isn't injected here.
     void chrome.runtime.lastError;
   });
@@ -583,7 +583,7 @@ activateBtn.addEventListener("click", async () => {
 cd extension && npm run build
 ```
 
-Then in Edge/Chrome → Extensions → Load unpacked → select `extension/dist`. Open any form page (e.g. a Google Form), click the toolbar icon → "Activate on this page". Expected: the Trackr panel mounts bottom-right and runs the plan (or shows the connect prompt if not connected).
+Then in Edge/Chrome → Extensions → Load unpacked → select `extension/dist`. Open any form page (e.g. a Google Form), click the toolbar icon → "Activate on this page". Expected: the Cyclops panel mounts bottom-right and runs the plan (or shows the connect prompt if not connected).
 
 - [ ] **Step 4: Commit**
 
@@ -692,7 +692,7 @@ In `extension/manifest.json`, change the first `content_scripts` entry (lines 21
 ```json
     {
       "matches": ["<all_urls>"],
-      "exclude_matches": ["http://localhost:3000/*", "https://trackr-brown.vercel.app/*"],
+      "exclude_matches": ["http://localhost:3000/*", "https://cyclops-brown.vercel.app/*"],
       "js": ["src/content/index.ts"],
       "all_frames": true,
       "run_at": "document_idle"

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ============================================================================
-  TRACKR — Variant C: "COBALT DESK"
+  CYCLOPS — Variant C: "COBALT DESK"
   ----------------------------------------------------------------------------
   Concept: A modern, electric take on a Bloomberg terminal. Keeps the
   data-density and scannability of a trading desk, but reads like a 2026
@@ -25,7 +25,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trackr — The UK Finance Internship Terminal</title>
+<title>Cyclops — The UK Finance Internship Terminal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
@@ -479,7 +479,7 @@ footer{border-top:1px solid var(--hair);padding:34px 0 50px}
 <!-- ============================ NAV ============================ -->
 <nav class="nav">
   <div class="wrap nav-inner">
-    <a class="brand" href="#"><span class="glyph"></span><b>Trackr</b><span class="dot">.</span></a>
+    <a class="brand" href="#"><span class="glyph"></span><b>Cyclops</b><span class="dot">.</span></a>
     <div class="nav-links">
       <a href="#terminal">Terminal</a>
       <a href="#how">Fit scoring</a>
@@ -503,7 +503,7 @@ footer{border-top:1px solid var(--hair);padding:34px 0 50px}
     <div>
       <span class="pill reveal r1"><span class="live-dot"></span>Live · UK Summer 2026 · updated 4m ago</span>
       <h1 class="reveal r2">Every internship,<br>scored for <span class="em">your</span> fit.</h1>
-      <p class="lede reveal r3">Trackr turns the scramble for UK finance summer internships into a single, dense dashboard — every open role scored 0–100 against your background, with a plain-English why. No noise. No guesswork.</p>
+      <p class="lede reveal r3">Cyclops turns the scramble for UK finance summer internships into a single, dense dashboard — every open role scored 0–100 against your background, with a plain-English why. No noise. No guesswork.</p>
       <div class="hero-cta reveal r4">
         <button class="btn btn-primary btn-lg">Build my profile — free</button>
         <button class="btn btn-ghost btn-lg">See a live demo</button>
@@ -574,7 +574,7 @@ footer{border-top:1px solid var(--hair);padding:34px 0 50px}
 
   <!-- ============================ FEATURES ============================ -->
   <section id="features">
-    <span class="section-eyebrow">Why Trackr</span>
+    <span class="section-eyebrow">Why Cyclops</span>
     <div class="features">
       <div class="feat reveal r1">
         <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
@@ -606,7 +606,7 @@ footer{border-top:1px solid var(--hair);padding:34px 0 50px}
       <!-- browser chrome -->
       <div class="chrome">
         <div class="dots"><i></i><i></i><i></i></div>
-        <div class="addr mono"><span class="lock">🔒</span>app.trackr.uk/terminal</div>
+        <div class="addr mono"><span class="lock">🔒</span>app.cyclops.uk/terminal</div>
         <div class="live"><span class="live-dot"></span>SYNCED</div>
       </div>
 
@@ -846,7 +846,7 @@ footer{border-top:1px solid var(--hair);padding:34px 0 50px}
   <section class="manifesto" id="how">
     <div class="wrap">
       <h2><span class="lime">Signal,</span> <span class="out">not noise.</span></h2>
-      <p>Spreadsheets and group chats lose you the deadline. Trackr scores every role against your real background and shows the working — so you apply to the right ones, first.</p>
+      <p>Spreadsheets and group chats lose you the deadline. Cyclops scores every role against your real background and shows the working — so you apply to the right ones, first.</p>
     </div>
   </section>
 
@@ -865,7 +865,7 @@ footer{border-top:1px solid var(--hair);padding:34px 0 50px}
 <footer>
   <div class="wrap foot-inner">
     <div class="lf">
-      <a class="brand" href="#"><span class="glyph"></span><b>Trackr</b><span class="dot">.</span></a>
+      <a class="brand" href="#"><span class="glyph"></span><b>Cyclops</b><span class="dot">.</span></a>
       <span class="foot-c">© 2026 · UK Summer Internships</span>
     </div>
     <div class="foot-links">
@@ -881,7 +881,7 @@ footer{border-top:1px solid var(--hair);padding:34px 0 50px}
   var root = document.documentElement;
   var btn  = document.getElementById('themeToggle');
   var saved = null;
-  try { saved = localStorage.getItem('trackr-theme'); } catch(e){}
+  try { saved = localStorage.getItem('cyclops-theme'); } catch(e){}
   if (saved) root.setAttribute('data-theme', saved);
   function sync(){
     var t = root.getAttribute('data-theme');
@@ -891,7 +891,7 @@ footer{border-top:1px solid var(--hair);padding:34px 0 50px}
   btn.addEventListener('click', function(){
     var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     root.setAttribute('data-theme', next);
-    try { localStorage.setItem('trackr-theme', next); } catch(e){}
+    try { localStorage.setItem('cyclops-theme', next); } catch(e){}
     sync();
   });
 })();

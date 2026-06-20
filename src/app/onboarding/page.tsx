@@ -5,7 +5,7 @@ import { prisma } from "@/server/db";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { Brand } from "@/components/brand";
 
-export const metadata = { title: "Get started — Trackr" };
+export const metadata = { title: "Get started — Cyclops" };
 
 export default async function OnboardingPage() {
   const session = await auth();

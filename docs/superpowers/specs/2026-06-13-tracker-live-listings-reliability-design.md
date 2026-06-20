@@ -93,7 +93,7 @@ Adopt the canonical pattern (last-seen + health-gated absence sweep + soft close
 
 ### 6. Polite, robust fetching (shared `common.ts` upgrades)
 
-- Identified UA (keep `TrackrBot/1.0`), explicit connect/read timeouts (already 15s), **full-jitter exponential backoff honoring `Retry-After`**, retry only 429/502/503/504/timeouts, per-host **circuit breaker**, ~1 req/s per host with jitter, honor `robots.txt` `Crawl-delay` (esp. tal.net 10s). Conditional GET (ETag/If-Modified-Since) where supported.
+- Identified UA (keep `CyclopsBot/1.0`), explicit connect/read timeouts (already 15s), **full-jitter exponential backoff honoring `Retry-After`**, retry only 429/502/503/504/timeouts, per-host **circuit breaker**, ~1 req/s per host with jitter, honor `robots.txt` `Crawl-delay` (esp. tal.net 10s). Conditional GET (ETag/If-Modified-Since) where supported.
 - An **Imperva/Incapsula guard**: detect interstitial markers / incident-ids in a 200 body and treat as a fetch failure → degrade host to `unreachable`, don't publish garbage.
 
 ---

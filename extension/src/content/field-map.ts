@@ -1,5 +1,5 @@
 /**
- * Heuristics that map a form field's visible label to a Trackr profile key, and
+ * Heuristics that map a form field's visible label to a Cyclops profile key, and
  * that decide which fields are free-text questions worth an AI draft. Kept
  * declarative so per-ATS quirks are localized to the adapters.
  */

@@ -71,7 +71,7 @@ All remaining fields, every one optional:
 
 Saved via a new `saveQuestionnaire()` server action; finish or skip routes to
 the dashboard. Welcome and Review steps are deleted. localStorage autosave is
-kept with the key bumped to `trackr.onboarding.v2` (old `v1` state is
+kept with the key bumped to `cyclops.onboarding.v2` (old `v1` state is
 discarded, not migrated — pre-launch data only).
 
 ### 2. Schema & validation changes

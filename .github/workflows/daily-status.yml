@@ -33,7 +33,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SITE_URL: https://trackr-brown.vercel.app
+      SITE_URL: https://cyclops-brown.vercel.app
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_STATUS_WEBHOOK }}
     steps:
       - uses: actions/checkout@v4

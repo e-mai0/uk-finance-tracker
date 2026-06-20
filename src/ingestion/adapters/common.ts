@@ -17,7 +17,7 @@ export function fallbackFamilyFor(employer: AdapterEmployer): RoleFamily | null 
 }
 
 // Polite crawler identification on every outbound ingestion request.
-const USER_AGENT = "TrackrBot/1.0 (UK student internship tracker)";
+const USER_AGENT = "CyclopsBot/1.0 (UK student internship tracker)";
 
 /** Fetch a public ATS JSON endpoint with a hard timeout. Throws on non-2xx so
  *  the sync layer can record the failure against the source. */

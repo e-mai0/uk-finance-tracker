@@ -84,7 +84,7 @@ And in the existing `CAREERS_PAGE` case, add hostname dispatch for the two bespo
 // One-off: saves a live endpoint response as a test fixture. Never imported by app code.
 import { writeFile } from "node:fs/promises";
 const [, , url, out] = process.argv;
-const res = await fetch(url, { headers: { "user-agent": "TrackrBot/1.0 (fixture capture)" } });
+const res = await fetch(url, { headers: { "user-agent": "CyclopsBot/1.0 (fixture capture)" } });
 await writeFile(out, await res.text());
 console.log(`captured ${url} → ${out} (${res.status})`);
 ```
@@ -587,7 +587,7 @@ export class WorkdayAdapter implements SourceAdapter {
     while (offset < total && offset < 2000) { // hard safety cap
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json", "user-agent": "Mozilla/5.0 (compatible; TrackrBot/1.0)" },
+        headers: { "content-type": "application/json", accept: "application/json", "user-agent": "Mozilla/5.0 (compatible; CyclopsBot/1.0)" },
         body: JSON.stringify({ limit: 20, offset, searchText: "intern", appliedFacets: {} }),
         signal: AbortSignal.timeout(15_000),
       });
@@ -1032,7 +1032,7 @@ export class GoldmanHigherAdapter implements SourceAdapter {
     while (page * 50 < total && page < 20) {
       const res = await fetch("https://api-higher.gs.com/gateway/api/v1/graphql", {
         method: "POST",
-        headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0 (compatible; TrackrBot/1.0)" },
+        headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0 (compatible; CyclopsBot/1.0)" },
         body: JSON.stringify({ query: QUERY, variables: { i: { page: { pageSize: 50, pageNumber: page }, experiences: ["CAMPUS"], searchTerm: "summer internship" } } }),
         signal: AbortSignal.timeout(15_000),
       });

@@ -20,7 +20,7 @@ async function refresh() {
   const res = await send<{ connected: boolean; apiBase?: string }>({ type: "status" });
   const connected = res.ok && res.data?.connected;
   if (connected) {
-    statusEl.textContent = `Connected to ${res.data?.apiBase ?? "Trackr"}`;
+    statusEl.textContent = `Connected to ${res.data?.apiBase ?? "Cyclops"}`;
     statusEl.className = "status connected";
     connectForm.classList.add("hide");
     disconnectBtn.classList.remove("hide");
@@ -36,7 +36,7 @@ connectBtn.addEventListener("click", async () => {
   const token = tokenInput.value.trim();
   const apiBase = apiBaseSelect.value;
   if (!token.startsWith("trk_")) {
-    setMsg("That doesn’t look like a Trackr token (starts with trk_).");
+    setMsg("That doesn’t look like a Cyclops token (starts with trk_).");
     return;
   }
   const res = await send({ type: "connect", token, apiBase });
@@ -55,10 +55,10 @@ disconnectBtn.addEventListener("click", async () => {
   await refresh();
 });
 
-/** Send trackr:activate to a tab; resolves true if a content script received it. */
+/** Send cyclops:activate to a tab; resolves true if a content script received it. */
 function sendActivate(tabId: number): Promise<boolean> {
   return new Promise((resolve) => {
-    chrome.tabs.sendMessage(tabId, { type: "trackr:activate" }, () => {
+    chrome.tabs.sendMessage(tabId, { type: "cyclops:activate" }, () => {
       // lastError === "no receiving end" means no content script is present.
       resolve(!chrome.runtime.lastError);
     });

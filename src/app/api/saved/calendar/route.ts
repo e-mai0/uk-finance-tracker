@@ -27,7 +27,7 @@ export async function GET() {
         uid: `${o.id}-deadline`,
         title: `${firm} — ${o.title} closes`,
         date: o.deadlineAt,
-        description: `Application deadline (${o.location}). Saved on Trackr.`,
+        description: `Application deadline (${o.location}). Saved on Cyclops.`,
         url,
       });
     }
@@ -36,7 +36,7 @@ export async function GET() {
         uid: `${o.id}-opens`,
         title: `${firm} — ${o.title} opens`,
         date: o.opensAt,
-        description: `Applications open (${o.location}). Saved on Trackr.`,
+        description: `Applications open (${o.location}). Saved on Cyclops.`,
         url,
       });
     }
@@ -45,7 +45,7 @@ export async function GET() {
   return new Response(buildCalendar(events), {
     headers: {
       "content-type": "text/calendar; charset=utf-8",
-      "content-disposition": 'attachment; filename="trackr-deadlines.ics"',
+      "content-disposition": 'attachment; filename="cyclops-deadlines.ics"',
     },
   });
 }

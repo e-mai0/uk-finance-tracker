@@ -3,7 +3,7 @@ import { prisma } from "../src/server/db";
 import { recomputeMatchScores } from "../src/server/matching";
 import { registerSources } from "./sources";
 
-const DEMO_EMAIL = "demo@trackr.local";
+const DEMO_EMAIL = "demo@cyclops.local";
 const DEMO_PASSWORD = "demo1234";
 
 async function main() {

@@ -30,7 +30,7 @@ describe("buildCalendar", () => {
       ],
       NOW,
     );
-    expect(ics).toContain("UID:opp1@trackr");
+    expect(ics).toContain("UID:opp1@cyclops");
     expect(ics).toContain("DTSTART;VALUE=DATE:20261031");
     expect(ics).toContain("SUMMARY:Goldman Sachs — IB Summer Analyst deadline");
     expect(ics).toContain("URL:https://example.com/apply");

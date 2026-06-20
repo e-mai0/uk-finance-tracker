@@ -7,7 +7,7 @@
 // hashed chunk, the chunk must be web-accessible from any origin. This widens
 // exactly the WAR group that carries the index bundle to <all_urls>. It does
 // NOT widen where the script auto-runs, and leaves the connect-script group
-// (Trackr origins only) untouched.
+// (Cyclops origins only) untouched.
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 

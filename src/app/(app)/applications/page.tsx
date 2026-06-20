@@ -6,7 +6,7 @@ import {
 } from "@/components/applications/applications-list";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Applications — Trackr" };
+export const metadata = { title: "Applications — Cyclops" };
 
 const fmtDate = (d: Date) =>
   new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(d);
@@ -104,7 +104,7 @@ export default async function ApplicationsPage() {
         <div className="rounded-card border border-dashed border-border-strong bg-surface px-6 py-12 text-center">
           <p className="text-sm font-medium text-ink">No applications yet</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-            Install the Trackr autofill extension and apply to a role — your
+            Install the Cyclops autofill extension and apply to a role — your
             applications will appear here automatically. You can also set it up in{" "}
             <a href="/settings" className="font-medium text-accent hover:underline">
               Settings

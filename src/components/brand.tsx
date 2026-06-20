@@ -16,7 +16,7 @@ export function Brand({
         className,
       )}
     >
-      Trackr<span className="text-accent">.</span>
+      Cyclops<span className="text-accent">.</span>
     </span>
   );
 

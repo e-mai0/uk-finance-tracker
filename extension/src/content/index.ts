@@ -25,7 +25,7 @@ import type {
 } from "../shared/types";
 
 /**
- * Content-script entry point, injected on all pages (except Trackr's own — see
+ * Content-script entry point, injected on all pages (except Cyclops's own — see
  * manifest exclude_matches). It detects application forms, shows a dormant cue,
  * and on engage: serializes the form, asks the backend for a fill plan, applies
  * it, and renders the ask-or-deduce triage. No network call happens until the
@@ -75,7 +75,7 @@ async function runAgentRound() {
     }
     if (form.fields.length > 60) {
       console.debug(
-        `[trackr] agent round ${round}: ${form.fields.length} fields on page, submitting first 60 (${form.fields.length - 60} dropped)`,
+        `[cyclops] agent round ${round}: ${form.fields.length} fields on page, submitting first 60 (${form.fields.length - 60} dropped)`,
       );
     }
     const fields = form.fields.slice(0, 60).map((f) => {
@@ -350,11 +350,11 @@ async function engage(force = false) {
 // owns a form engages, the rest no-op. This is the universal fallback for pages
 // the auto-detector declines.
 chrome.runtime.onMessage.addListener((msg: { type?: string }, _sender, sendResponse) => {
-  if (msg?.type !== "trackr:activate") return false;
+  if (msg?.type !== "cyclops:activate") return false;
   const hasForm = formContainer() != null || hasAnyField();
   if (!hasForm) return false;
   mounted = true;
-  document.getElementById("trackr-cue-root")?.remove();
+  document.getElementById("cyclops-cue-root")?.remove();
   panel.mount();
   panel.setStatus("");
   void engage(true);
