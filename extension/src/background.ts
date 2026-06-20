@@ -3,7 +3,7 @@ import type { BgRequest, BgResponse } from "./shared/types";
 
 /**
  * Service worker: the only place that holds the API token and talks to the
- * Trackr API. Content scripts and the popup message it; it never exposes the
+ * Cyclops API. Content scripts and the popup message it; it never exposes the
  * token to page context. Cross-origin fetches are permitted by host_permissions.
  */
 
@@ -12,7 +12,7 @@ async function apiFetch(
   init?: RequestInit,
 ): Promise<BgResponse> {
   const { token, apiBase } = await getAuth();
-  if (!token || !apiBase) return { ok: false, error: "Not connected to Trackr." };
+  if (!token || !apiBase) return { ok: false, error: "Not connected to Cyclops." };
 
   try {
     const res = await fetch(`${apiBase}${path}`, {

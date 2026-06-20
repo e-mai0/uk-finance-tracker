@@ -8,7 +8,7 @@ import { ScoutCard } from "@/components/tracker/scout-card";
 import type { IngestionSource } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Radar — Trackr" };
+export const metadata = { title: "Radar — Cyclops" };
 
 /**
  * The discovery surface. Two halves:

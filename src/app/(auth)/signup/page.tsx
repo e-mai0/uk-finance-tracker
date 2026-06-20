@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { SignupForm } from "@/components/auth/signup-form";
 
-export const metadata = { title: "Create account — Trackr" };
+export const metadata = { title: "Create account — Cyclops" };
 
 export default async function SignupPage() {
   const session = await auth();

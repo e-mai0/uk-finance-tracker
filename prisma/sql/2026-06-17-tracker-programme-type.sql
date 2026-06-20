@@ -24,7 +24,7 @@
 -- self-corrects any re-classified rows.
 --
 -- Fully additive and idempotent (safe to re-run). Run against the shared
--- Supabase DB ("trackr") before deploying the season change.
+-- Supabase DB ("cyclops") before deploying the season change.
 
 -- CreateEnum: ProgrammeType  (idempotent — PG has no CREATE TYPE IF NOT EXISTS)
 DO $$

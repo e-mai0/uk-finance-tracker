@@ -1,8 +1,8 @@
 {
-  "name": "trackr-autofill-extension",
+  "name": "cyclops-autofill-extension",
   "version": "0.1.0",
   "private": true,
-  "description": "Trackr Autofill — fills finance internship application forms from your Trackr profile and drafts answers on the page. You always review and submit.",
+  "description": "Cyclops Autofill — fills finance internship application forms from your Cyclops profile and drafts answers on the page. You always review and submit.",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -14,7 +14,7 @@ export default function AuthLayout({
             href="/"
             className="text-[1.1rem] font-extrabold tracking-tight text-white"
           >
-            Trackr<span className="text-amber">.</span>
+            Cyclops<span className="text-amber">.</span>
           </Link>
           <Link
             href="/"

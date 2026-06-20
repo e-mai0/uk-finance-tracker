@@ -36,7 +36,7 @@ export async function signupAction(
     if ((inviteCode ?? "").toLowerCase() !== required.toLowerCase()) {
       return {
         fieldErrors: {
-          inviteCode: ["That invite code isn’t valid. Trackr is in early access."],
+          inviteCode: ["That invite code isn’t valid. Cyclops is in early access."],
         },
       };
     }

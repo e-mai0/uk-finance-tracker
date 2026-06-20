@@ -1400,7 +1400,7 @@ interface EssentialsState {
   targetRoleFamilies: RoleFamily[];
 }
 
-const STORAGE_KEY = "trackr.onboarding.v2";
+const STORAGE_KEY = "cyclops.onboarding.v2";
 
 const EMPTY: EssentialsState = {
   university: "",

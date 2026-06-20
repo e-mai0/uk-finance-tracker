@@ -29,7 +29,7 @@ export function ExtensionConnect({ tokens }: { tokens: TokenRow[] }) {
         // Auto-handoff: an installed extension content script on this page
         // listens for this message and stores the token (manual paste also works).
         window.postMessage(
-          { source: "trackr-extension-connect", token: res.token },
+          { source: "cyclops-extension-connect", token: res.token },
           window.location.origin,
         );
       }
@@ -56,7 +56,7 @@ export function ExtensionConnect({ tokens }: { tokens: TokenRow[] }) {
 
       <div className="space-y-4 px-4 py-4">
         <p className="text-[0.8125rem] text-muted">
-          The Trackr autofill extension fills application forms from your apply
+          The Cyclops autofill extension fills application forms from your apply
           profile and drafts answers on the page. You always review and submit
           yourself.
         </p>

@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Trackr Autofill",
+  "name": "Cyclops Autofill",
   "version": "0.1.0",
-  "description": "Fills finance internship application forms from your Trackr profile and drafts answers on the page. You always review and submit.",
+  "description": "Fills finance internship application forms from your Cyclops profile and drafts answers on the page. You always review and submit.",
   "action": {
     "default_popup": "src/popup/popup.html",
-    "default_title": "Trackr Autofill"
+    "default_title": "Cyclops Autofill"
   },
   "background": {
     "service_worker": "src/background.ts",
@@ -17,7 +17,7 @@
     "https://*.lever.co/*",
     "https://*.ashbyhq.com/*",
     "https://*.myworkdayjobs.com/*",
-    "https://trackr-brown.vercel.app/*"
+    "https://cyclops-brown.vercel.app/*"
   ],
   "content_scripts": [
     {
@@ -32,12 +32,12 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["http://localhost:3000/*", "https://trackr-brown.vercel.app/*"],
+      "matches": ["http://localhost:3000/*", "https://cyclops-brown.vercel.app/*"],
       "js": ["src/content/connect.ts"],
       "run_at": "document_idle"
     }
   ],
   "externally_connectable": {
-    "matches": ["http://localhost:3000/*", "https://trackr-brown.vercel.app/*"]
+    "matches": ["http://localhost:3000/*", "https://cyclops-brown.vercel.app/*"]
   }
 }

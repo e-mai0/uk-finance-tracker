@@ -5,7 +5,7 @@
 -- CV-builder routes throw at runtime until this is applied.
 --
 -- Fully additive and idempotent (safe to re-run). Run against the shared
--- Supabase DB ("trackr") before the CV Builder is exercised.
+-- Supabase DB ("cyclops") before the CV Builder is exercised.
 
 -- AlterTable: ChatSession.kind  (existing rows default to 'cyclops')
 ALTER TABLE "ChatSession" ADD COLUMN IF NOT EXISTS "kind" TEXT NOT NULL DEFAULT 'cyclops';

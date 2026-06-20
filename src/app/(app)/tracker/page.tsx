@@ -12,7 +12,7 @@ import { TickerTape } from "@/components/tracker/ticker-tape";
 import { isFreshListing } from "@/components/tracker/signals";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Tracker — Trackr" };
+export const metadata = { title: "Tracker — Cyclops" };
 
 export default async function DashboardPage({
   searchParams,

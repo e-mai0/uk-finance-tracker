@@ -35,9 +35,9 @@ export function looksLikeApplication(doc: Document = document): boolean {
 
 /** Mount the dormant cue. Calls onEngage exactly once when clicked. */
 export function mountCue(onEngage: () => void): () => void {
-  if (document.getElementById("trackr-cue-root")) return () => {};
+  if (document.getElementById("cyclops-cue-root")) return () => {};
   const host = document.createElement("div");
-  host.id = "trackr-cue-root";
+  host.id = "cyclops-cue-root";
   const root = host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");
@@ -56,7 +56,7 @@ export function mountCue(onEngage: () => void): () => void {
 
   const btn = document.createElement("button");
   btn.className = "cue";
-  btn.textContent = "◆ Trackr — apply with copilot";
+  btn.textContent = "◆ Cyclops — apply with copilot";
   btn.addEventListener("click", () => {
     host.remove();
     onEngage();

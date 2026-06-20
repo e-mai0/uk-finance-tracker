@@ -8,7 +8,7 @@ import { MemoryEditor } from "./memory-editor";
 import type { MemoryRevision } from "./memory-editor";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Memory — Trackr" };
+export const metadata = { title: "Memory — Cyclops" };
 
 // Canonical files shown first, in order
 const CANONICAL_ORDER = ["profile.md", "voice.md", "strategy.md"];

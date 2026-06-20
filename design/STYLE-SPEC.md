@@ -1,6 +1,6 @@
-# Trackr — Style Spec & Port Plan
+# Cyclops — Style Spec & Port Plan
 
-Design system for the Trackr redesign, and the concrete plan to port it into the
+Design system for the Cyclops redesign, and the concrete plan to port it into the
 Next.js app. The reference implementation is **`design/terminal-b-paper.html`**
 (open it side-by-side while porting — every token and component below is realised
 there).
@@ -147,7 +147,7 @@ plus marketing in `src/app/page.tsx`. Map:
 | `monogram.tsx` | **Flat solid** color by division (drop gradients). In the Desk, prefer the **ticker CODE** (HLVR, BWTR…) over avatars. |
 | `toggle-chip.tsx` | Light chips → 6px radius; Desk → `.fchip` (sharp, amber when `on`). |
 | `skeleton.tsx`, `tag-input.tsx` | Re-token to the palettes; no structural change. |
-| `brand.tsx` | **Text-only wordmark `Trackr.`** (accent full-stop). No glyph/svg. Optional mono descriptor. |
+| `brand.tsx` | **Text-only wordmark `Cyclops.`** (accent full-stop). No glyph/svg. Optional mono descriptor. |
 | `app-header.tsx` | Light marketing nav uses light tokens; in-app header may adopt a slim Desk command-bar treatment. |
 
 ### The Desk — `src/components/tracker/`

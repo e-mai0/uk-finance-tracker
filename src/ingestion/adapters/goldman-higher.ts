@@ -36,7 +36,7 @@ export class GoldmanHigherAdapter implements SourceAdapter {
     while (page * 50 < total && page < 20) {
       const res = await fetch("https://api-higher.gs.com/gateway/api/v1/graphql", {
         method: "POST",
-        headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0 (compatible; TrackrBot/1.0)" },
+        headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0 (compatible; CyclopsBot/1.0)" },
         body: JSON.stringify({ query: QUERY, variables: { i: { page: { pageSize: 50, pageNumber: page }, experiences: ["CAMPUS"], searchTerm: "summer internship" } } }),
         signal: AbortSignal.timeout(15_000),
       });

@@ -1,6 +1,6 @@
-# Trackr — UK Finance Summer Internship Tracker
+# Cyclops — UK Finance Summer Internship Tracker
 
-**▲ Live:** https://trackr-brown.vercel.app — demo login `demo@trackr.local` / `demo1234`
+**▲ Live:** https://cyclops-brown.vercel.app — demo login `demo@cyclops.local` / `demo1234`
 
 A production-minded MVP that helps ambitious UK students find, rank, and track
 **finance summer internships**. Students sign up, complete a short onboarding,
@@ -186,7 +186,7 @@ Open <http://localhost:3000>.
 The seed creates a ready-to-use account:
 
 ```
-Email:    demo@trackr.local
+Email:    demo@cyclops.local
 Password: demo1234
 ```
 

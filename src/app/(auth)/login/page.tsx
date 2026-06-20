@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { LoginForm } from "@/components/auth/login-form";
 
-export const metadata = { title: "Sign in — Trackr" };
+export const metadata = { title: "Sign in — Cyclops" };
 
 export default async function LoginPage() {
   const session = await auth();
@@ -41,7 +41,7 @@ export default async function LoginPage() {
 
         <div className="mt-5 border border-border bg-surface-2 px-3 py-2.5 font-mono text-xs text-muted">
           <span className="label text-[0.58rem] text-subtle">Demo</span>{" "}
-          <span className="text-ink">demo@trackr.local</span> /{" "}
+          <span className="text-ink">demo@cyclops.local</span> /{" "}
           <span className="text-ink">demo1234</span>
         </div>
       </div>

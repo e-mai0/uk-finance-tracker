@@ -11,7 +11,7 @@ import { getOpenAttentionByTarget } from "@/server/queries/attention";
 import { DOCK_THREAD_TITLE } from "@/lib/dock-context";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Cyclops — Trackr" };
+export const metadata = { title: "Cyclops" };
 
 /** Deep-link prefill: strip control/C1/zero-width/bidi chars, collapse whitespace, cap at 200. */
 function sanitizePrefill(raw: string): string {

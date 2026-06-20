@@ -73,7 +73,7 @@ export class WorkdayAdapter implements SourceAdapter {
     while (offset < total && offset < 2000) {
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json", "user-agent": "Mozilla/5.0 (compatible; TrackrBot/1.0)" },
+        headers: { "content-type": "application/json", accept: "application/json", "user-agent": "Mozilla/5.0 (compatible; CyclopsBot/1.0)" },
         body: JSON.stringify({ limit: 20, offset, searchText, appliedFacets: {} }),
         signal: AbortSignal.timeout(15_000),
       });

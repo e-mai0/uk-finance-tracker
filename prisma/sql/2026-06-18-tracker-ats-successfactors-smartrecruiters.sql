@@ -17,7 +17,7 @@
 -- Fully additive and idempotent (safe to re-run). ALTER TYPE ... ADD VALUE is
 -- not transactional on some Postgres versions — run each statement standalone
 -- (Supabase SQL editor / psql), not wrapped in BEGIN/COMMIT. Run against the
--- shared Supabase DB ("trackr", project ref vemgdpahhhabkphgevzx) before
+-- shared Supabase DB ("cyclops", project ref vemgdpahhhabkphgevzx) before
 -- deploying the new-adapter change.
 
 ALTER TYPE "SourceType" ADD VALUE IF NOT EXISTS 'SUCCESSFACTORS';

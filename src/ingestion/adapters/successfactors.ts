@@ -174,7 +174,7 @@ export class SuccessFactorsAdapter implements SourceAdapter {
     while (startrow < MAX_ROWS) {
       // CSB serves tiles only to a browser-like UA.
       const html = await fetchTextRobust(`${base}&startrow=${startrow}`, {
-        headers: { "user-agent": "Mozilla/5.0 (compatible; TrackrBot/1.0)" },
+        headers: { "user-agent": "Mozilla/5.0 (compatible; CyclopsBot/1.0)" },
       });
       const tiles = [...html.matchAll(TILE_OPEN_RE)];
       if (tiles.length === 0) break; // out-of-range page → empty body → done

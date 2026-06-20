@@ -1051,7 +1051,7 @@ git commit -m "feat(copilot/ext): plan + saveFact message transport"
 **Files:**
 - Create: `extension/src/content/serialize.ts`
 
-Reuses `getLabelText` and `collectFields` from the existing `field-map.ts` (unchanged). Assigns each fillable element a stable id via a `data-trackr-fid` attribute and returns both the schema and a lookup map from id → element.
+Reuses `getLabelText` and `collectFields` from the existing `field-map.ts` (unchanged). Assigns each fillable element a stable id via a `data-cyclops-fid` attribute and returns both the schema and a lookup map from id → element.
 
 - [ ] **Step 1: Implement `extension/src/content/serialize.ts`**
 
@@ -1101,7 +1101,7 @@ export function serializeForm(root: ParentNode): SerializedForm {
     }
 
     const id = `f${i++}`;
-    el.setAttribute("data-trackr-fid", id);
+    el.setAttribute("data-cyclops-fid", id);
     elements.set(id, el);
 
     const type = fieldType(el);
@@ -1288,9 +1288,9 @@ export function looksLikeApplication(doc: Document = document): boolean {
 
 /** Mount the dormant cue. Calls onEngage exactly once when clicked. */
 export function mountCue(onEngage: () => void): () => void {
-  if (document.getElementById("trackr-cue-root")) return () => {};
+  if (document.getElementById("cyclops-cue-root")) return () => {};
   const host = document.createElement("div");
-  host.id = "trackr-cue-root";
+  host.id = "cyclops-cue-root";
   const root = host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");
@@ -1309,7 +1309,7 @@ export function mountCue(onEngage: () => void): () => void {
 
   const btn = document.createElement("button");
   btn.className = "cue";
-  btn.textContent = "◆ Trackr — apply with copilot";
+  btn.textContent = "◆ Cyclops — apply with copilot";
   btn.addEventListener("click", () => {
     host.remove();
     onEngage();
@@ -1329,24 +1329,24 @@ Add an `<all_urls>` detector content script entry. The existing 4-host entry sta
   "host_permissions": [
     "<all_urls>",
     "http://localhost:3000/*",
-    "https://trackr-brown.vercel.app/*"
+    "https://cyclops-brown.vercel.app/*"
   ],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "exclude_matches": ["http://localhost:3000/*", "https://trackr-brown.vercel.app/*"],
+      "exclude_matches": ["http://localhost:3000/*", "https://cyclops-brown.vercel.app/*"],
       "js": ["src/content/index.ts"],
       "run_at": "document_idle"
     },
     {
-      "matches": ["http://localhost:3000/*", "https://trackr-brown.vercel.app/*"],
+      "matches": ["http://localhost:3000/*", "https://cyclops-brown.vercel.app/*"],
       "js": ["src/content/connect.ts"],
       "run_at": "document_idle"
     }
   ],
 ```
 
-The `exclude_matches` keeps the copilot cue off our own Trackr app pages (which have their own forms) while the `connect.ts` script continues to run there for token handoff. (`index.ts` will be rewritten in Task 12 to start with detection rather than auto-mounting, so a single `<all_urls>` entry is correct.)
+The `exclude_matches` keeps the copilot cue off our own Cyclops app pages (which have their own forms) while the `connect.ts` script continues to run there for token handoff. (`index.ts` will be rewritten in Task 12 to start with detection rather than auto-mounting, so a single `<all_urls>` entry is correct.)
 
 - [ ] **Step 3: Build the extension**
 

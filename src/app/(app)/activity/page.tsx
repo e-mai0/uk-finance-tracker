@@ -5,7 +5,7 @@ import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Activity — Trackr" };
+export const metadata = { title: "Activity — Cyclops" };
 
 /** Typographic glyph per attention kind (no icons) — mirrors Today. */
 const KIND_GLYPH: Record<string, string> = {
