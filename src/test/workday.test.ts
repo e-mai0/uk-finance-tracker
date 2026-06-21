@@ -17,6 +17,14 @@ describe("mapWorkdayJobs", () => {
     expect(out[0].sourceType).toBe("WORKDAY");
     expect(out[0].applicationUrl).toContain("JR036591");
   });
+  it("builds an apply URL that includes the site path segment (Workday 404s without it)", () => {
+    const out = mapWorkdayJobs(PAGE, "https://ms.wd5.myworkdayjobs.com", "External", ms);
+    // Workday public job pages live under /{site}{externalPath}; dropping /{site} → 404.
+    expect(out[0].applicationUrl).toBe(
+      "https://ms.wd5.myworkdayjobs.com/External/job/London/Summer-Analyst_JR036591",
+    );
+    expect(out[0].sourceUrl).toBe(out[0].applicationUrl);
+  });
   it("throws on a bad payload", () => {
     expect(() => mapWorkdayJobs({}, "https://x", "y", ms)).toThrow(/jobPostings/);
   });

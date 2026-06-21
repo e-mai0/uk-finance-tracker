@@ -6,7 +6,7 @@ import { mapPool } from "../pool";
 
 interface WorkdayPosting { title?: string; externalPath?: string; locationsText?: string; bulletFields?: string[] }
 
-export function mapWorkdayJobs(payload: unknown, baseUrl: string, _site: string, employer: AdapterEmployer): RawOpportunity[] {
+export function mapWorkdayJobs(payload: unknown, baseUrl: string, site: string, employer: AdapterEmployer): RawOpportunity[] {
   const jobs = (payload as { jobPostings?: WorkdayPosting[] })?.jobPostings;
   if (!Array.isArray(jobs)) throw new Error("Unexpected Workday payload: missing jobPostings");
   const fallback = fallbackFamilyFor(employer);
@@ -17,7 +17,10 @@ export function mapWorkdayJobs(payload: unknown, baseUrl: string, _site: string,
     if (!isUkLocation(location)) continue;
     const verdict = classifyPosting({ title: j.title, location }, fallback);
     if (!verdict.include) continue;
-    const url = `${baseUrl}${j.externalPath}`;
+    // Workday public job pages live under /{site}{externalPath}. The CXS
+    // externalPath is site-relative (e.g. "/job/..."), so the apply link must
+    // re-insert the site segment — omitting it yields a 404.
+    const url = `${baseUrl}/${site}${j.externalPath}`;
     out.push({
       employer: employer.name, title: j.title.trim(), roleFamily: verdict.roleFamily,
       programmeType: verdict.programmeType,
