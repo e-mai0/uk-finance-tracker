@@ -7,6 +7,7 @@ import { QuestionnaireForm } from "@/components/questionnaire/questionnaire-form
 import { ApplyProfileForm } from "@/components/settings/apply-profile-form";
 import { AnswerBankManager } from "@/components/settings/answer-bank-manager";
 import { ExtensionConnect } from "@/components/settings/extension-connect";
+import { AccountData } from "./account-data";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings — Cyclops" };
@@ -203,6 +204,8 @@ export default async function SettingsPage() {
           lastUsedAt: t.lastUsedAt ? fmtDate(t.lastUsedAt) : null,
         }))}
       />
+
+      <AccountData />
     </div>
   );
 }
