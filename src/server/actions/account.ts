@@ -2,6 +2,7 @@
 
 import { auth, signOut } from "../auth";
 import { prisma } from "../db";
+import { DELETE_CONFIRM_PHRASE } from "@/app/(app)/settings/account-constants";
 
 /**
  * Account deletion + data export — the PII-trust minimum for an invite-only
@@ -37,9 +38,6 @@ export interface DeleteAccountResult {
   redirectTo?: string;
   error?: string;
 }
-
-/** The exact phrase the user must type to confirm an irreversible deletion. */
-export const DELETE_CONFIRM_PHRASE = "DELETE";
 
 export async function deleteAccount(
   input: DeleteAccountInput,

@@ -2,11 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  deleteAccount,
-  exportMyData,
-  DELETE_CONFIRM_PHRASE,
-} from "@/server/actions/account";
+import { deleteAccount, exportMyData } from "@/server/actions/account";
+import { DELETE_CONFIRM_PHRASE } from "@/app/(app)/settings/account-constants";
 
 /**
  * Settings "Your data" section — additive, matches the GB+ design system

@@ -24,10 +24,11 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/server/actions/account", () => ({
   deleteAccount: vi.fn(),
   exportMyData: vi.fn(),
-  // The component reads the confirmation phrase from the actions module — keep
-  // it in sync with the real constant.
-  DELETE_CONFIRM_PHRASE: "DELETE",
 }));
+
+// The confirmation phrase now lives in a plain (non-"use server") constants
+// module; the component imports it from there. Use the REAL constant (unmocked)
+// so the rendered markup reflects the actual phrase the user must type.
 
 import { AccountData } from "@/app/(app)/settings/account-data";
 
