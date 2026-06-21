@@ -33,6 +33,15 @@ const VOICE_ALLOWED_SECTIONS = new Set([
 const VOICE_MAX_CHARS = 6000;
 
 /**
+ * Friendly, NON-BLOCKING notice shown when the voice-distillation step can't run
+ * (no AI credit, budget exhausted, transient failure). Onboarding still
+ * completes — the account is marked onboarded before the AI steps — so this only
+ * tells the user Cyclops will learn their voice later. Never exposes internals.
+ */
+export const ONBOARDING_VOICE_FAIL_MESSAGE =
+  "We couldn't analyze your writing voice just now — no problem, Cyclops will learn it as you go.";
+
+/**
  * Validates and sanitises the LLM output before writing voice.md.
  * Returns the cleaned text, or null if validation fails.
  */
@@ -72,7 +81,7 @@ function validateVoiceOutput(text: string): string | null {
 
 export async function distillVoice(
   samples: string[],
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; message?: string }> {
   const userId = await requireUserId();
 
   // Server-side input validation: enforce per-sample char limit
@@ -90,7 +99,7 @@ export async function distillVoice(
   try {
     existingVoice = await memoryService.read(userId, "voice.md");
   } catch {
-    return { ok: false };
+    return { ok: false, message: ONBOARDING_VOICE_FAIL_MESSAGE };
   }
 
   if (existingVoice) {
@@ -109,7 +118,7 @@ export async function distillVoice(
     .join("\n\n");
 
   const budget = await checkBudget(userId).catch(() => ({ ok: true }));
-  if (!budget.ok) return { ok: false };
+  if (!budget.ok) return { ok: false, message: ONBOARDING_VOICE_FAIL_MESSAGE };
 
   try {
     const { text, usage } = await generateText({
@@ -136,7 +145,7 @@ ${taggedSamples.slice(0, 12000)}`,
     const sanitised = validateVoiceOutput(text);
     if (!sanitised) {
       console.error("[distillVoice] LLM output failed validation");
-      return { ok: false };
+      return { ok: false, message: ONBOARDING_VOICE_FAIL_MESSAGE };
     }
 
     await memoryService.write(
@@ -149,7 +158,7 @@ ${taggedSamples.slice(0, 12000)}`,
     return { ok: true };
   } catch (err) {
     console.error("[distillVoice] LLM error:", err);
-    return { ok: false };
+    return { ok: false, message: ONBOARDING_VOICE_FAIL_MESSAGE };
   }
 }
 
