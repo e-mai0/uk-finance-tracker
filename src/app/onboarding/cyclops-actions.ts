@@ -7,6 +7,7 @@ import { haiku, sonnet } from "@/server/ai/models";
 import { checkBudget, recordUsage } from "@/server/ai/budget";
 import { memoryService } from "@/server/memory/service";
 import { CANONICAL_TEMPLATES } from "@/server/memory/templates";
+import { ONBOARDING_VOICE_FAIL_MESSAGE } from "./messages";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -72,7 +73,7 @@ function validateVoiceOutput(text: string): string | null {
 
 export async function distillVoice(
   samples: string[],
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; message?: string }> {
   const userId = await requireUserId();
 
   // Server-side input validation: enforce per-sample char limit
@@ -90,7 +91,7 @@ export async function distillVoice(
   try {
     existingVoice = await memoryService.read(userId, "voice.md");
   } catch {
-    return { ok: false };
+    return { ok: false, message: ONBOARDING_VOICE_FAIL_MESSAGE };
   }
 
   if (existingVoice) {
@@ -109,7 +110,7 @@ export async function distillVoice(
     .join("\n\n");
 
   const budget = await checkBudget(userId).catch(() => ({ ok: true }));
-  if (!budget.ok) return { ok: false };
+  if (!budget.ok) return { ok: false, message: ONBOARDING_VOICE_FAIL_MESSAGE };
 
   try {
     const { text, usage } = await generateText({
@@ -136,7 +137,7 @@ ${taggedSamples.slice(0, 12000)}`,
     const sanitised = validateVoiceOutput(text);
     if (!sanitised) {
       console.error("[distillVoice] LLM output failed validation");
-      return { ok: false };
+      return { ok: false, message: ONBOARDING_VOICE_FAIL_MESSAGE };
     }
 
     await memoryService.write(
@@ -149,7 +150,7 @@ ${taggedSamples.slice(0, 12000)}`,
     return { ok: true };
   } catch (err) {
     console.error("[distillVoice] LLM error:", err);
-    return { ok: false };
+    return { ok: false, message: ONBOARDING_VOICE_FAIL_MESSAGE };
   }
 }
 

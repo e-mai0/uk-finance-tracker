@@ -113,14 +113,21 @@ export function QuestionnaireForm({
         // regardless — otherwise a stuck call strands the user in the wizard.
         const samples = writingSamples.filter((v) => v.trim());
         const stories = storyEntries.filter((v) => v.trim());
+        let aiNotice: string | null = null;
         const best = (async () => {
-          if (samples.length) await distillVoice(samples).catch(() => null);
+          if (samples.length) {
+            // Voice-distill can fail (e.g. no AI credit). Surface its friendly,
+            // non-blocking notice; never let it throw or block finishing.
+            const res = await distillVoice(samples).catch(() => null);
+            if (res && !res.ok && res.message) aiNotice = res.message;
+          }
           if (stories.length) await seedStories(stories).catch(() => null);
         })();
         await Promise.race([
           best,
           new Promise((resolve) => setTimeout(resolve, 10000)),
         ]);
+        if (aiNotice) setMessage(aiNotice);
         onDone?.();
         return;
       }
