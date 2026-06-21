@@ -10,7 +10,8 @@ import { indexContent } from "../../../../server/ai/embed";
 import { saveAnswerToBank } from "../../../../server/answers";
 import { normalizeQuestion, bestAnswerMatch } from "../../../../lib/answers";
 import { extAnswerSchema } from "../../../../lib/validation";
-import { json, unauthorized, preflight } from "../../../../server/ext-http";
+import { json, unauthorized, preflight, CORS_HEADERS } from "../../../../server/ext-http";
+import { enforceExtLimit } from "../../../../server/ratelimit";
 import { checkBudget } from "../../../../server/ai/budget";
 
 export const runtime = "nodejs";
@@ -23,6 +24,10 @@ export function OPTIONS() {
 export async function POST(req: Request) {
   const auth = await requireToken(req);
   if (!auth) return unauthorized();
+
+  // Abuse rate-limit per token-user for this surface; fails open if Redis down.
+  const limited = await enforceExtLimit("answer", auth.userId, CORS_HEADERS);
+  if (limited) return limited;
 
   let body: unknown;
   try {

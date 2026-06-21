@@ -13,6 +13,7 @@ import {
   setActiveStream,
   clearActiveStream,
 } from "@/server/ai/resumable";
+import { enforceChatLimit } from "@/server/ratelimit";
 
 export const maxDuration = 120;
 
@@ -54,6 +55,12 @@ export async function POST(req: Request) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return new Response("Unauthorized", { status: 401 });
+
+  // Abuse rate-limit (request-flood guard), keyed per user. Complementary to
+  // the daily token budget below — placed after auth (need the identity) but
+  // before any expensive AI work or DB writes. Fails open if Redis is down.
+  const limited = await enforceChatLimit(userId);
+  if (limited) return limited;
 
   const { ok } = await checkBudget(userId);
   if (!ok) {

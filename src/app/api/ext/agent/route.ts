@@ -6,7 +6,8 @@ import { memoryService } from "../../../../server/memory/service";
 import { prisma } from "../../../../server/db";
 import { suggestForLabels } from "../../../../lib/suggest";
 import { extAgentRequestSchema } from "../../../../lib/validation";
-import { json, unauthorized, preflight } from "../../../../server/ext-http";
+import { json, unauthorized, preflight, CORS_HEADERS } from "../../../../server/ext-http";
+import { enforceExtLimit } from "../../../../server/ratelimit";
 import { checkBudget, recordUsage } from "../../../../server/ai/budget";
 import { aiConfigured } from "../../../../server/ai/generate";
 import { sonnet } from "../../../../server/ai/models";
@@ -58,6 +59,10 @@ Hard rules:
 export async function POST(req: Request) {
   const auth = await requireToken(req);
   if (!auth) return unauthorized();
+
+  // Abuse rate-limit per token-user for this surface; fails open if Redis down.
+  const limited = await enforceExtLimit("agent", auth.userId, CORS_HEADERS);
+  if (limited) return limited;
 
   let body: unknown;
   try {

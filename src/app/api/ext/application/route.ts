@@ -1,7 +1,8 @@
 import { requireToken } from "../../../../server/ext-auth";
 import { prisma } from "../../../../server/db";
 import { extApplicationSchema } from "../../../../lib/validation";
-import { json, unauthorized, preflight } from "../../../../server/ext-http";
+import { json, unauthorized, preflight, CORS_HEADERS } from "../../../../server/ext-http";
+import { enforceExtLimit } from "../../../../server/ratelimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,10 @@ export function OPTIONS() {
 export async function POST(req: Request) {
   const auth = await requireToken(req);
   if (!auth) return unauthorized();
+
+  // Abuse rate-limit per token-user for this surface; fails open if Redis down.
+  const limited = await enforceExtLimit("application", auth.userId, CORS_HEADERS);
+  if (limited) return limited;
 
   let body: unknown;
   try {
