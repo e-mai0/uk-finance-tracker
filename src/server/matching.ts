@@ -37,31 +37,34 @@ export async function recomputeMatchScores(userId: string): Promise<number> {
     targetEmployers: prefs.targetEmployers,
   };
 
-  await prisma.$transaction(
-    opportunities.map((opp) => {
-      const scoreInput: ScoreOpportunity = {
-        roleFamily: opp.roleFamily,
-        location: opp.location,
-        employerName: opp.employer.name,
-        sponsorshipInfo: opp.sponsorshipInfo,
-        eligibilityNotes: opp.eligibilityNotes,
-        tags: opp.tags.map((t) => t.label),
-        title: opp.title,
-      };
-      const { score, reasons } = scoreOpportunity(
-        scoreProfile,
-        scorePrefs,
-        scoreInput,
-      );
-      return prisma.matchScore.upsert({
-        where: {
-          userId_opportunityId: { userId, opportunityId: opp.id },
-        },
-        update: { score, reasons, computedAt: new Date() },
-        create: { userId, opportunityId: opp.id, score, reasons },
-      });
-    }),
-  );
+  const rows = opportunities.map((opp) => {
+    const scoreInput: ScoreOpportunity = {
+      roleFamily: opp.roleFamily,
+      location: opp.location,
+      employerName: opp.employer.name,
+      sponsorshipInfo: opp.sponsorshipInfo,
+      eligibilityNotes: opp.eligibilityNotes,
+      tags: opp.tags.map((t) => t.label),
+      title: opp.title,
+    };
+    const { score, reasons } = scoreOpportunity(
+      scoreProfile,
+      scorePrefs,
+      scoreInput,
+    );
+    return { userId, opportunityId: opp.id, score, reasons };
+  });
+
+  // Replace the user's cached scores in one transaction of two statements,
+  // rather than one upsert per opportunity. The old per-row fan-out held a
+  // transaction open across N round-trips on a small connection pool, which is
+  // what tripped P2024 ("Timed out fetching a connection from the pool") once
+  // the live-ingested dataset grew. deleteMany + createMany is two round-trips
+  // regardless of how many opportunities exist.
+  await prisma.$transaction([
+    prisma.matchScore.deleteMany({ where: { userId } }),
+    prisma.matchScore.createMany({ data: rows, skipDuplicates: true }),
+  ]);
 
   return opportunities.length;
 }

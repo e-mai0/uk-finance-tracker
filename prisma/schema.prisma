@@ -222,6 +222,9 @@ model Opportunity {
   @@index([location])
   @@index([deadlineAt])
   @@index([lastSeenAt])
+  // The browser extension looks a role up by its public application URL on every
+  // upsert (api/ext/application). Without this index that is a full-table scan.
+  @@index([applicationUrl])
 }
 
 model OpportunityTag {
@@ -412,6 +415,8 @@ model Application {
   @@unique([userId, externalUrl])
   @@index([userId])
   @@index([userId, status])
+  // FK used in equality lookups (startApplication) and by the SetNull cascade.
+  @@index([opportunityId])
 }
 
 // History of AI-generated artefacts (cover letters, answers, CV tailoring).

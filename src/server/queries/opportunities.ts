@@ -15,9 +15,14 @@ import {
  * Filtering/sorting happens in-memory (dataset is small) via lib/filters so it
  * stays pure + testable.
  */
-export async function getTrackerItems(userId: string): Promise<TrackerItem[]> {
+export async function getTrackerItems(
+  userId: string,
+  opts: { savedOnly?: boolean } = {},
+): Promise<TrackerItem[]> {
   const [opportunities, scores, saved, profile, prefs] = await Promise.all([
     prisma.opportunity.findMany({
+      // The /saved view only needs the user's saved roles, not the whole table.
+      where: opts.savedOnly ? { saved: { some: { userId } } } : undefined,
       include: { employer: true, tags: true },
     }),
     prisma.matchScore.findMany({
@@ -171,6 +176,7 @@ export async function getOpportunityDetail(
 }
 
 export async function getSavedItems(userId: string): Promise<TrackerItem[]> {
-  const items = await getTrackerItems(userId);
-  return items.filter((i) => i.saved);
+  // Scope the query to saved rows instead of fetching every opportunity and
+  // filtering in memory. All rows come back saved, so no post-filter is needed.
+  return getTrackerItems(userId, { savedOnly: true });
 }
