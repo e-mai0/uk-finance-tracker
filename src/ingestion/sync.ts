@@ -21,6 +21,7 @@ import { SuccessFactorsAdapter } from "./adapters/successfactors";
 import { describeError, fetchText, ImpervaBlockedError } from "./adapters/common";
 import { mapPool } from "./pool";
 import { evaluateWatch, type WatchState } from "./watch";
+import { registerSources } from "../../prisma/sources";
 
 /**
  * Sync layer: turns IngestionSource registry rows into adapter runs through
@@ -284,4 +285,30 @@ export async function syncAllSources(
     }
     return syncSource(prisma, source);
   });
+}
+
+/**
+ * Self-healing full sync: reconcile the code source-registry into the DB, then
+ * run every enabled source.
+ *
+ * Why: `syncAllSources` only reads EXISTING `IngestionSource` rows, so firms
+ * added in `prisma/sources.ts` never reach prod unless someone manually runs the
+ * seed script — the drift that left ~50 code-registered firms invisible. Calling
+ * `registerSources` first on every cron run upserts the current code registry,
+ * so newly-added firms get inserted with a null `lastRunAt` and (because the
+ * sync orders `lastRunAt` asc nulls-first) lead the next queue and get fetched.
+ *
+ * Reconcile is ADDITIVE and HEALTH-PRESERVING: `registerSources`' update clause
+ * touches only definition fields (employerName/sector/url/watchOnly/config) and
+ * never the health columns (`enabled`, `consecutiveFailures`, `lastRunAt`,
+ * `lastSuccessfulFetchAt`, `watchState`), so auto-disabled dead boards stay
+ * disabled and user-added (Firm Scout) rows absent from the code registry are
+ * never deleted, disabled, or pruned.
+ */
+export async function reconcileAndSyncAll(
+  prisma: PrismaClient,
+  opts: { concurrency?: number; budgetMs?: number } = {},
+): Promise<SourceSyncResult[]> {
+  await registerSources(prisma);
+  return syncAllSources(prisma, opts);
 }
