@@ -30,7 +30,8 @@ vi.mock("@/server/memory/service", () => ({
 const { generateText } = vi.hoisted(() => ({ generateText: vi.fn() }));
 vi.mock("ai", () => ({ generateText, generateObject: vi.fn() }));
 
-import { distillVoice, ONBOARDING_VOICE_FAIL_MESSAGE } from "@/app/onboarding/cyclops-actions";
+import { distillVoice } from "@/app/onboarding/cyclops-actions";
+import { ONBOARDING_VOICE_FAIL_MESSAGE } from "@/app/onboarding/messages";
 
 const VALID_VOICE = `# Voice
 ## Banned tells

@@ -7,6 +7,7 @@ import { haiku, sonnet } from "@/server/ai/models";
 import { checkBudget, recordUsage } from "@/server/ai/budget";
 import { memoryService } from "@/server/memory/service";
 import { CANONICAL_TEMPLATES } from "@/server/memory/templates";
+import { ONBOARDING_VOICE_FAIL_MESSAGE } from "./messages";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -31,15 +32,6 @@ const VOICE_ALLOWED_SECTIONS = new Set([
 ]);
 /** Cap on the written voice.md content */
 const VOICE_MAX_CHARS = 6000;
-
-/**
- * Friendly, NON-BLOCKING notice shown when the voice-distillation step can't run
- * (no AI credit, budget exhausted, transient failure). Onboarding still
- * completes — the account is marked onboarded before the AI steps — so this only
- * tells the user Cyclops will learn their voice later. Never exposes internals.
- */
-export const ONBOARDING_VOICE_FAIL_MESSAGE =
-  "We couldn't analyze your writing voice just now — no problem, Cyclops will learn it as you go.";
 
 /**
  * Validates and sanitises the LLM output before writing voice.md.
