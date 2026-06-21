@@ -2,7 +2,8 @@ import { requireToken } from "../../../../server/ext-auth";
 import { buildFieldMap } from "../../../../server/ext-profile";
 import { planForm } from "../../../../server/ai/generate";
 import { extPlanRequestSchema, sanitizePlanBody } from "../../../../lib/validation";
-import { json, unauthorized, preflight } from "../../../../server/ext-http";
+import { json, unauthorized, preflight, CORS_HEADERS } from "../../../../server/ext-http";
+import { enforceExtLimit } from "../../../../server/ratelimit";
 import { memoryService } from "../../../../server/memory/service";
 import { prisma } from "../../../../server/db";
 import { suggestForLabels } from "../../../../lib/suggest";
@@ -17,6 +18,10 @@ export function OPTIONS() {
 export async function POST(req: Request) {
   const auth = await requireToken(req);
   if (!auth) return unauthorized();
+
+  // Abuse rate-limit per token-user for this surface; fails open if Redis down.
+  const limited = await enforceExtLimit("plan", auth.userId, CORS_HEADERS);
+  if (limited) return limited;
 
   let body: unknown;
   try {

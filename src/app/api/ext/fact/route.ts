@@ -4,7 +4,8 @@ import { prisma } from "../../../../server/db";
 import { routeAskedAnswer } from "../../../../lib/form-plan";
 import { normalizeQuestion } from "../../../../lib/answers";
 import { extFactSchema } from "../../../../lib/validation";
-import { json, unauthorized, preflight } from "../../../../server/ext-http";
+import { json, unauthorized, preflight, CORS_HEADERS } from "../../../../server/ext-http";
+import { enforceExtLimit } from "../../../../server/ratelimit";
 import { memoryService } from "../../../../server/memory/service";
 import { applyFact } from "../../../../server/memory/facts";
 
@@ -43,6 +44,10 @@ export function OPTIONS() {
 export async function POST(req: Request) {
   const auth = await requireToken(req);
   if (!auth) return unauthorized();
+
+  // Abuse rate-limit per token-user for this surface; fails open if Redis down.
+  const limited = await enforceExtLimit("fact", auth.userId, CORS_HEADERS);
+  if (limited) return limited;
 
   let body: unknown;
   try {
