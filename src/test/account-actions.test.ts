@@ -21,6 +21,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const {
   authMock,
   signOutMock,
+  removeCv,
   userDelete,
   txMock,
   // explicit deleteMany spies for the non-cascade models
@@ -49,6 +50,7 @@ const {
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
   signOutMock: vi.fn(),
+  removeCv: vi.fn(),
   userDelete: vi.fn(),
   txMock: vi.fn(),
   gardenerQuestionDeleteMany: vi.fn(),
@@ -121,6 +123,7 @@ vi.mock("@/server/db", () => ({
 }));
 
 vi.mock("@/server/auth", () => ({ auth: authMock, signOut: signOutMock }));
+vi.mock("@/server/storage", () => ({ removeCv }));
 
 import { deleteAccount, exportMyData } from "@/server/actions/account";
 
@@ -141,9 +144,11 @@ function resetAll() {
     draftEditDeleteMany,
     contentEmbeddingDeleteMany,
     signOutMock,
+    removeCv,
   ]) {
     (fn as ReturnType<typeof vi.fn>).mockResolvedValue({});
   }
+  applyProfileFindUnique.mockResolvedValue(null);
 }
 
 beforeEach(resetAll);
@@ -242,6 +247,49 @@ describe("deleteAccount", () => {
     const res = await deleteAccount({ confirm: "DELETE" });
     expect(signOutMock).toHaveBeenCalledTimes(1);
     expect(res.ok).toBe(true);
+  });
+
+  it("removes the uploaded CV object before deleting the account", async () => {
+    setSignedIn();
+    const order: string[] = [];
+    applyProfileFindUnique.mockResolvedValue({
+      id: "ap1",
+      userId: USER_ID,
+      cvStoragePath: `${USER_ID}/cv.pdf`,
+    });
+    removeCv.mockImplementation(async () => {
+      order.push("storage");
+    });
+    userDelete.mockImplementation(async () => {
+      order.push("user");
+      return {};
+    });
+
+    const res = await deleteAccount({ confirm: "DELETE" });
+
+    expect(res.ok).toBe(true);
+    expect(applyProfileFindUnique).toHaveBeenCalledWith({
+      where: { userId: USER_ID },
+      select: { cvStoragePath: true },
+    });
+    expect(removeCv).toHaveBeenCalledWith(`${USER_ID}/cv.pdf`);
+    expect(order.indexOf("storage")).toBeLessThan(order.indexOf("user"));
+  });
+
+  it("does not delete the account when CV storage removal fails", async () => {
+    setSignedIn();
+    applyProfileFindUnique.mockResolvedValue({
+      id: "ap1",
+      userId: USER_ID,
+      cvStoragePath: `${USER_ID}/cv.pdf`,
+    });
+    removeCv.mockRejectedValue(new Error("storage down"));
+
+    await expect(deleteAccount({ confirm: "DELETE" })).rejects.toThrow("storage down");
+
+    expect(txMock).not.toHaveBeenCalled();
+    expect(userDelete).not.toHaveBeenCalled();
+    expect(signOutMock).not.toHaveBeenCalled();
   });
 
   it("explicit deletes run BEFORE user.delete (no orphan-FK ordering hazard)", async () => {

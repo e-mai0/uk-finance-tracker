@@ -3,6 +3,7 @@
 import { auth, signOut } from "../auth";
 import { prisma } from "../db";
 import { DELETE_CONFIRM_PHRASE } from "@/app/(app)/settings/account-constants";
+import { removeCv } from "@/server/storage";
 
 /**
  * Account deletion + data export — the PII-trust minimum for an invite-only
@@ -58,6 +59,16 @@ export async function deleteAccount(
   // id from the verified session and ignore anything on `input`.
   const userId = session.user.id;
   const where = { userId };
+  const existingApplyProfile = await prisma.applyProfile.findUnique({
+    where,
+    select: { cvStoragePath: true },
+  });
+
+  // Supabase storage is outside the DB transaction, so remove the private CV
+  // object before the row that points at it is cascaded away.
+  if (existingApplyProfile?.cvStoragePath) {
+    await removeCv(existingApplyProfile.cvStoragePath);
+  }
 
   await prisma.$transaction(async (tx) => {
     // 1) Clear non-cascade userId-keyed rows FIRST (they have no FK to drop).
