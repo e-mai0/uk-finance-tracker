@@ -23,6 +23,17 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Build (next build)
+        # Catches Next build-time / RSC errors (e.g. a non-async `const` export
+        # from a `"use server"` file) that pass tsc + tests but break the Vercel
+        # deploy. Runs `prisma generate && next build`. Hermetic: a syntactically
+        # valid DUMMY DATABASE_URL satisfies the Prisma datasource + module init;
+        # the build does not connect to any DB or external service. All other
+        # secrets stay unset (the app degrades gracefully at build time).
+        run: npm run build
+        env:
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
+
       - name: Tests
         run: npm test
 
