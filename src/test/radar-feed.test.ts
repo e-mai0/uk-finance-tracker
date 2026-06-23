@@ -336,7 +336,7 @@ describe("composeRadarFeed — coverage", () => {
     expect(coverage.lastSweepAt).toBeNull();
   });
 
-  it("treats a disabled unreachable watcher's attention count without double-effecting other counts", () => {
+  it("a single clean live source counts as 1 live feed with 0 needs-attention", () => {
     const { coverage } = composeRadarFeed({
       items: [],
       sources: [
