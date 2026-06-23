@@ -63,6 +63,13 @@ export async function signedCvUrl(
   return data.signedUrl;
 }
 
+/** Download a stored CV for account data export. */
+export async function downloadCv(storagePath: string): Promise<Blob> {
+  const { data, error } = await client().storage.from(CV_BUCKET).download(storagePath);
+  if (error || !data) throw new Error(`Could not download CV: ${error?.message}`);
+  return data;
+}
+
 /** Remove a stored CV (used when the user clears their CV). */
 export async function removeCv(storagePath: string): Promise<void> {
   await client().storage.from(CV_BUCKET).remove([storagePath]);

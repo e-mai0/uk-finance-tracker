@@ -18,6 +18,8 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
 const {
   authMock,
   signOutMock,
@@ -46,6 +48,8 @@ const {
   apiTokenFindMany,
   gardenerQuestionFindMany,
   dailyUsageFindMany,
+  storageConfiguredMock,
+  downloadCvMock,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
   signOutMock: vi.fn(),
@@ -72,6 +76,8 @@ const {
   apiTokenFindMany: vi.fn(),
   gardenerQuestionFindMany: vi.fn(),
   dailyUsageFindMany: vi.fn(),
+  storageConfiguredMock: vi.fn(),
+  downloadCvMock: vi.fn(),
 }));
 
 // The transaction client exposed inside prisma.$transaction(cb). It carries the
@@ -121,6 +127,10 @@ vi.mock("@/server/db", () => ({
 }));
 
 vi.mock("@/server/auth", () => ({ auth: authMock, signOut: signOutMock }));
+vi.mock("@/server/storage", () => ({
+  storageConfigured: storageConfiguredMock,
+  downloadCv: downloadCvMock,
+}));
 
 import { deleteAccount, exportMyData } from "@/server/actions/account";
 
@@ -296,6 +306,12 @@ describe("exportMyData", () => {
     ]);
     gardenerQuestionFindMany.mockResolvedValue([{ id: "gq1" }]);
     dailyUsageFindMany.mockResolvedValue([{ id: "du1" }]);
+    storageConfiguredMock.mockReturnValue(true);
+    downloadCvMock.mockResolvedValue(
+      new Blob([new Uint8Array([0xde, 0xad, 0xbe, 0xef])], {
+        type: "application/pdf",
+      }),
+    );
   });
 
   it("errors when unauthenticated", async () => {
@@ -349,6 +365,7 @@ describe("exportMyData", () => {
       "profile",
       "preferences",
       "applyProfile",
+      "cvFile",
       "builtCv",
       "savedOpportunities",
       "matchScores",
@@ -364,6 +381,48 @@ describe("exportMyData", () => {
     ]) {
       expect(d).toHaveProperty(key);
     }
+  });
+
+  it("includes the uploaded CV object, not only its database metadata", async () => {
+    applyProfileFindUnique.mockResolvedValue({
+      id: "ap1",
+      userId: USER_ID,
+      cvStoragePath: "user-me/cv.pdf",
+      cvFileName: "Eric CV.pdf",
+      cvFileSize: 4,
+      cvText: null,
+    });
+
+    const res = await exportMyData();
+
+    expect(res.ok).toBe(true);
+    expect(storageConfiguredMock).toHaveBeenCalled();
+    expect(downloadCvMock).toHaveBeenCalledWith("user-me/cv.pdf");
+    expect(res.data?.cvFile).toEqual({
+      fileName: "Eric CV.pdf",
+      storagePath: "user-me/cv.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 4,
+      base64: "3q2+7w==",
+    });
+  });
+
+  it("fails rather than silently exporting incomplete data when the CV is unavailable", async () => {
+    applyProfileFindUnique.mockResolvedValue({
+      id: "ap1",
+      userId: USER_ID,
+      cvStoragePath: "user-me/cv.pdf",
+      cvFileName: "Eric CV.pdf",
+      cvFileSize: 4,
+      cvText: null,
+    });
+    downloadCvMock.mockRejectedValue(new Error("missing object"));
+
+    const res = await exportMyData();
+
+    expect(res.ok).not.toBe(true);
+    expect(res.data).toBeUndefined();
+    expect(res.error).toMatch(/Could not export your CV file/);
   });
 
   it("REDACTS api-token secrets — metadata only, never the raw hash", async () => {
