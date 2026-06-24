@@ -1,7 +1,7 @@
 import type { RawDataset, RawOpportunity, SourceAdapter } from "../types";
 import type { SourceConfig } from "../types";
 import { classifyPosting } from "../classify";
-import { buildDataset, fallbackFamilyFor, fetchText, originalSummary, type AdapterEmployer } from "./common";
+import { buildDataset, fallbackFamilyFor, fetchTextRobust, originalSummary, type AdapterEmployer } from "./common";
 
 const MQ_RE = /<article class="article--result">[\s\S]*?href="([^"]*JobDetail\?jobId=(\d+))"[^>]*>\s*([^<]+?)\s*<\/a>(?:[\s\S]*?Office Location:"[^>]*>\s*<[^>]*>\s*([^<]+?)\s*<)?/gi;
 
@@ -86,14 +86,14 @@ export class AvatureAdapter implements SourceAdapter {
   }
   async fetch(): Promise<RawDataset> {
     if (this.cfg.variant === "twosigma") {
-      const html = await fetchText(`${this.cfg.base}/careers/OpenRoles`);
+      const html = await fetchTextRobust(`${this.cfg.base}/careers/OpenRoles`);
       return buildDataset(this.id, this.employer, mapTwoSigma(html, this.cfg.base, this.employer));
     }
     if (this.cfg.variant === "macquarie") {
-      const html = await fetchText(`${this.cfg.base}/en_US/careers/SearchJobs/?search=internship`);
+      const html = await fetchTextRobust(`${this.cfg.base}/en_US/careers/SearchJobs/?search=internship`);
       return buildDataset(this.id, this.employer, mapMacquarie(html, this.cfg.base, this.employer));
     }
-    const html = await fetchText(`${this.cfg.base}/TGnewUI/Search/Home/Home?partnerid=25008&siteid=${this.cfg.siteid}`);
+    const html = await fetchTextRobust(`${this.cfg.base}/TGnewUI/Search/Home/Home?partnerid=25008&siteid=${this.cfg.siteid}`);
     return buildDataset(this.id, this.employer, mapUbsEmbedded(html, this.cfg.base, this.employer));
   }
 }

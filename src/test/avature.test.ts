@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-import { mapMacquarie, mapTwoSigma } from "../ingestion/adapters/avature";
-import type { AdapterEmployer } from "../ingestion/adapters/common";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { AvatureAdapter, mapMacquarie, mapTwoSigma } from "../ingestion/adapters/avature";
+import { ChallengeBlockedError, type AdapterEmployer } from "../ingestion/adapters/common";
 
 const mq: AdapterEmployer = { name: "Macquarie", sector: "Investment Bank" };
 
@@ -75,5 +75,32 @@ describe("mapTwoSigma", () => {
   it("returns [] for a malformed/empty body", () => {
     expect(mapTwoSigma("", TS_BASE, ts)).toEqual([]);
     expect(mapTwoSigma("<html><body>no jobs here</body></html>", TS_BASE, ts)).toEqual([]);
+  });
+});
+
+describe("AvatureAdapter", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("throws on a 200-disguised bot challenge instead of publishing a healthy empty feed", async () => {
+    const challenge = `<!doctype html><html><head><title>Quick Check Needed</title>
+      <script src="/oleeoProtect/altcha.min.js"></script></head>
+      <body class="oleeoProtect-challenge">
+        <h1>Quick Check Needed</h1>
+        <p>Please verify that you are human.</p>
+        <altcha-widget data-challengeurl="/oleeoProtect/challenge"></altcha-widget>
+      </body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(challenge, { status: 200 })),
+    );
+
+    const adapter = new AvatureAdapter(
+      { ats: "avature", variant: "twosigma", base: TS_BASE },
+      ts,
+    );
+
+    await expect(adapter.fetch()).rejects.toBeInstanceOf(ChallengeBlockedError);
   });
 });
