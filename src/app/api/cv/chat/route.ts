@@ -11,6 +11,7 @@ import { checkBudget } from "@/server/ai/budget";
 import { syncCvGrounding } from "@/server/cv/grounding";
 import type { UIMessage } from "ai";
 import { rowToUIMessage } from "@/server/chat/messages";
+import { enforceChatLimit } from "@/server/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -51,6 +52,9 @@ export async function POST(req: Request) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return new Response("Unauthorized", { status: 401 });
+
+  const limited = await enforceChatLimit(userId);
+  if (limited) return limited;
 
   const { ok } = await checkBudget(userId);
   if (!ok) {
