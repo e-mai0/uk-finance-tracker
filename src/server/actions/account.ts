@@ -2,6 +2,7 @@
 
 import { auth, signOut } from "../auth";
 import { prisma } from "../db";
+import { downloadCv, storageConfigured } from "../storage";
 import { DELETE_CONFIRM_PHRASE } from "@/app/(app)/settings/account-constants";
 
 /**
@@ -89,6 +90,14 @@ interface ExportedApiToken {
   revokedAt: Date | string | null;
 }
 
+interface ExportedCvFile {
+  fileName: string | null;
+  storagePath: string;
+  contentType: string | null;
+  sizeBytes: number;
+  base64: string;
+}
+
 export interface ExportMyDataResult {
   ok?: boolean;
   data?: ExportedData;
@@ -101,6 +110,7 @@ export interface ExportedData {
   profile: unknown;
   preferences: unknown;
   applyProfile: unknown;
+  cvFile: ExportedCvFile | null;
   builtCv: unknown;
   savedOpportunities: unknown[];
   matchScores: unknown[];
@@ -179,12 +189,46 @@ export async function exportMyData(): Promise<ExportMyDataResult> {
     revokedAt: (t.revokedAt as Date | string | null) ?? null,
   }));
 
+  let cvFile: ExportedCvFile | null = null;
+  const applyProfileRecord = applyProfile as Record<string, unknown> | null;
+  const cvStoragePath =
+    typeof applyProfileRecord?.cvStoragePath === "string"
+      ? applyProfileRecord.cvStoragePath
+      : null;
+  if (cvStoragePath) {
+    if (!storageConfigured()) {
+      return {
+        error:
+          "Could not export your CV file because file storage is not configured.",
+      };
+    }
+
+    try {
+      const blob = await downloadCv(cvStoragePath);
+      const bytes = Buffer.from(await blob.arrayBuffer());
+      cvFile = {
+        fileName:
+          typeof applyProfileRecord?.cvFileName === "string"
+            ? applyProfileRecord.cvFileName
+            : null,
+        storagePath: cvStoragePath,
+        contentType: blob.type || null,
+        sizeBytes: bytes.byteLength,
+        base64: bytes.toString("base64"),
+      };
+    } catch (err) {
+      console.error("[account export] CV download failed:", err);
+      return { error: "Could not export your CV file. Try again later." };
+    }
+  }
+
   const data: ExportedData = {
     exportedAt: new Date().toISOString(),
     user: safeUser,
     profile,
     preferences,
     applyProfile,
+    cvFile,
     builtCv,
     savedOpportunities,
     matchScores,
