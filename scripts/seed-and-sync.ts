@@ -11,15 +11,15 @@
 // the shared DB). Read-only against employer career sites; writes only to your
 // own DB.
 import { prisma } from "../src/server/db";
-import { registerSources } from "../prisma/sources";
-import { syncAllSources } from "../src/ingestion/sync";
+import { liveSources } from "../prisma/sources";
+import { reconcileAndSyncAll } from "../src/ingestion/sync";
 
 async function main(): Promise<void> {
-  const n = await registerSources(prisma);
-  console.log(`Registered ${n} ingestion sources.`);
-
+  console.log(`Reconciling ${liveSources.length} ingestion sources, then syncing…`);
   console.log("Running sync (live adapters → outbound reads of public job boards)…");
-  const results = await syncAllSources(prisma);
+  // reconcileAndSyncAll registers the code registry (idempotent) then syncs — the
+  // same self-healing path the cron uses, so this stays in lockstep with prod.
+  const results = await reconcileAndSyncAll(prisma);
 
   const ok = results.filter((r) => r.ok).length;
   const created = results.reduce((a, r) => a + r.created, 0);

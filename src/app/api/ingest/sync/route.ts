@@ -1,5 +1,6 @@
 import { prisma } from "../../../../server/db";
-import { syncAllSources } from "../../../../ingestion/sync";
+import { reconcileAndSyncAll } from "../../../../ingestion/sync";
+import { liveSources } from "../../../../../prisma/sources";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,8 +20,13 @@ export async function GET(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const results = await syncAllSources(prisma);
+  // reconcileAndSyncAll upserts the code registry (idempotent, health-preserving)
+  // before syncing, so firms added in code self-heal into prod on every cron run.
+  const results = await reconcileAndSyncAll(prisma);
   const summary = {
+    // count of code-registry sources reconciled this run (= registerSources()'s
+    // return); exposed for observability of manual/cron runs.
+    registered: liveSources.length,
     sources: results.length,
     ok: results.filter((r) => r.ok).length,
     failed: results.filter((r) => !r.ok).length,
