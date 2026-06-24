@@ -80,6 +80,8 @@ export async function getTrackerItems(userId: string): Promise<TrackerItem[]> {
     deadlineAt: o.deadlineAt,
     deadlineEstimated: o.deadlineEstimated,
     isRolling: o.isRolling,
+    closedAt: o.closedAt,
+    closeReason: o.closeReason,
     lastSeenAt: o.lastSeenAt,
     firstSeenAt: o.firstSeenAt,
     applicationUrl: o.applicationUrl,
