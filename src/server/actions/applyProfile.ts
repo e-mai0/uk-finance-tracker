@@ -178,7 +178,12 @@ export async function clearCvAction(): Promise<ActionResult> {
 
   const existing = await prisma.applyProfile.findUnique({ where: { userId } });
   if (existing?.cvStoragePath) {
-    await removeCv(existing.cvStoragePath).catch(() => {});
+    try {
+      await removeCv(existing.cvStoragePath);
+    } catch (err) {
+      console.error("[cv storage] failed to remove CV object:", err);
+      return { error: "Could not remove your CV. Try again." };
+    }
   }
   await prisma.applyProfile.update({
     where: { userId },

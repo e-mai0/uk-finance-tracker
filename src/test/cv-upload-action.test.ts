@@ -22,6 +22,9 @@ const {
   storageConfigured,
   uploadCv,
   removeCv,
+  applyProfileUpsert,
+  applyProfileFindUnique,
+  applyProfileUpdate,
   extractCvText,
   extractFacts,
   parseCv,
@@ -32,6 +35,9 @@ const {
   storageConfigured: vi.fn(),
   uploadCv: vi.fn(),
   removeCv: vi.fn(),
+  applyProfileUpsert: vi.fn(),
+  applyProfileFindUnique: vi.fn(),
+  applyProfileUpdate: vi.fn(),
   extractCvText: vi.fn(),
   extractFacts: vi.fn(),
   parseCv: vi.fn(),
@@ -43,7 +49,13 @@ const {
 vi.mock("@/server/auth", () => ({ auth: vi.fn(async () => ({ user: { id: "u1" } })) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/server/db", () => ({
-  prisma: { applyProfile: { upsert: vi.fn().mockResolvedValue({}) } },
+  prisma: {
+    applyProfile: {
+      upsert: applyProfileUpsert,
+      findUnique: applyProfileFindUnique,
+      update: applyProfileUpdate,
+    },
+  },
 }));
 vi.mock("@/server/storage", () => ({
   storageConfigured,
@@ -59,7 +71,7 @@ vi.mock("@/server/cv/store", () => ({
 }));
 vi.mock("@/server/cv/coach", () => ({ seedCoachOpening: seedCoach }));
 
-import { uploadCvAction } from "@/server/actions/applyProfile";
+import { clearCvAction, uploadCvAction } from "@/server/actions/applyProfile";
 import { cvDataSchema, type CvData } from "@/lib/cv";
 
 const PARSED_CV: CvData = cvDataSchema.parse({
@@ -79,6 +91,13 @@ beforeEach(() => {
   vi.mocked(auth).mockResolvedValue({ user: { id: "u1" } } as never);
   storageConfigured.mockReturnValue(true);
   uploadCv.mockResolvedValue("u1/cv.pdf");
+  removeCv.mockResolvedValue(undefined);
+  applyProfileUpsert.mockResolvedValue({});
+  applyProfileFindUnique.mockResolvedValue({
+    userId: "u1",
+    cvStoragePath: "u1/cv.pdf",
+  });
+  applyProfileUpdate.mockResolvedValue({});
   extractCvText.mockResolvedValue("CV TEXT");
   extractFacts.mockResolvedValue(undefined);
   parseCv.mockResolvedValue(PARSED_CV);
@@ -243,5 +262,35 @@ describe("uploadCvAction — parse failure", () => {
     expect(res.ok).toBe(true);
     expect(res.cvParsed).toBe(false);
     expect(res.cv).toBeUndefined();
+  });
+});
+
+describe("clearCvAction", () => {
+  it("removes the stored object before clearing CV metadata", async () => {
+    const res = await clearCvAction();
+
+    expect(res.ok).toBe(true);
+    expect(removeCv).toHaveBeenCalledWith("u1/cv.pdf");
+    expect(applyProfileUpdate).toHaveBeenCalledWith({
+      where: { userId: "u1" },
+      data: {
+        cvStoragePath: null,
+        cvFileName: null,
+        cvFileSize: null,
+        cvText: null,
+        cvUpdatedAt: null,
+      },
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/settings");
+  });
+
+  it("does not clear the DB pointer when storage deletion fails", async () => {
+    removeCv.mockRejectedValue(new Error("storage unavailable"));
+
+    const res = await clearCvAction();
+
+    expect(res.error).toBeTruthy();
+    expect(applyProfileUpdate).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });
