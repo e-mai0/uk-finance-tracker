@@ -65,5 +65,6 @@ export async function signedCvUrl(
 
 /** Remove a stored CV (used when the user clears their CV). */
 export async function removeCv(storagePath: string): Promise<void> {
-  await client().storage.from(CV_BUCKET).remove([storagePath]);
+  const { error } = await client().storage.from(CV_BUCKET).remove([storagePath]);
+  if (error) throw new Error(`CV removal failed: ${error.message}`);
 }
