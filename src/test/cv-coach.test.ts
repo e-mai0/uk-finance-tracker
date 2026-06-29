@@ -22,7 +22,7 @@ vi.mock("@/server/db", () => ({
   prisma: { chatMessage: { createMany } },
 }));
 
-import { seedCoachOpening } from "@/server/cv/coach";
+import { seedCoachOpening, deriveFallbackChips } from "@/server/cv/coach";
 import { cvDataSchema, type CvData } from "@/lib/cv";
 
 // A realistic CV with distinctive, uniquely-named content. The grounding test
@@ -189,6 +189,70 @@ describe("seedCoachOpening — returns the opening as a UIMessage (F2)", () => {
       | { type: "data-coach-chips"; data: { chips: unknown[] } }
       | undefined;
     expect(chipPart!.data.chips).toHaveLength(3);
+  });
+});
+
+describe("deriveFallbackChips — activities", () => {
+  // A "complete enough" CV: summary, experience-with-bullets, projects-with-
+  // bullets and skills are all present, so the foundational chips are exhausted
+  // and the activities move is the next-highest gap — proving activities are a
+  // first-class suggestion, not an afterthought beyond the 3-chip cap.
+  const baseComplete = {
+    summary: "Driven economics student aiming for markets.",
+    experience: [{ org: "Rothschild & Co", bullets: ["Shadowed the debt advisory team"] }],
+    projects: [{ name: "Housing dissertation", bullets: ["Ran a panel regression in R"] }],
+    skills: [{ label: "Quantitative", items: ["R", "Python"] }],
+  };
+
+  const hasActivityChip = (chips: { label: string; prompt: string }[]) =>
+    chips.some((c) => /activit/i.test(c.label) || /activit/i.test(c.prompt));
+
+  it("offers to add activities when the CV has none", () => {
+    const cv = cvDataSchema.parse(baseComplete);
+    const chips = deriveFallbackChips(cv);
+    expect(chips).toHaveLength(3);
+    expect(hasActivityChip(chips)).toBe(true);
+  });
+
+  it("offers to detail activities when the section exists but has no bullets", () => {
+    const cv = cvDataSchema.parse({
+      ...baseComplete,
+      sections: [
+        {
+          heading: "Activities",
+          entries: [{ primary: "Treasurer, LSE Rowing Club", bullets: [] }],
+        },
+      ],
+    });
+    const chips = deriveFallbackChips(cv);
+    expect(hasActivityChip(chips)).toBe(true);
+    // With every other section solid, the activities move is the concrete gap.
+    expect(chips.some((c) => /detail my activities/i.test(c.label))).toBe(true);
+  });
+
+  it("offers to sharpen activity bullets when the section already has some", () => {
+    const cv = cvDataSchema.parse({
+      ...baseComplete,
+      sections: [
+        {
+          heading: "Positions of Responsibility",
+          entries: [
+            { primary: "Treasurer, LSE Rowing Club", bullets: ["Resolved an 800-pound deficit"] },
+          ],
+        },
+      ],
+    });
+    const chips = deriveFallbackChips(cv);
+    expect(chips.some((c) => /sharpen activity bullets/i.test(c.label))).toBe(true);
+  });
+
+  it("still returns exactly 3 well-formed chips for an empty CV", () => {
+    const chips = deriveFallbackChips(cvDataSchema.parse({}));
+    expect(chips).toHaveLength(3);
+    for (const c of chips) {
+      expect(c.label.length).toBeGreaterThan(0);
+      expect(c.prompt.length).toBeGreaterThan(0);
+    }
   });
 });
 
