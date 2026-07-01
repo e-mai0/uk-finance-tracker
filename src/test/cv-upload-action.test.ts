@@ -22,6 +22,9 @@ const {
   storageConfigured,
   uploadCv,
   removeCv,
+  applyProfileUpsert,
+  applyProfileFindUnique,
+  applyProfileUpdate,
   extractCvText,
   extractFacts,
   parseCv,
@@ -32,6 +35,9 @@ const {
   storageConfigured: vi.fn(),
   uploadCv: vi.fn(),
   removeCv: vi.fn(),
+  applyProfileUpsert: vi.fn(),
+  applyProfileFindUnique: vi.fn(),
+  applyProfileUpdate: vi.fn(),
   extractCvText: vi.fn(),
   extractFacts: vi.fn(),
   parseCv: vi.fn(),
@@ -43,7 +49,13 @@ const {
 vi.mock("@/server/auth", () => ({ auth: vi.fn(async () => ({ user: { id: "u1" } })) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/server/db", () => ({
-  prisma: { applyProfile: { upsert: vi.fn().mockResolvedValue({}) } },
+  prisma: {
+    applyProfile: {
+      upsert: applyProfileUpsert,
+      findUnique: applyProfileFindUnique,
+      update: applyProfileUpdate,
+    },
+  },
 }));
 vi.mock("@/server/storage", () => ({
   storageConfigured,
@@ -59,7 +71,7 @@ vi.mock("@/server/cv/store", () => ({
 }));
 vi.mock("@/server/cv/coach", () => ({ seedCoachOpening: seedCoach }));
 
-import { uploadCvAction } from "@/server/actions/applyProfile";
+import { clearCvAction, uploadCvAction } from "@/server/actions/applyProfile";
 import { cvDataSchema, type CvData } from "@/lib/cv";
 
 const PARSED_CV: CvData = cvDataSchema.parse({
@@ -79,6 +91,15 @@ beforeEach(() => {
   vi.mocked(auth).mockResolvedValue({ user: { id: "u1" } } as never);
   storageConfigured.mockReturnValue(true);
   uploadCv.mockResolvedValue("u1/cv.pdf");
+  removeCv.mockResolvedValue(undefined);
+  applyProfileUpsert.mockResolvedValue({});
+  // Default: the user already has a CV at the SAME canonical path the next
+  // upload lands on (replace-in-place) — no stale object to clean up.
+  applyProfileFindUnique.mockResolvedValue({
+    userId: "u1",
+    cvStoragePath: "u1/cv.pdf",
+  });
+  applyProfileUpdate.mockResolvedValue({});
   extractCvText.mockResolvedValue("CV TEXT");
   extractFacts.mockResolvedValue(undefined);
   parseCv.mockResolvedValue(PARSED_CV);
@@ -243,5 +264,123 @@ describe("uploadCvAction — parse failure", () => {
     expect(res.ok).toBe(true);
     expect(res.cvParsed).toBe(false);
     expect(res.cv).toBeUndefined();
+  });
+});
+
+// ——— replace path: uploadCv writes ONE canonical object per user but keyed on
+// the file EXTENSION (u1/cv.pdf vs u1/cv.docx). Replacing a .pdf with a .docx
+// therefore lands on a NEW path and, without cleanup, strands the old object in
+// the bucket forever — invisible to the user and to account deletion via the
+// (now-overwritten) DB pointer.
+
+describe("uploadCvAction — replacing an existing CV", () => {
+  it("removes the previous stored object when the replacement lands on a different path", async () => {
+    applyProfileFindUnique.mockResolvedValue({
+      userId: "u1",
+      cvStoragePath: "u1/cv.docx",
+    });
+    uploadCv.mockResolvedValue("u1/cv.pdf");
+    const order: string[] = [];
+    applyProfileUpsert.mockImplementation(async () => {
+      order.push("db");
+      return {};
+    });
+    removeCv.mockImplementation(async () => {
+      order.push("remove-old");
+    });
+
+    const res = await uploadCvAction(makeFormData());
+
+    expect(res.ok).toBe(true);
+    expect(removeCv).toHaveBeenCalledWith("u1/cv.docx");
+    // Cleanup only AFTER the new object + DB pointer are in place, so a failed
+    // upload can never leave the user pointing at a deleted file.
+    expect(order.indexOf("db")).toBeLessThan(order.indexOf("remove-old"));
+  });
+
+  it("does NOT remove anything when the replacement overwrites the same path", async () => {
+    applyProfileFindUnique.mockResolvedValue({
+      userId: "u1",
+      cvStoragePath: "u1/cv.pdf",
+    });
+    uploadCv.mockResolvedValue("u1/cv.pdf");
+
+    const res = await uploadCvAction(makeFormData());
+
+    expect(res.ok).toBe(true);
+    expect(removeCv).not.toHaveBeenCalled();
+  });
+
+  it("stale-object cleanup failure does NOT fail the upload (state already consistent)", async () => {
+    applyProfileFindUnique.mockResolvedValue({
+      userId: "u1",
+      cvStoragePath: "u1/cv.docx",
+    });
+    uploadCv.mockResolvedValue("u1/cv.pdf");
+    removeCv.mockRejectedValue(new Error("storage hiccup"));
+
+    const res = await uploadCvAction(makeFormData());
+
+    // The user's visible CV (new file) and the stored object (new file) agree;
+    // the stranded old object is an internal orphan that the account-deletion
+    // sweep erases. Failing the upload here would hurt the user for no gain.
+    expect(res.ok).toBe(true);
+    expect(res.cvParsed).toBe(true);
+  });
+});
+
+describe("clearCvAction", () => {
+  it("removes the stored object FIRST, then clears the CV metadata", async () => {
+    const order: string[] = [];
+    removeCv.mockImplementation(async () => {
+      order.push("storage");
+    });
+    applyProfileUpdate.mockImplementation(async () => {
+      order.push("db");
+      return {};
+    });
+
+    const res = await clearCvAction();
+
+    expect(res.ok).toBe(true);
+    expect(removeCv).toHaveBeenCalledWith("u1/cv.pdf");
+    expect(applyProfileUpdate).toHaveBeenCalledWith({
+      where: { userId: "u1" },
+      data: {
+        cvStoragePath: null,
+        cvFileName: null,
+        cvFileSize: null,
+        cvText: null,
+        cvUpdatedAt: null,
+      },
+    });
+    // Storage first: clearing the DB pointer first would lose the only
+    // reference to the object if the removal then failed (permanent orphan).
+    expect(order.indexOf("storage")).toBeLessThan(order.indexOf("db"));
+    expect(revalidatePath).toHaveBeenCalledWith("/settings");
+  });
+
+  it("surfaces a storage failure and KEEPS the DB pointer (retryable, no silent divergence)", async () => {
+    removeCv.mockRejectedValue(new Error("storage unavailable"));
+
+    const res = await clearCvAction();
+
+    expect(res.ok).not.toBe(true);
+    expect(res.error).toBeTruthy();
+    expect(applyProfileUpdate).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("clears metadata without touching storage when no CV is on record", async () => {
+    applyProfileFindUnique.mockResolvedValue({
+      userId: "u1",
+      cvStoragePath: null,
+    });
+
+    const res = await clearCvAction();
+
+    expect(res.ok).toBe(true);
+    expect(removeCv).not.toHaveBeenCalled();
+    expect(applyProfileUpdate).toHaveBeenCalledTimes(1);
   });
 });
