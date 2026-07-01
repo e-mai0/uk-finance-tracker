@@ -63,23 +63,11 @@ describe("radar-feed [review] isOvernight is a strict hour subset of the week wi
   });
 });
 
-describe("radar-feed [review] closingSoon hygiene", () => {
-  it("excludes estimated, rolling, past, and non-OPEN; orders soonest-first", () => {
-    const { closingSoon } = composeRadarFeed({
-      items: [
-        it_({ id: "ok6", deadlineAt: dOff(6) }),
-        it_({ id: "ok1", deadlineAt: dOff(1) }),
-        it_({ id: "est", deadlineAt: dOff(2), deadlineEstimated: true }),
-        it_({ id: "roll", deadlineAt: dOff(2), isRolling: true }),
-        it_({ id: "past", deadlineAt: dOff(-2) }),
-        it_({ id: "closedSoon", status: "CLOSED" as OpportunityStatus, deadlineAt: dOff(2) }),
-      ],
-      sources: [],
-      now: T0,
-    });
-    expect(closingSoon.map((i) => i.id)).toEqual(["ok1", "ok6"]);
-  });
-});
+// NOTE (ADR-012): the "closingSoon hygiene" review suite was removed with the
+// closingSoon section itself — the product decision dropped closing/opening
+// sections from Radar entirely (they duplicated Today/tracker urgency). This
+// deletion is sanctioned scope change, not test weakening; new/closed/coverage
+// review assertions below are untouched.
 
 describe("radar-feed [review] recentlyClosed window", () => {
   it("includes 2-days-ago, excludes 10-days-ago and null closedAt; desc by closedAt", () => {

@@ -176,3 +176,36 @@ export async function getSavedItems(userId: string): Promise<TrackerItem[]> {
   const items = await getTrackerItems(userId);
   return items.filter((i) => i.saved);
 }
+
+/**
+ * The session user's saved / applied opportunity-id sets. Used by the Radar
+ * page to mark recently-closed roles that touch this user ("you saved this" /
+ * "you applied to this"). Session-scoped: both queries filter by `userId`, and
+ * the pure feed layer only ever intersects on exact ids, so one user's sets
+ * can never mark another user's view. Extension-captured applications with no
+ * linked opportunity (opportunityId=null) are skipped — there is no id to
+ * intersect.
+ */
+export async function getUserOpportunityIdSets(userId: string): Promise<{
+  savedIds: Set<string>;
+  appliedIds: Set<string>;
+}> {
+  const [saved, applied] = await Promise.all([
+    prisma.savedOpportunity.findMany({
+      where: { userId },
+      select: { opportunityId: true },
+    }),
+    prisma.application.findMany({
+      where: { userId, opportunityId: { not: null } },
+      select: { opportunityId: true },
+    }),
+  ]);
+  return {
+    savedIds: new Set(saved.map((s) => s.opportunityId)),
+    appliedIds: new Set(
+      applied
+        .map((a) => a.opportunityId)
+        .filter((id): id is string => id !== null),
+    ),
+  };
+}

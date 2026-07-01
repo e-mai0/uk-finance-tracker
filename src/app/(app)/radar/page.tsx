@@ -2,102 +2,77 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { prisma } from "@/server/db";
-import { getTrackerItems } from "@/server/queries/opportunities";
+import {
+  getTrackerItems,
+  getUserOpportunityIdSets,
+} from "@/server/queries/opportunities";
 import { composeRadarFeed } from "@/lib/radar-feed";
-import { cn, daysUntil, formatShortDate } from "@/lib/utils";
+import { cn, formatRelativeTime, formatShortDate } from "@/lib/utils";
 import { Monogram } from "@/components/ui/monogram";
 import { ScoutCard } from "@/components/tracker/scout-card";
 import { CoverageSummary } from "@/components/tracker/coverage-summary";
-import type { TrackerItem } from "@/lib/filters";
+
+/**
+ * "What Cyclops did while you were away" (ADR-012): a sync digest headline,
+ * the roles that appeared in the window, the roles that closed (marked when
+ * they intersect the session user's saved/applied sets), and the compact
+ * coverage summary. Closing-soon/opening-soon were dropped — urgency lives on
+ * Today and the tracker. All selection logic lives in the pure
+ * `composeRadarFeed` module; this is a thin server component that loads data,
+ * calls it, and renders.
+ */
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Radar — Cyclops" };
-
-/**
- * The discovery surface: a "what changed overnight / this week" feed — roles
- * closing soon, newly seen, opening soon, and recently closed — with the
- * source/health grid demoted into a compact, expandable coverage summary. All
- * the selection logic lives in the pure `composeRadarFeed` module; this is a
- * thin server component that loads data, calls it, and renders.
- */
 
 export default async function RadarPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [sources, items] = await Promise.all([
+  const [sources, items, { savedIds, appliedIds }] = await Promise.all([
     prisma.ingestionSource.findMany({
       orderBy: [{ enabled: "desc" }, { employerName: "asc" }],
     }),
     getTrackerItems(userId),
+    getUserOpportunityIdSets(userId),
   ]);
 
   const now = new Date();
-  const feed = composeRadarFeed({ items, sources, now });
-  const { closingSoon, fresh, freshOverflow, openingSoon, recentlyClosed, coverage } =
-    feed;
+  const feed = composeRadarFeed({ items, sources, savedIds, appliedIds, now });
+  const { digest, fresh, freshOverflow, recentlyClosed, coverage } = feed;
 
-  const newThisWeek = fresh.length + freshOverflow;
-  const nothingNew =
-    closingSoon.length === 0 && fresh.length === 0 && openingSoon.length === 0;
+  const closedYours = recentlyClosed.filter((i) => i.youApplied || i.youSaved);
+  const nothingNew = fresh.length === 0;
 
   return (
     <div className="animate-rise mx-auto max-w-4xl space-y-5 px-5 py-8">
       <div>
-        <p className="label text-faint">Discovery</p>
+        <p className="label text-faint">While you were away</p>
         <h1 className="mt-1 text-[1.75rem] text-ink">Radar</h1>
+        {/* Sync digest — every number comes from feed.digest, which is derived
+            from the same arrays the sections below render. */}
         <p className="mt-1 text-[0.875rem] text-muted">
-          {newThisWeek > 0
-            ? `${newThisWeek} new this week`
-            : "Nothing new this week"}
-          {coverage.lastSweepAt && (
-            <>
-              {" · "}
-              <span className="text-subtle">
-                swept {formatShortDate(coverage.lastSweepAt)}
-              </span>
-            </>
+          Checked <span className="tabular">{digest.sourcesChecked}</span>{" "}
+          {digest.sourcesChecked === 1 ? "source" : "sources"}
+          {" · "}
+          {digest.lastSyncAt ? (
+            <>last sync {formatRelativeTime(digest.lastSyncAt, now)}</>
+          ) : (
+            <>not yet synced</>
           )}
+          {" · "}
+          <span className={cn(digest.newCount > 0 && "text-ink")}>
+            <span className="tabular">{digest.newCount}</span> new{" "}
+            {digest.newCount === 1 ? "role" : "roles"}
+          </span>
+          {" · "}
+          <span className="tabular">{digest.closedCount}</span> closed
         </p>
       </div>
 
-      {/* Closing soon — strongest weight; stated deadlines only. */}
-      {closingSoon.length > 0 && (
-        <Section title="Closing soon" glyph="▼" glyphTone="text-danger" count={closingSoon.length}>
-          {closingSoon.map((i) => {
-            const d = daysUntil(i.deadlineAt, now);
-            const urgent = d !== null && d <= 14;
-            return (
-              <li key={i.id}>
-                <Link
-                  href={`/tracker/${i.id}`}
-                  className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface-2"
-                >
-                  <Monogram name={i.employerName} hint={i.logoHint} className="h-8 w-8" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[0.875rem] font-bold text-ink">
-                      {i.employerName}
-                    </p>
-                    <p className="truncate text-[0.8125rem] text-muted">{i.title}</p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className={cn("font-mono text-[0.78rem]", urgent ? "text-danger" : "text-ink")}>
-                      {urgent && <span aria-hidden>▼ </span>}D-{d}
-                    </p>
-                    <p className="font-mono text-[0.6875rem] text-subtle">
-                      {formatShortDate(i.deadlineAt)}
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </Section>
-      )}
-
       {/* New — listings first seen this week; overnight finds flagged. */}
-      <Section title="New" glyph="✚" glyphTone="text-success" count={newThisWeek}>
+      <Section title="New" glyph="✚" glyphTone="text-success" count={digest.newCount}>
         {fresh.length === 0 ? (
           <li className="px-3 py-4 text-[0.8125rem] text-muted">
             No new listings this week. Scout a firm below to widen the radar.
@@ -144,28 +119,6 @@ export default async function RadarPage() {
         )}
       </Section>
 
-      {/* Opening soon — firms with a stated open date ahead. */}
-      {openingSoon.length > 0 && (
-        <Section title="Opening soon" glyph="◆" glyphTone="text-accent" count={openingSoon.length}>
-          {openingSoon.map((i) => (
-            <li key={i.id}>
-              <Link
-                href={`/tracker/${i.id}`}
-                className="flex items-baseline gap-3 px-3 py-2.5 transition-colors hover:bg-surface-2"
-              >
-                <span className="min-w-0 flex-1 truncate text-[0.875rem] text-ink">
-                  <span className="font-bold">{i.employerName}</span>{" "}
-                  <span className="text-muted">{i.title}</span>
-                </span>
-                <span className="tabular shrink-0 font-mono text-[0.72rem] text-subtle">
-                  {i.opensAt ? `opens ${formatShortDate(i.opensAt)}` : "—"}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </Section>
-      )}
-
       {nothingNew && (
         <p className="rounded-card border border-border bg-surface px-4 py-5 text-center text-[0.875rem] text-muted shadow-card">
           You&rsquo;re all caught up — no new roles this week. The next sweep runs
@@ -173,29 +126,53 @@ export default async function RadarPage() {
         </p>
       )}
 
-      {/* Recently closed — collapsed, never highlighted. */}
+      {/* Closed — collapsed unless one of them is yours (saved/applied). */}
       {recentlyClosed.length > 0 && (
-        <details className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
+        <details
+          open={closedYours.length > 0}
+          className="overflow-hidden rounded-card border border-border bg-surface shadow-card"
+        >
           <summary className="label flex cursor-pointer list-none items-center gap-1 border-b border-hairline bg-surface-2 px-3 py-2 text-subtle transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
-            Recently closed · {recentlyClosed.length} ›
+            Closed this week · {recentlyClosed.length}
+            {closedYours.length > 0 && (
+              <span className="font-bold text-warning">
+                {" "}
+                · ◆ {closedYours.length} yours
+              </span>
+            )}{" "}
+            ›
           </summary>
           <ul className="divide-y divide-border">
-            {recentlyClosed.map((i: TrackerItem) => (
-              <li key={i.id} className="flex items-baseline gap-3 px-3 py-2.5">
-                <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-muted">
-                  <span className="font-semibold text-subtle">{i.employerName}</span>{" "}
-                  {i.title}
-                </span>
-                {i.closeReason && (
-                  <span className="label shrink-0 text-[0.6875rem] text-faint">
-                    {i.closeReason}
+            {recentlyClosed.map((i) => {
+              const yours = i.youApplied || i.youSaved;
+              return (
+                <li
+                  key={i.id}
+                  className={cn(
+                    "flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2.5",
+                    yours && "bg-accent-tint",
+                  )}
+                >
+                  <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-muted">
+                    <span className="font-semibold text-subtle">{i.employerName}</span>{" "}
+                    {i.title}
                   </span>
-                )}
-                <span className="tabular shrink-0 font-mono text-[0.6875rem] text-faint">
-                  {formatShortDate(i.closedAt)}
-                </span>
-              </li>
-            ))}
+                  {yours && (
+                    <span className="label shrink-0 font-bold text-warning">
+                      ◆ {i.youApplied ? "you applied to this" : "you saved this"}
+                    </span>
+                  )}
+                  {i.closeReason && (
+                    <span className="label shrink-0 text-[0.6875rem] text-faint">
+                      {i.closeReason}
+                    </span>
+                  )}
+                  <span className="tabular shrink-0 font-mono text-[0.6875rem] text-faint">
+                    {formatShortDate(i.closedAt)}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </details>
       )}

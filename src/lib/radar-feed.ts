@@ -2,13 +2,19 @@ import { daysUntil } from "./utils";
 import type { TrackerItem } from "./filters";
 
 /**
- * Pure assembly of the Radar discovery feed: it decides what "changed overnight
- * / this week" — roles closing soon, newly seen, opening soon, recently closed —
- * plus a compact coverage summary of the monitored sources. Like
- * `composeBoard` in tracker-board.ts it is independent of React and Prisma so it
- * can be unit-tested. The page maps DB rows into these shapes and calls
- * `composeRadarFeed`; nothing here touches the database or the clock (inject
- * `now`), so it is pure + deterministic.
+ * Pure assembly of the Radar feed — re-scoped by ADR-012 to "what Cyclops did
+ * while you were away": a sync digest (sources checked, last sync, N new,
+ * M closed), the roles first seen in the window, the roles that closed in the
+ * window (with per-user saved/applied markers), and a compact coverage summary
+ * of the monitored sources. The old closingSoon/openingSoon sections were
+ * dropped: closing urgency belongs to Today/tracker, and "opening soon" is
+ * speculation rather than something that happened.
+ *
+ * Like `composeBoard` in tracker-board.ts it is independent of React and
+ * Prisma so it can be unit-tested. The page maps DB rows into these shapes and
+ * calls `composeRadarFeed`; nothing here touches the database or the clock
+ * (inject `now`), so it is pure + deterministic. The session user's saved /
+ * applied opportunity-id sets are INPUTS — this module never queries them.
  */
 
 /** Minimal monitored-source shape the feed needs for the coverage summary. */
@@ -35,24 +41,47 @@ export interface RadarCoverage {
   lastSweepAt: string | null;
 }
 
+/**
+ * The one-line "what happened under the hood" digest. Counts are derived from
+ * the SAME arrays the sections render (`fresh`+`freshOverflow` and
+ * `recentlyClosed`) so the headline can never disagree with the content below.
+ */
+export interface RadarDigest {
+  /** Sources the sweep attempts: enabled ones (disabled sources are skipped). */
+  sourcesChecked: number;
+  /** Identical to coverage.lastSweepAt — most recent successful fetch (ISO). */
+  lastSyncAt: string | null;
+  /** New roles in the window == fresh.length + freshOverflow. */
+  newCount: number;
+  /** Roles closed in the window == recentlyClosed.length. */
+  closedCount: number;
+}
+
 export interface RadarFreshItem extends TrackerItem {
   /** First seen within `overnightHours` — the tightest "brand new" subset. */
   isOvernight: boolean;
 }
 
+export interface RadarClosedItem extends TrackerItem {
+  /** The session user had saved this role (id ∈ injected savedIds). */
+  youSaved: boolean;
+  /** The session user had an application on this role (id ∈ appliedIds). */
+  youApplied: boolean;
+}
+
 export interface RadarFeed {
-  closingSoon: TrackerItem[];
+  digest: RadarDigest;
   fresh: RadarFreshItem[];
   freshOverflow: number;
-  openingSoon: TrackerItem[];
-  recentlyClosed: TrackerItem[];
+  recentlyClosed: RadarClosedItem[];
   coverage: RadarCoverage;
 }
 
 const DEFAULT_OVERNIGHT_HOURS = 36;
 const DEFAULT_WEEK_DAYS = 7;
-const DEFAULT_CLOSING_SOON_DAYS = 7;
 const DEFAULT_FRESH_LIMIT = 6;
+
+const EMPTY_IDS: ReadonlySet<string> = new Set();
 
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -75,35 +104,26 @@ export function composeRadarFeed(opts: {
   /** Every monitored source (may include disabled / watch-only). */
   sources: RadarFeedSource[];
   now: Date;
+  /** The session user's saved opportunity ids (exact-match intersection). */
+  savedIds?: ReadonlySet<string>;
+  /** The session user's applied opportunity ids (exact-match intersection). */
+  appliedIds?: ReadonlySet<string>;
   overnightHours?: number;
   weekDays?: number;
-  closingSoonDays?: number;
   freshLimit?: number;
 }): RadarFeed {
   const {
     items,
     sources,
     now,
+    savedIds = EMPTY_IDS,
+    appliedIds = EMPTY_IDS,
     overnightHours = DEFAULT_OVERNIGHT_HOURS,
     weekDays = DEFAULT_WEEK_DAYS,
-    closingSoonDays = DEFAULT_CLOSING_SOON_DAYS,
     freshLimit = DEFAULT_FRESH_LIMIT,
   } = opts;
 
   const nowMs = now.getTime();
-
-  // --- Closing soon -------------------------------------------------------
-  // Exact semantics of composeBoard.closingThisWeek: OPEN, real (not estimated)
-  // non-rolling deadline, 0..closingSoonDays out — no false urgency. Soonest
-  // first.
-  const closingSoon = items
-    .filter((i) => {
-      if (i.status !== "OPEN") return false;
-      if (!i.deadlineAt || i.deadlineEstimated || i.isRolling) return false;
-      const d = daysUntil(i.deadlineAt, now);
-      return d != null && d >= 0 && d <= closingSoonDays;
-    })
-    .sort((a, b) => (time(a.deadlineAt) ?? 0) - (time(b.deadlineAt) ?? 0));
 
   // --- Fresh --------------------------------------------------------------
   // firstSeenAt within the last `weekDays` (same convention as
@@ -125,28 +145,23 @@ export function composeRadarFeed(opts: {
   });
   const freshOverflow = inWindowFresh.length - fresh.length;
 
-  // --- Opening soon -------------------------------------------------------
-  const openingSoon = items
-    .filter((i) => i.status === "OPENING_SOON")
-    .sort((a, b) => {
-      const ta = time(a.opensAt);
-      const tb = time(b.opensAt);
-      if (ta == null && tb == null) return 0;
-      if (ta == null) return 1;
-      if (tb == null) return -1;
-      return ta - tb;
-    });
-
-  // --- Recently closed ----------------------------------------------------
+  // --- Recently closed ------------------------------------------------------
   // CLOSED with a real closedAt within the last `weekDays`, newest-closed-first.
-  // A CLOSED role with closedAt=null is excluded (don't crash).
-  const recentlyClosed = items
+  // A CLOSED role with closedAt=null is excluded (don't crash). Each row is
+  // marked when it intersects the session user's saved/applied id sets — pure
+  // exact-id set membership, so one user's sets can never mark another's view.
+  const recentlyClosed: RadarClosedItem[] = items
     .filter((i) => {
       if (i.status !== "CLOSED") return false;
       const age = daysUntil(i.closedAt, now);
       return age != null && age <= 0 && age >= -weekDays;
     })
-    .sort((a, b) => (time(b.closedAt) ?? 0) - (time(a.closedAt) ?? 0));
+    .sort((a, b) => (time(b.closedAt) ?? 0) - (time(a.closedAt) ?? 0))
+    .map((i) => ({
+      ...i,
+      youSaved: savedIds.has(i.id),
+      youApplied: appliedIds.has(i.id),
+    }));
 
   // --- Coverage -----------------------------------------------------------
   const liveFeeds = sources.filter(
@@ -179,5 +194,15 @@ export function composeRadarFeed(opts: {
     lastSweepAt: lastSweep != null ? new Date(lastSweep).toISOString() : null,
   };
 
-  return { closingSoon, fresh, freshOverflow, openingSoon, recentlyClosed, coverage };
+  // --- Digest ---------------------------------------------------------------
+  // Derived from the arrays above (NOT recomputed from raw items) so the
+  // headline counts can never disagree with what the sections render.
+  const digest: RadarDigest = {
+    sourcesChecked: sources.filter((s) => s.enabled).length,
+    lastSyncAt: coverage.lastSweepAt,
+    newCount: fresh.length + freshOverflow,
+    closedCount: recentlyClosed.length,
+  };
+
+  return { digest, fresh, freshOverflow, recentlyClosed, coverage };
 }

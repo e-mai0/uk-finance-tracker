@@ -3,6 +3,14 @@ import { composeRadarFeed, type RadarFeedSource } from "../lib/radar-feed";
 import type { TrackerItem } from "../lib/filters";
 import type { OpportunityStatus, RoleFamily } from "@prisma/client";
 
+/**
+ * ADR-012 re-scope: Radar = "what Cyclops did while you were away".
+ * closingSoon/openingSoon were dropped from the feed (spec change), so their
+ * suites are gone; new suites pin the sync digest (counts derived from the
+ * same arrays the sections render) and the per-user saved/applied markers on
+ * closed roles (pure set-intersection over injected id sets).
+ */
+
 const NOW = new Date("2026-06-15T12:00:00.000Z");
 
 /** Minimal TrackerItem factory — only the fields the feed reads matter. */
@@ -48,83 +56,6 @@ function source(over: Partial<RadarFeedSource> & { employerName: string }): Rada
     ...over,
   };
 }
-
-// ---------------------------------------------------------------------------
-// closingSoon
-// ---------------------------------------------------------------------------
-
-describe("composeRadarFeed — closingSoon", () => {
-  it("includes OPEN roles with a real deadline 0..closingSoonDays out, soonest-first", () => {
-    const { closingSoon } = composeRadarFeed({
-      items: [
-        item({ id: "far", deadlineAt: daysFromNow(6) }),
-        item({ id: "near", deadlineAt: daysFromNow(2) }),
-        item({ id: "today", deadlineAt: daysFromNow(0) }),
-      ],
-      sources: [],
-      now: NOW,
-    });
-    expect(closingSoon.map((i) => i.id)).toEqual(["today", "near", "far"]);
-  });
-
-  it("excludes estimated deadlines (no false urgency)", () => {
-    const { closingSoon } = composeRadarFeed({
-      items: [item({ id: "est", deadlineAt: daysFromNow(2), deadlineEstimated: true })],
-      sources: [],
-      now: NOW,
-    });
-    expect(closingSoon).toEqual([]);
-  });
-
-  it("excludes rolling deadlines", () => {
-    const { closingSoon } = composeRadarFeed({
-      items: [item({ id: "roll", deadlineAt: daysFromNow(2), isRolling: true })],
-      sources: [],
-      now: NOW,
-    });
-    expect(closingSoon).toEqual([]);
-  });
-
-  it("excludes past deadlines (daysUntil >= 0)", () => {
-    const { closingSoon } = composeRadarFeed({
-      items: [item({ id: "past", deadlineAt: daysFromNow(-1) })],
-      sources: [],
-      now: NOW,
-    });
-    expect(closingSoon).toEqual([]);
-  });
-
-  it("excludes deadlines beyond the window", () => {
-    const { closingSoon } = composeRadarFeed({
-      items: [item({ id: "out", deadlineAt: daysFromNow(20) })],
-      sources: [],
-      now: NOW,
-    });
-    expect(closingSoon).toEqual([]);
-  });
-
-  it("excludes non-OPEN statuses and items without a deadline", () => {
-    const { closingSoon } = composeRadarFeed({
-      items: [
-        item({ id: "closed", status: "CLOSED" as OpportunityStatus, deadlineAt: daysFromNow(2) }),
-        item({ id: "nodate", deadlineAt: null }),
-      ],
-      sources: [],
-      now: NOW,
-    });
-    expect(closingSoon).toEqual([]);
-  });
-
-  it("respects a custom closingSoonDays window", () => {
-    const { closingSoon } = composeRadarFeed({
-      items: [item({ id: "d3", deadlineAt: daysFromNow(3) })],
-      sources: [],
-      now: NOW,
-      closingSoonDays: 2,
-    });
-    expect(closingSoon).toEqual([]);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // fresh / isOvernight / overflow
@@ -212,26 +143,7 @@ describe("composeRadarFeed — fresh window + isOvernight boundary", () => {
 });
 
 // ---------------------------------------------------------------------------
-// openingSoon
-// ---------------------------------------------------------------------------
-
-describe("composeRadarFeed — openingSoon", () => {
-  it("lists OPENING_SOON items ordered by opensAt asc", () => {
-    const { openingSoon } = composeRadarFeed({
-      items: [
-        item({ id: "late", status: "OPENING_SOON" as OpportunityStatus, opensAt: daysFromNow(10) }),
-        item({ id: "soon", status: "OPENING_SOON" as OpportunityStatus, opensAt: daysFromNow(2) }),
-        item({ id: "open", status: "OPEN" as OpportunityStatus, opensAt: daysFromNow(1) }),
-      ],
-      sources: [],
-      now: NOW,
-    });
-    expect(openingSoon.map((i) => i.id)).toEqual(["soon", "late"]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// recentlyClosed
+// recentlyClosed (content preserved from the pre-ADR-012 feed)
 // ---------------------------------------------------------------------------
 
 describe("composeRadarFeed — recentlyClosed", () => {
@@ -272,6 +184,196 @@ describe("composeRadarFeed — recentlyClosed", () => {
       now: NOW,
     });
     expect(recentlyClosed).toEqual([]);
+  });
+
+  it("keeps closeReason/closedAt on closed rows (the section renders them)", () => {
+    const { recentlyClosed } = composeRadarFeed({
+      items: [
+        item({
+          id: "c1",
+          status: "CLOSED" as OpportunityStatus,
+          closedAt: daysFromNow(-1),
+          closeReason: "deadline passed",
+        }),
+      ],
+      sources: [],
+      now: NOW,
+    });
+    expect(recentlyClosed[0].closeReason).toBe("deadline passed");
+    expect(recentlyClosed[0].closedAt).toEqual(daysFromNow(-1));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// per-user saved/applied markers on closed roles (ADR-012 §3)
+// ---------------------------------------------------------------------------
+
+describe("composeRadarFeed — saved/applied markers on recentlyClosed", () => {
+  const closed = (id: string) =>
+    item({ id, status: "CLOSED" as OpportunityStatus, closedAt: daysFromNow(-1) });
+
+  it("marks youSaved / youApplied only on exact id intersection", () => {
+    const { recentlyClosed } = composeRadarFeed({
+      items: [closed("c1"), closed("c2"), closed("c3")],
+      sources: [],
+      now: NOW,
+      savedIds: new Set(["c1"]),
+      appliedIds: new Set(["c3"]),
+    });
+    const byId = new Map(recentlyClosed.map((i) => [i.id, i]));
+    expect(byId.get("c1")).toMatchObject({ youSaved: true, youApplied: false });
+    expect(byId.get("c2")).toMatchObject({ youSaved: false, youApplied: false });
+    expect(byId.get("c3")).toMatchObject({ youSaved: false, youApplied: true });
+  });
+
+  it("a role both saved and applied carries both flags", () => {
+    const { recentlyClosed } = composeRadarFeed({
+      items: [closed("both")],
+      sources: [],
+      now: NOW,
+      savedIds: new Set(["both"]),
+      appliedIds: new Set(["both"]),
+    });
+    expect(recentlyClosed[0].youSaved).toBe(true);
+    expect(recentlyClosed[0].youApplied).toBe(true);
+  });
+
+  it("empty sets mark nothing, and omitted sets behave as empty", () => {
+    const explicit = composeRadarFeed({
+      items: [closed("c1")],
+      sources: [],
+      now: NOW,
+      savedIds: new Set<string>(),
+      appliedIds: new Set<string>(),
+    });
+    const omitted = composeRadarFeed({
+      items: [closed("c1")],
+      sources: [],
+      now: NOW,
+    });
+    for (const feed of [explicit, omitted]) {
+      expect(feed.recentlyClosed[0].youSaved).toBe(false);
+      expect(feed.recentlyClosed[0].youApplied).toBe(false);
+    }
+  });
+
+  it("cross-user isolation: user A's id sets never mark user B's roles", () => {
+    // The page passes the SESSION user's sets; ids belonging to another user
+    // (or near-miss ids) must never light up markers in this user's view.
+    const { recentlyClosed } = composeRadarFeed({
+      items: [closed("b1"), closed("b2")],
+      sources: [],
+      now: NOW,
+      savedIds: new Set(["a1", "B1", "b1 "]), // wrong ids + case/whitespace near-misses
+      appliedIds: new Set(["a2"]),
+    });
+    for (const row of recentlyClosed) {
+      expect(row.youSaved).toBe(false);
+      expect(row.youApplied).toBe(false);
+    }
+  });
+
+  it("markers never resurrect out-of-window or non-closed roles", () => {
+    const { recentlyClosed, fresh } = composeRadarFeed({
+      items: [
+        item({
+          id: "oldClosed",
+          status: "CLOSED" as OpportunityStatus,
+          closedAt: daysFromNow(-30),
+          firstSeenAt: hoursAgo(60 * 24),
+        }),
+        item({ id: "stillOpen", firstSeenAt: hoursAgo(2) }),
+      ],
+      sources: [],
+      now: NOW,
+      savedIds: new Set(["oldClosed", "stillOpen"]),
+      appliedIds: new Set(["oldClosed", "stillOpen"]),
+    });
+    expect(recentlyClosed).toEqual([]);
+    expect(fresh.map((i) => i.id)).toEqual(["stillOpen"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sync digest (ADR-012 §1) — counts must be the section arrays' lengths
+// ---------------------------------------------------------------------------
+
+describe("composeRadarFeed — sync digest consistency", () => {
+  it("digest counts equal the rendered section lengths on a fixture where raw counts differ", () => {
+    // 6 raw items but only 2 are "new in window" and 1 "closed in window":
+    // a digest computed from anything other than the section arrays diverges.
+    const { digest, fresh, freshOverflow, recentlyClosed } = composeRadarFeed({
+      items: [
+        item({ id: "new1", firstSeenAt: hoursAgo(2) }),
+        item({ id: "new2", firstSeenAt: hoursAgo(30) }),
+        item({ id: "stale", firstSeenAt: hoursAgo(30 * 24) }),
+        item({ id: "closedIn", status: "CLOSED" as OpportunityStatus, closedAt: daysFromNow(-2), firstSeenAt: hoursAgo(30 * 24) }),
+        item({ id: "closedOut", status: "CLOSED" as OpportunityStatus, closedAt: daysFromNow(-20), firstSeenAt: hoursAgo(30 * 24) }),
+        item({ id: "closedNull", status: "CLOSED" as OpportunityStatus, closedAt: null, firstSeenAt: hoursAgo(30 * 24) }),
+      ],
+      sources: [],
+      now: NOW,
+    });
+    expect(digest.newCount).toBe(2);
+    expect(digest.newCount).toBe(fresh.length + freshOverflow);
+    expect(digest.closedCount).toBe(1);
+    expect(digest.closedCount).toBe(recentlyClosed.length);
+  });
+
+  it("newCount includes the capped overflow (fresh.length + freshOverflow)", () => {
+    const items = Array.from({ length: 5 }, (_, i) =>
+      item({ id: `n${i}`, firstSeenAt: hoursAgo(i + 1) }),
+    );
+    const { digest, fresh, freshOverflow } = composeRadarFeed({
+      items,
+      sources: [],
+      now: NOW,
+      freshLimit: 2,
+    });
+    expect(fresh).toHaveLength(2);
+    expect(freshOverflow).toBe(3);
+    expect(digest.newCount).toBe(5);
+    expect(digest.newCount).toBe(fresh.length + freshOverflow);
+  });
+
+  it("sourcesChecked counts enabled sources only (disabled are skipped by the sweep)", () => {
+    const { digest } = composeRadarFeed({
+      items: [],
+      sources: [
+        source({ employerName: "Live", enabled: true }),
+        source({ employerName: "Watcher", enabled: true, watchOnly: true }),
+        source({ employerName: "Off", enabled: false }),
+      ],
+      now: NOW,
+    });
+    expect(digest.sourcesChecked).toBe(2);
+  });
+
+  it("lastSyncAt mirrors coverage.lastSweepAt (same real timestamp, or null)", () => {
+    const withFetch = composeRadarFeed({
+      items: [],
+      sources: [
+        source({ employerName: "A", lastSuccessfulFetchAt: "2026-06-15T06:00:00.000Z" }),
+        source({ employerName: "B", lastSuccessfulFetchAt: "2026-06-14T06:00:00.000Z" }),
+      ],
+      now: NOW,
+    });
+    expect(withFetch.digest.lastSyncAt).toBe("2026-06-15T06:00:00.000Z");
+    expect(withFetch.digest.lastSyncAt).toBe(withFetch.coverage.lastSweepAt);
+
+    const noFetch = composeRadarFeed({ items: [], sources: [], now: NOW });
+    expect(noFetch.digest.lastSyncAt).toBeNull();
+    expect(noFetch.digest.lastSyncAt).toBe(noFetch.coverage.lastSweepAt);
+  });
+
+  it("all-quiet digest is honest zeros", () => {
+    const { digest } = composeRadarFeed({ items: [], sources: [], now: NOW });
+    expect(digest).toEqual({
+      sourcesChecked: 0,
+      lastSyncAt: null,
+      newCount: 0,
+      closedCount: 0,
+    });
   });
 });
 
@@ -355,25 +457,33 @@ describe("composeRadarFeed — coverage", () => {
 // ---------------------------------------------------------------------------
 
 describe("composeRadarFeed — accepts Date and ISO-string inputs", () => {
-  it("normalizes string and Date dates the same way", () => {
+  it("normalizes string and Date closedAt the same way", () => {
     const isoResult = composeRadarFeed({
-      items: [item({ id: "iso", deadlineAt: daysFromNow(3).toISOString() })],
+      items: [
+        item({
+          id: "iso",
+          status: "CLOSED" as OpportunityStatus,
+          closedAt: daysFromNow(-2).toISOString(),
+        }),
+      ],
       sources: [],
       now: NOW,
     });
     const dateResult = composeRadarFeed({
-      items: [item({ id: "date", deadlineAt: daysFromNow(3) })],
+      items: [
+        item({ id: "date", status: "CLOSED" as OpportunityStatus, closedAt: daysFromNow(-2) }),
+      ],
       sources: [],
       now: NOW,
     });
-    expect(isoResult.closingSoon).toHaveLength(1);
-    expect(dateResult.closingSoon).toHaveLength(1);
+    expect(isoResult.recentlyClosed).toHaveLength(1);
+    expect(dateResult.recentlyClosed).toHaveLength(1);
   });
 
   it("ignores unparseable dates without crashing", () => {
-    const { closingSoon, fresh, recentlyClosed } = composeRadarFeed({
+    const { fresh, recentlyClosed, digest } = composeRadarFeed({
       items: [
-        item({ id: "bad", deadlineAt: "not-a-date", firstSeenAt: "garbage" as unknown as string }),
+        item({ id: "bad", firstSeenAt: "garbage" as unknown as string }),
         item({
           id: "badclose",
           status: "CLOSED" as OpportunityStatus,
@@ -384,8 +494,10 @@ describe("composeRadarFeed — accepts Date and ISO-string inputs", () => {
       sources: [source({ employerName: "S", lastSuccessfulFetchAt: "also-bad" })],
       now: NOW,
     });
-    expect(closingSoon).toEqual([]);
     expect(fresh).toEqual([]);
     expect(recentlyClosed).toEqual([]);
+    expect(digest.newCount).toBe(0);
+    expect(digest.closedCount).toBe(0);
+    expect(digest.lastSyncAt).toBeNull();
   });
 });
