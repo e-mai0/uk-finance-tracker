@@ -33,6 +33,8 @@ export interface TrackerItem {
   saved?: boolean;
   deadlineEstimated?: boolean;
   isRolling?: boolean;
+  closedAt?: Date | string | null;
+  closeReason?: string | null;
 }
 
 export interface FilterParams {
