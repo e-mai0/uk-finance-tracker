@@ -23,6 +23,10 @@ const {
   signOutMock,
   userDelete,
   txMock,
+  // storage seams (CV file lives in Supabase Storage, not Prisma)
+  storageConfiguredMock,
+  downloadCvMock,
+  removeAllCvObjectsForUserMock,
   // explicit deleteMany spies for the non-cascade models
   gardenerQuestionDeleteMany,
   gardenerRunDeleteMany,
@@ -51,6 +55,9 @@ const {
   signOutMock: vi.fn(),
   userDelete: vi.fn(),
   txMock: vi.fn(),
+  storageConfiguredMock: vi.fn(),
+  downloadCvMock: vi.fn(),
+  removeAllCvObjectsForUserMock: vi.fn(),
   gardenerQuestionDeleteMany: vi.fn(),
   gardenerRunDeleteMany: vi.fn(),
   dailyUsageDeleteMany: vi.fn(),
@@ -122,6 +129,13 @@ vi.mock("@/server/db", () => ({
 
 vi.mock("@/server/auth", () => ({ auth: authMock, signOut: signOutMock }));
 
+// Storage is fully mocked — no supabase-js client is ever constructed here.
+vi.mock("@/server/storage", () => ({
+  storageConfigured: storageConfiguredMock,
+  downloadCv: downloadCvMock,
+  removeAllCvObjectsForUser: removeAllCvObjectsForUserMock,
+}));
+
 import { deleteAccount, exportMyData } from "@/server/actions/account";
 
 const USER_ID = "user-me";
@@ -144,6 +158,9 @@ function resetAll() {
   ]) {
     (fn as ReturnType<typeof vi.fn>).mockResolvedValue({});
   }
+  // default: storage configured, sweep succeeds having found nothing.
+  storageConfiguredMock.mockReturnValue(true);
+  removeAllCvObjectsForUserMock.mockResolvedValue([]);
 }
 
 beforeEach(resetAll);
@@ -257,6 +274,85 @@ describe("deleteAccount", () => {
     });
     await deleteAccount({ confirm: "DELETE" });
     expect(order.indexOf("explicit")).toBeLessThan(order.indexOf("user"));
+  });
+
+  // ——— GDPR erasure completeness: the uploaded CV FILE lives in Supabase
+  // Storage, not Prisma — deletion must erase it too, and must NEVER claim
+  // complete erasure while silently leaving the file behind.
+
+  it("sweeps the user's CV storage folder BEFORE the DB transaction", async () => {
+    setSignedIn();
+    const order: string[] = [];
+    removeAllCvObjectsForUserMock.mockImplementation(async () => {
+      order.push("storage");
+      return ["user-me/cv.pdf"];
+    });
+    userDelete.mockImplementation(async () => {
+      order.push("user");
+      return {};
+    });
+
+    const res = await deleteAccount({ confirm: "DELETE" });
+
+    expect(res.ok).toBe(true);
+    expect(removeAllCvObjectsForUserMock).toHaveBeenCalledTimes(1);
+    expect(removeAllCvObjectsForUserMock).toHaveBeenCalledWith(USER_ID);
+    // Storage first: once the rows (and session) are gone, nothing references
+    // the storage path any more, so a failed post-hoc cleanup would orphan the
+    // file with no way to retry. Failing first keeps the action retryable.
+    expect(order.indexOf("storage")).toBeLessThan(order.indexOf("user"));
+  });
+
+  it("ABORTS deletion (no DB rows touched, no sign-out) when CV storage erasure fails", async () => {
+    setSignedIn();
+    removeAllCvObjectsForUserMock.mockRejectedValue(new Error("storage down"));
+
+    const res = await deleteAccount({ confirm: "DELETE" });
+
+    expect(res.ok).not.toBe(true);
+    expect(res.error).toMatch(/CV/i);
+    expect(txMock).not.toHaveBeenCalled();
+    expect(userDelete).not.toHaveBeenCalled();
+    expect(signOutMock).not.toHaveBeenCalled();
+  });
+
+  it("CV erasure sweep is scoped to the SESSION user's id (mutation guard)", async () => {
+    setSignedIn("real-session-user");
+    await deleteAccount({
+      confirm: "DELETE",
+      // @ts-expect-error — userId is intentionally NOT part of the input type
+      userId: "victim-user",
+    });
+    expect(removeAllCvObjectsForUserMock).toHaveBeenCalledWith("real-session-user");
+    expect(removeAllCvObjectsForUserMock).not.toHaveBeenCalledWith("victim-user");
+  });
+
+  it("refuses to delete when storage is unconfigured but a CV file is on record", async () => {
+    setSignedIn();
+    storageConfiguredMock.mockReturnValue(false);
+    applyProfileFindUnique.mockResolvedValue({ cvStoragePath: "user-me/cv.pdf" });
+
+    const res = await deleteAccount({ confirm: "DELETE" });
+
+    expect(res.ok).not.toBe(true);
+    expect(res.error).toBeTruthy();
+    expect(removeAllCvObjectsForUserMock).not.toHaveBeenCalled();
+    expect(txMock).not.toHaveBeenCalled();
+    expect(userDelete).not.toHaveBeenCalled();
+    expect(signOutMock).not.toHaveBeenCalled();
+  });
+
+  it("proceeds when storage is unconfigured and NO CV file is on record", async () => {
+    setSignedIn();
+    storageConfiguredMock.mockReturnValue(false);
+    applyProfileFindUnique.mockResolvedValue(null);
+
+    const res = await deleteAccount({ confirm: "DELETE" });
+
+    expect(res.ok).toBe(true);
+    expect(removeAllCvObjectsForUserMock).not.toHaveBeenCalled();
+    expect(userDelete).toHaveBeenCalledTimes(1);
+    expect(signOutMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -390,5 +486,89 @@ describe("exportMyData", () => {
   it("returns a JSON-serializable payload", async () => {
     const res = await exportMyData();
     expect(() => JSON.stringify(res.data)).not.toThrow();
+  });
+
+  // ——— GDPR access completeness: the uploaded CV FILE (Supabase Storage) must
+  // be part of "everything we hold about you", not just its DB metadata row.
+
+  it("exports cvFile: null (key present) when no CV was ever uploaded", async () => {
+    // default applyProfile row in beforeEach has no cvStoragePath
+    const res = await exportMyData();
+    expect(res.ok).toBe(true);
+    expect(res.data).toHaveProperty("cvFile");
+    expect(res.data!.cvFile).toBeNull();
+    expect(downloadCvMock).not.toHaveBeenCalled();
+  });
+
+  it("INCLUDES the uploaded CV file itself — base64 content + metadata", async () => {
+    applyProfileFindUnique.mockResolvedValue({
+      id: "ap1",
+      userId: USER_ID,
+      cvStoragePath: "user-me/cv.pdf",
+      cvFileName: "Eric CV.pdf",
+      cvFileSize: 4,
+    });
+    downloadCvMock.mockResolvedValue(
+      new Blob([new Uint8Array([0xde, 0xad, 0xbe, 0xef])], {
+        type: "application/pdf",
+      }),
+    );
+
+    const res = await exportMyData();
+
+    expect(res.ok).toBe(true);
+    expect(downloadCvMock).toHaveBeenCalledWith("user-me/cv.pdf");
+    expect(res.data!.cvFile).toEqual({
+      available: true,
+      fileName: "Eric CV.pdf",
+      storagePath: "user-me/cv.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 4,
+      encoding: "base64",
+      base64: "3q2+7w==",
+    });
+    expect(() => JSON.stringify(res.data)).not.toThrow();
+  });
+
+  it("DEGRADES with an explicit note (rest of export intact) when the CV download fails", async () => {
+    applyProfileFindUnique.mockResolvedValue({
+      id: "ap1",
+      userId: USER_ID,
+      cvStoragePath: "user-me/cv.pdf",
+      cvFileName: "Eric CV.pdf",
+    });
+    downloadCvMock.mockRejectedValue(new Error("object not found"));
+
+    const res = await exportMyData();
+
+    // The export must still succeed — a broken file read must not block the
+    // user's access to every OTHER piece of their data...
+    expect(res.ok).toBe(true);
+    expect(res.data!.applications).toEqual([{ id: "app1" }]);
+    // ...but the gap must be explicit, never silent.
+    const cvFile = res.data!.cvFile as Record<string, unknown>;
+    expect(cvFile.available).toBe(false);
+    expect(cvFile.storagePath).toBe("user-me/cv.pdf");
+    expect(cvFile.fileName).toBe("Eric CV.pdf");
+    expect(String(cvFile.note)).toMatch(/could not/i);
+    expect(cvFile).not.toHaveProperty("base64");
+  });
+
+  it("notes the gap explicitly when a CV exists but storage is unconfigured", async () => {
+    storageConfiguredMock.mockReturnValue(false);
+    applyProfileFindUnique.mockResolvedValue({
+      id: "ap1",
+      userId: USER_ID,
+      cvStoragePath: "user-me/cv.pdf",
+      cvFileName: "Eric CV.pdf",
+    });
+
+    const res = await exportMyData();
+
+    expect(res.ok).toBe(true);
+    expect(downloadCvMock).not.toHaveBeenCalled();
+    const cvFile = res.data!.cvFile as Record<string, unknown>;
+    expect(cvFile.available).toBe(false);
+    expect(String(cvFile.note)).toBeTruthy();
   });
 });

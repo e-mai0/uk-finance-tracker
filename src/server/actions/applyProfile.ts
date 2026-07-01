@@ -97,6 +97,14 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const contentType = file.type || "application/octet-stream";
 
+  // Remember where the PREVIOUS CV lives: the canonical path is keyed on the
+  // file extension (u1/cv.pdf vs u1/cv.docx), so replacing a .pdf with a .docx
+  // lands on a NEW object and would otherwise strand the old one forever.
+  const previous = await prisma.applyProfile.findUnique({
+    where: { userId },
+    select: { cvStoragePath: true },
+  });
+
   const storagePath = await uploadCv(userId, file.name, bytes, contentType);
   const cvText = await extractCvText(bytes, file.name, contentType);
 
@@ -118,6 +126,20 @@ export async function uploadCvAction(formData: FormData): Promise<ActionResult> 
       cvUpdatedAt: new Date(),
     },
   });
+
+  // Clean up the stale object AFTER the new object + DB pointer are in place,
+  // so a failed upload can never leave the user pointing at a deleted file.
+  // Best-effort by design: at this point the user's visible CV and the stored
+  // object already agree; a failed cleanup only strands an internal orphan,
+  // which the account-deletion storage sweep erases. Failing the upload here
+  // would hurt the user for no consistency gain.
+  if (previous?.cvStoragePath && previous.cvStoragePath !== storagePath) {
+    try {
+      await removeCv(previous.cvStoragePath);
+    } catch (err) {
+      console.error("[cv storage] failed to remove replaced CV object:", err);
+    }
+  }
 
   // Run the two INDEPENDENT LLM calls concurrently rather than sequentially:
   //   - facts extraction (distil the CV into profile.md so Cyclops knows it)
@@ -178,7 +200,16 @@ export async function clearCvAction(): Promise<ActionResult> {
 
   const existing = await prisma.applyProfile.findUnique({ where: { userId } });
   if (existing?.cvStoragePath) {
-    await removeCv(existing.cvStoragePath).catch(() => {});
+    // Storage FIRST, and fail closed: clearing the DB pointer before (or in
+    // spite of) a failed removal would tell the user their CV is gone while
+    // the file silently lives on — and losing the pointer makes the orphan
+    // permanent. Keeping the pointer intact makes the action retryable.
+    try {
+      await removeCv(existing.cvStoragePath);
+    } catch (err) {
+      console.error("[cv storage] failed to remove CV object:", err);
+      return { error: "Could not remove your CV file. Try again." };
+    }
   }
   await prisma.applyProfile.update({
     where: { userId },

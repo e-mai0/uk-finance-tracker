@@ -63,7 +63,51 @@ export async function signedCvUrl(
   return data.signedUrl;
 }
 
-/** Remove a stored CV (used when the user clears their CV). */
+/** Download a stored CV (used by the account data export). */
+export async function downloadCv(storagePath: string): Promise<Blob> {
+  const { data, error } = await client()
+    .storage.from(CV_BUCKET)
+    .download(storagePath);
+  if (error || !data) {
+    throw new Error(`CV download failed: ${error?.message ?? "no data"}`);
+  }
+  return data;
+}
+
+/**
+ * Remove a stored CV (used when the user clears their CV).
+ *
+ * FAILS CLOSED: supabase-js reports failures via the returned `{ error }` — it
+ * does not throw — so this must be surfaced explicitly or a "removed" CV can
+ * silently keep existing in the bucket (GDPR erasure gap).
+ */
 export async function removeCv(storagePath: string): Promise<void> {
-  await client().storage.from(CV_BUCKET).remove([storagePath]);
+  const { error } = await client().storage.from(CV_BUCKET).remove([storagePath]);
+  if (error) throw new Error(`CV removal failed: ${error.message}`);
+}
+
+/**
+ * GDPR erasure sweep for account deletion: list the user's own folder and
+ * remove EVERYTHING in it, returning the removed paths.
+ *
+ * The sweep is keyed on the userId PREFIX rather than the DB `cvStoragePath`
+ * pointer for two reasons:
+ *   - scoping: it can only ever touch objects under `${userId}/`, and
+ *   - completeness: it also catches stale objects the pointer no longer
+ *     references (e.g. a cv.pdf stranded by a later cv.docx replacement).
+ * Any list/remove failure throws — deletion must never claim an erasure it
+ * cannot prove.
+ */
+export async function removeAllCvObjectsForUser(
+  userId: string,
+): Promise<string[]> {
+  const { data, error } = await client().storage.from(CV_BUCKET).list(userId);
+  if (error) throw new Error(`CV storage list failed: ${error.message}`);
+  const paths = (data ?? []).map((obj) => `${userId}/${obj.name}`);
+  if (paths.length === 0) return [];
+  const { error: removeError } = await client()
+    .storage.from(CV_BUCKET)
+    .remove(paths);
+  if (removeError) throw new Error(`CV removal failed: ${removeError.message}`);
+  return paths;
 }

@@ -2,6 +2,11 @@
 
 import { auth, signOut } from "../auth";
 import { prisma } from "../db";
+import {
+  downloadCv,
+  removeAllCvObjectsForUser,
+  storageConfigured,
+} from "../storage";
 import { DELETE_CONFIRM_PHRASE } from "@/app/(app)/settings/account-constants";
 
 /**
@@ -59,6 +64,41 @@ export async function deleteAccount(
   const userId = session.user.id;
   const where = { userId };
 
+  // GDPR erasure includes the uploaded CV FILE (Supabase Storage), not just
+  // Prisma rows. The sweep runs BEFORE the DB transaction, and a failure ABORTS
+  // the deletion: once the rows (and the session) are gone, nothing references
+  // the storage path any more, so a failed post-hoc cleanup would strand the
+  // file with no way to find or retry it. Failing first leaves every row
+  // intact and the whole action retryable. Accepted (disclosed) inverse risk:
+  // if the sweep succeeds and the transaction THEN fails, the surviving
+  // account temporarily points at a deleted file — the user sees the error,
+  // and re-running deleteAccount completes cleanly (the sweep is idempotent).
+  if (storageConfigured()) {
+    try {
+      await removeAllCvObjectsForUser(userId);
+    } catch (err) {
+      console.error("[account delete] CV storage erasure failed:", err);
+      return {
+        error:
+          "We couldn't delete your uploaded CV file, so your account was NOT deleted. Try again in a moment.",
+      };
+    }
+  } else {
+    // Storage env is missing — if a CV file is on record we cannot erase it,
+    // and deleting the rows anyway would claim a complete erasure that never
+    // happened (and lose the only pointer to the file).
+    const applyProfile = await prisma.applyProfile.findUnique({
+      where,
+      select: { cvStoragePath: true },
+    });
+    if (applyProfile?.cvStoragePath) {
+      return {
+        error:
+          "We couldn't reach file storage to delete your uploaded CV, so your account was NOT deleted. Try again later.",
+      };
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
     // 1) Clear non-cascade userId-keyed rows FIRST (they have no FK to drop).
     await tx.gardenerQuestion.deleteMany({ where });
@@ -79,6 +119,30 @@ export async function deleteAccount(
 
   return { ok: true, redirectTo: "/" };
 }
+
+/**
+ * The uploaded CV FILE (Supabase Storage) as part of the export — GDPR access
+ * covers the file itself, not just its DB metadata row. CV files are small
+ * (≤10 MB enforced at upload), so base64-in-JSON is a faithful representation.
+ * When the file cannot be read the export still completes, but the gap is
+ * carried EXPLICITLY in the payload — never silently omitted.
+ */
+export type ExportedCvFile =
+  | {
+      available: true;
+      fileName: string | null;
+      storagePath: string;
+      contentType: string | null;
+      sizeBytes: number;
+      encoding: "base64";
+      base64: string;
+    }
+  | {
+      available: false;
+      fileName: string | null;
+      storagePath: string;
+      note: string;
+    };
 
 /** A single api-token row with its secret hash stripped (metadata only). */
 interface ExportedApiToken {
@@ -101,6 +165,8 @@ export interface ExportedData {
   profile: unknown;
   preferences: unknown;
   applyProfile: unknown;
+  /** The uploaded CV file itself; null when no CV was ever uploaded. */
+  cvFile: ExportedCvFile | null;
   builtCv: unknown;
   savedOpportunities: unknown[];
   matchScores: unknown[];
@@ -179,12 +245,62 @@ export async function exportMyData(): Promise<ExportMyDataResult> {
     revokedAt: (t.revokedAt as Date | string | null) ?? null,
   }));
 
+  // Include the uploaded CV FILE itself (GDPR access = everything we hold,
+  // including the file in Supabase Storage). A failed read must not block the
+  // rest of the export — degrade to an explicit note instead.
+  let cvFile: ExportedCvFile | null = null;
+  const applyProfileRow = applyProfile as {
+    cvStoragePath?: unknown;
+    cvFileName?: unknown;
+  } | null;
+  const cvStoragePath =
+    typeof applyProfileRow?.cvStoragePath === "string"
+      ? applyProfileRow.cvStoragePath
+      : null;
+  const cvFileName =
+    typeof applyProfileRow?.cvFileName === "string"
+      ? applyProfileRow.cvFileName
+      : null;
+  if (cvStoragePath) {
+    if (!storageConfigured()) {
+      cvFile = {
+        available: false,
+        fileName: cvFileName,
+        storagePath: cvStoragePath,
+        note: "Your uploaded CV file could not be included because file storage is not configured on the server. Everything else in this export is complete.",
+      };
+    } else {
+      try {
+        const blob = await downloadCv(cvStoragePath);
+        const bytes = Buffer.from(await blob.arrayBuffer());
+        cvFile = {
+          available: true,
+          fileName: cvFileName,
+          storagePath: cvStoragePath,
+          contentType: blob.type || null,
+          sizeBytes: bytes.byteLength,
+          encoding: "base64",
+          base64: bytes.toString("base64"),
+        };
+      } catch (err) {
+        console.error("[account export] CV download failed:", err);
+        cvFile = {
+          available: false,
+          fileName: cvFileName,
+          storagePath: cvStoragePath,
+          note: "Your uploaded CV file could not be downloaded from storage right now. Everything else in this export is complete — try exporting again later for the file.",
+        };
+      }
+    }
+  }
+
   const data: ExportedData = {
     exportedAt: new Date().toISOString(),
     user: safeUser,
     profile,
     preferences,
     applyProfile,
+    cvFile,
     builtCv,
     savedOpportunities,
     matchScores,
