@@ -71,13 +71,13 @@ export default async function RadarPage() {
         </p>
       </div>
 
-      {/* New — listings first seen this week; overnight finds flagged. */}
-      <Section title="New" glyph="✚" glyphTone="text-success" count={digest.newCount}>
-        {fresh.length === 0 ? (
-          <li className="px-3 py-4 text-[0.8125rem] text-muted">
-            No new listings this week. Scout a firm below to widen the radar.
-          </li>
-        ) : (
+      {/* New — listings first seen this week; overnight finds flagged. A role
+          that appeared AND closed within the window stays listed (it did newly
+          appear — ADR-012 event semantics) but carries an honest closed glyph.
+          When nothing is new, the section is omitted entirely and the single
+          all-caught-up card below is the empty state. */}
+      {fresh.length > 0 && (
+        <Section title="New" glyph="✚" glyphTone="text-success" count={digest.newCount}>
           <>
             {fresh.map((i) => (
               <li key={i.id}>
@@ -94,6 +94,11 @@ export default async function RadarPage() {
                       {i.isOvernight && (
                         <span className="label shrink-0 text-[0.56rem] font-bold tracking-wider text-success">
                           ●&#8201;new
+                        </span>
+                      )}
+                      {i.status === "CLOSED" && (
+                        <span className="label shrink-0 text-[0.56rem] font-bold tracking-wider text-faint">
+                          closed
                         </span>
                       )}
                     </div>
@@ -116,13 +121,13 @@ export default async function RadarPage() {
               </li>
             )}
           </>
-        )}
-      </Section>
+        </Section>
+      )}
 
       {nothingNew && (
         <p className="rounded-card border border-border bg-surface px-4 py-5 text-center text-[0.875rem] text-muted shadow-card">
-          You&rsquo;re all caught up — no new roles this week. The next sweep runs
-          overnight.
+          You&rsquo;re all caught up — no new roles this week. Scout a firm below
+          to widen the radar; the next sweep runs overnight.
         </p>
       )}
 
