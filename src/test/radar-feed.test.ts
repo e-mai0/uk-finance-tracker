@@ -257,9 +257,10 @@ describe("composeRadarFeed — saved/applied markers on recentlyClosed", () => {
     }
   });
 
-  it("cross-user isolation: user A's id sets never mark user B's roles", () => {
-    // The page passes the SESSION user's sets; ids belonging to another user
-    // (or near-miss ids) must never light up markers in this user's view.
+  it("non-matching and near-miss ids (case/whitespace) never mark — exact-id membership, no normalization", () => {
+    // Cross-user isolation itself lives in getUserOpportunityIdSets' userId
+    // filter; this layer's contribution is exact-id membership — wrong ids and
+    // near-misses (case, stray whitespace) must never light up markers.
     const { recentlyClosed } = composeRadarFeed({
       items: [closed("b1"), closed("b2")],
       sources: [],
