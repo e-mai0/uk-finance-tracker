@@ -1,9 +1,19 @@
 // src/server/ai/cv-tools.ts
 // The single AI tool available to the CV-builder chatbot.
 // update_cv: replace the user's full CV with a new structured CvData.
-import { tool } from "ai";
+import { jsonSchema, tool, zodSchema } from "ai";
 import { cvDataSchema, type CvData } from "@/lib/cv";
 import { getBuiltCv, persistCv } from "@/server/cv/store";
+
+// The model-facing JSON schema is exactly what the AI SDK would derive from
+// cvDataSchema — but wrapped with jsonSchema() and NO validate step, so execute
+// receives the model's RAW payload. If cvDataSchema itself were the
+// inputSchema, SDK-side zod validation would materialise `.default([])` for
+// every key the model omitted, making a partial payload indistinguishable from
+// a deliberate wipe — which is how partial updates were clearing saved
+// sections. (Note: zod v3 `.partial()` does NOT help — defaults still fire.)
+// Validation still happens inside execute via cvDataSchema.safeParse.
+const updateCvInputSchema = jsonSchema(zodSchema(cvDataSchema).jsonSchema);
 
 const CV_FIELDS = [
   "fullName",
@@ -50,8 +60,9 @@ export function buildCvTools(userId: string) {
     update_cv: tool({
       description:
         "Replace the user's full CV with the provided structured data. " +
-        "Always send the COMPLETE CV object (not a patch). Omitted existing fields are preserved. Returns the saved CV.",
-      inputSchema: cvDataSchema,
+        "Always send the COMPLETE CV object (not a patch). Omitted existing fields are preserved. " +
+        "To clear a list section, explicitly send it as an empty array. Returns the saved CV.",
+      inputSchema: updateCvInputSchema,
       execute: async (data) => {
         const parsed = cvDataSchema.safeParse(data);
         if (!parsed.success) return { error: "invalid CV shape" };
